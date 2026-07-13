@@ -1,0 +1,25 @@
+[project]
+name = "mdlogger"
+version = "0.1.0"
+description = "Master Duel WCQ 전적 로거 — 듀얼 한 판마다 결과를 빠르게 기록하는 데스크톱 앱"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "PySide6>=6.8",
+    "pyqtgraph>=0.13",
+    "numpy>=1.26",
+    "openpyxl>=3.1",
+]
+
+[project.scripts]
+mdlogger = "mdlogger.app:main"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "pyinstaller>=6.10"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mdlogger"]

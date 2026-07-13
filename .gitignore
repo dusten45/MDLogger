@@ -1,0 +1,51 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ---- Virtual environment (uv) ----
+.venv/
+venv/
+env/
+
+# Note: uv.lock and .python-version are intentionally committed for reproducibility.
+
+# ---- Test / tooling caches ----
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# ---- PyInstaller build output ----
+build/
+dist/
+*.manifest
+# Keep the .spec if you want a reusable build recipe. This project's
+# "마듀 듀얼로그 생성기.spec" hardcodes a local icon path (D:\Downloads\asdf.ico),
+# so uncomment the next line if you'd rather not track it:
+*.spec
+
+# ---- Runtime data (recreated on first launch via ensure_data_dir) ----
+# The SQLite DB is per-user gameplay data, and decks_sync.json is local ETag state.
+# decks.json (project root) is the curated deck list and IS tracked.
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ---- Exported files ----
+games.csv
+games.xlsx
+
+# ---- Claude Code local settings ----
+.claude/settings.local.json
+
+# ---- OS / editor cruft ----
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
