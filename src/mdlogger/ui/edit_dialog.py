@@ -1,7 +1,6 @@
 """기존 레코드 편집 다이얼로그 (DetailForm 재사용 + 결과 토글)."""
-from __future__ import annotations
 
-import sqlite3
+from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QDialog,
@@ -10,8 +9,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from .. import db
 from ..enums import RESULT_COLORS, RESULTS
+from ..game_service import GameService
 from .detail_form import DetailForm
 from .widgets import SingleSelect
 
@@ -23,9 +22,9 @@ def _caption(text: str) -> QLabel:
 
 
 class EditDialog(QDialog):
-    def __init__(self, conn: sqlite3.Connection, decks: list[str], row, parent=None):
+    def __init__(self, games: GameService, decks: list[str], row, parent=None):
         super().__init__(parent)
-        self._conn = conn
+        self._games = games
         self._row = row
         self._id = int(row["id"])
 
@@ -52,9 +51,12 @@ class EditDialog(QDialog):
         layout.addWidget(self._status)
 
         # 저장 / 취소
-        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
-        buttons.button(QDialogButtonBox.Save).setText("저장")
-        buttons.button(QDialogButtonBox.Cancel).setText("취소")
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save
+            | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText("저장")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("취소")
         buttons.accepted.connect(self._on_save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -70,5 +72,5 @@ class EditDialog(QDialog):
             # played_at(게임 시각)은 보존
             "played_at": self._row["played_at"],
         }
-        db.update_game(self._conn, self._id, record)
+        self._games.update_game(self._id, record)
         self.accept()

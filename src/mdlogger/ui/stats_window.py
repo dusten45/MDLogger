@@ -3,9 +3,9 @@
 - 통계 탭   : 요약 카드 · 점수 시계열(pyqtgraph) · 덱별 매치업(선/후공 필터) · CSV/XLSX 내보내기
 - 기록 관리 : 전체 레코드 테이블 + 편집 / 삭제 / 새로고침
 """
+
 from __future__ import annotations
 
-import sqlite3
 from datetime import datetime
 
 import pyqtgraph as pg
@@ -28,7 +28,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import db, export
 from ..enums import (
     END_REASON_LABELS,
     RESULT_COLORS,
@@ -36,6 +35,7 @@ from ..enums import (
     TURN_ORDER_LABELS,
     label,
 )
+from ..game_service import GameService
 from .edit_dialog import EditDialog
 from .widgets import Card
 
@@ -43,16 +43,16 @@ from .widgets import Card
 def _cell(text: str, *, center: bool = False) -> QTableWidgetItem:
     item = QTableWidgetItem(text)
     if center:
-        item.setTextAlignment(Qt.AlignCenter)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
     return item
 
 
 class StatsWindow(QWidget):
     data_changed = Signal()  # 편집/삭제로 데이터가 바뀜(메인 헤더 갱신용)
 
-    def __init__(self, conn: sqlite3.Connection, decks: list[str]):
+    def __init__(self, games: GameService, decks: list[str]):
         super().__init__()
-        self._conn = conn
+        self._games = games
         self._decks = decks
 
         self.setWindowTitle("통계 / 기록")
@@ -119,13 +119,13 @@ class StatsWindow(QWidget):
         # 매치업 테이블
         self._mtable = QTableWidget(0, 5)
         self._mtable.setHorizontalHeaderLabels(["덱", "판수", "승", "패", "승률"])
-        self._mtable.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._mtable.setSelectionMode(QAbstractItemView.NoSelection)
+        self._mtable.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self._mtable.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self._mtable.verticalHeader().setVisible(False)
         mhead = self._mtable.horizontalHeader()
-        mhead.setSectionResizeMode(0, QHeaderView.Stretch)
+        mhead.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         for col in range(1, 5):
-            mhead.setSectionResizeMode(col, QHeaderView.ResizeToContents)
+            mhead.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         v.addWidget(self._mtable, 1)
 
         # 내보내기
@@ -151,16 +151,29 @@ class StatsWindow(QWidget):
         v = QVBoxLayout(w)
         v.setSpacing(8)
 
-        headers = ["ID", "시각", "결과", "선/후공", "내 덱", "상대 덱", "턴", "종료", "점수", "메모"]
+        headers = [
+            "ID",
+            "시각",
+            "결과",
+            "선/후공",
+            "내 덱",
+            "상대 덱",
+            "턴",
+            "종료",
+            "점수",
+            "메모",
+        ]
         self._rtable = QTableWidget(0, len(headers))
         self._rtable.setHorizontalHeaderLabels(headers)
-        self._rtable.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._rtable.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._rtable.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._rtable.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self._rtable.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self._rtable.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self._rtable.verticalHeader().setVisible(False)
         rhead = self._rtable.horizontalHeader()
-        rhead.setSectionResizeMode(QHeaderView.ResizeToContents)
-        rhead.setSectionResizeMode(9, QHeaderView.Stretch)  # 메모 늘림
+        rhead.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        rhead.setSectionResizeMode(9, QHeaderView.ResizeMode.Stretch)  # 메모 늘림
         self._rtable.doubleClicked.connect(self._edit_selected)
         v.addWidget(self._rtable, 1)
 
@@ -187,7 +200,7 @@ class StatsWindow(QWidget):
         self._refresh_records()
 
     def _refresh_cards(self) -> None:
-        s = db.get_summary(self._conn)
+        s = self._games.get_summary()
         self._card_total.set_value(f"{s['total']}판 {s['wins']}승 {s['losses']}패")
         self._card_overall.set_value(f"{s['winrate']:.1f}%")
         self._card_first.set_value(
@@ -199,7 +212,7 @@ class StatsWindow(QWidget):
         self._card_turns.set_value(f"{s['avg_turns']:.1f}")
 
     def _refresh_plot(self) -> None:
-        series = db.get_score_series(self._conn)
+        series = self._games.get_score_series()
         self._plot.clear()
         if not series:
             return
@@ -229,7 +242,7 @@ class StatsWindow(QWidget):
             tf = "second"
         else:
             tf = None
-        data = db.get_deck_matchups(self._conn, tf)
+        data = self._games.get_deck_matchups(tf)
         self._mtable.setRowCount(len(data))
         for i, row in enumerate(data):
             self._mtable.setItem(i, 0, _cell(row["deck"]))
@@ -239,14 +252,16 @@ class StatsWindow(QWidget):
             self._mtable.setItem(i, 4, _cell(f"{row['winrate']:.1f}%", center=True))
 
     def _refresh_records(self) -> None:
-        games = db.get_all_games(self._conn)
+        games = self._games.get_all_games()
         self._rtable.setRowCount(len(games))
         for i, g in enumerate(games):
             id_item = _cell(str(g["id"]), center=True)
-            id_item.setData(Qt.UserRole, int(g["id"]))
+            id_item.setData(Qt.ItemDataRole.UserRole, int(g["id"]))
             self._rtable.setItem(i, 0, id_item)
             self._rtable.setItem(i, 1, _cell(g["played_at"] or ""))
-            self._rtable.setItem(i, 2, _cell(label(RESULT_LABELS, g["result"]), center=True))
+            self._rtable.setItem(
+                i, 2, _cell(label(RESULT_LABELS, g["result"]), center=True)
+            )
             self._rtable.setItem(
                 i, 3, _cell(label(TURN_ORDER_LABELS, g["turn_order"]), center=True)
             )
@@ -265,18 +280,18 @@ class StatsWindow(QWidget):
         if row < 0:
             return None
         item = self._rtable.item(row, 0)
-        return int(item.data(Qt.UserRole)) if item is not None else None
+        return int(item.data(Qt.ItemDataRole.UserRole)) if item is not None else None
 
     def _edit_selected(self, *_args) -> None:
         gid = self._selected_id()
         if gid is None:
             QMessageBox.information(self, "편집", "편집할 행을 먼저 선택하세요.")
             return
-        row = db.get_game(self._conn, gid)
+        row = self._games.get_game(gid)
         if row is None:
             return
-        dlg = EditDialog(self._conn, self._decks, row, self)
-        if dlg.exec() == QDialog.Accepted:
+        dlg = EditDialog(self._games, self._decks, row, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             self.refresh()
             self.data_changed.emit()
 
@@ -289,29 +304,26 @@ class StatsWindow(QWidget):
             self,
             "삭제",
             "선택한 기록을 삭제할까요?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
-        if reply == QMessageBox.Yes:
-            db.delete_game(self._conn, gid)
+        if reply == QMessageBox.StandardButton.Yes:
+            self._games.delete_game(gid)
             self.refresh()
             self.data_changed.emit()
 
     # ===== 내보내기 =====
-    def _export_csv(self) -> None:
+    def _export(self, label: str, filename: str, filter_: str, export_fn) -> None:
         path, _ = QFileDialog.getSaveFileName(
-            self, "CSV로 내보내기", "games.csv", "CSV (*.csv)"
+            self, f"{label}로 내보내기", filename, filter_
         )
         if not path:
             return
-        export.export_csv(path, db.get_all_games(self._conn))
-        QMessageBox.information(self, "내보내기", f"CSV 저장 완료:\n{path}")
+        export_fn(path)
+        QMessageBox.information(self, "내보내기", f"{label} 저장 완료:\n{path}")
+
+    def _export_csv(self) -> None:
+        self._export("CSV", "games.csv", "CSV (*.csv)", self._games.export_csv)
 
     def _export_xlsx(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(
-            self, "XLSX로 내보내기", "games.xlsx", "Excel (*.xlsx)"
-        )
-        if not path:
-            return
-        export.export_xlsx(path, db.get_all_games(self._conn))
-        QMessageBox.information(self, "내보내기", f"XLSX 저장 완료:\n{path}")
+        self._export("XLSX", "games.xlsx", "Excel (*.xlsx)", self._games.export_xlsx)

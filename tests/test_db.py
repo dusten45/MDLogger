@@ -1,7 +1,11 @@
 """db 계층 단위 테스트 (인메모리 SQLite)."""
+
 from __future__ import annotations
 
+import sqlite3
 from datetime import date
+
+import pytest
 
 from mdlogger import db
 
@@ -87,7 +91,9 @@ def test_delete_last_on_empty():
 def test_update_game():
     conn = make_conn()
     gid = db.insert_game(conn, sample())
-    db.update_game(conn, gid, sample(opp_deck="엔디미온", score_after=5200, result="lose"))
+    db.update_game(
+        conn, gid, sample(opp_deck="엔디미온", score_after=5200, result="lose")
+    )
     row = db.get_all_games(conn)[0]
     assert row["opp_deck"] == "엔디미온"
     assert row["score_after"] == 5200
@@ -96,9 +102,15 @@ def test_update_game():
 
 def test_summary_and_matchups():
     conn = make_conn()
-    db.insert_game(conn, sample(turn_order="first", result="win", opp_deck="블루아이즈", turns=4))
-    db.insert_game(conn, sample(turn_order="first", result="lose", opp_deck="블루아이즈", turns=6))
-    db.insert_game(conn, sample(turn_order="second", result="win", opp_deck="엑조디아", turns=8))
+    db.insert_game(
+        conn, sample(turn_order="first", result="win", opp_deck="블루아이즈", turns=4)
+    )
+    db.insert_game(
+        conn, sample(turn_order="first", result="lose", opp_deck="블루아이즈", turns=6)
+    )
+    db.insert_game(
+        conn, sample(turn_order="second", result="win", opp_deck="엑조디아", turns=8)
+    )
 
     s = db.get_summary(conn)
     assert s["total"] == 3
@@ -144,6 +156,7 @@ def test_update_keeps_my_deck():
     gid = db.insert_game(conn, sample(my_deck="스네이크아이"))
     db.update_game(conn, gid, sample(my_deck="센츄리온", opp_deck="엑조디아"))
     row = db.get_game(conn, gid)
+    assert row is not None
     assert row["my_deck"] == "센츄리온"
     assert row["opp_deck"] == "엑조디아"
 
@@ -170,3 +183,85 @@ def test_migration_adds_my_deck():
 
     db.insert_game(conn, sample(my_deck="천년 사안"))
     assert db.get_last_my_deck(conn) == "천년 사안"
+
+
+def test_game_changes_and_outbox_commit_together():
+    conn = make_conn()
+
+    game_id = db.insert_game(conn, sample())
+    inserted = conn.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
+    insert_event = conn.execute(
+        "SELECT * FROM sync_outbox ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    assert inserted["sync_id"] == insert_event["game_sync_id"]
+    assert insert_event["operation"] == "upsert"
+
+    db.update_game(conn, game_id, sample(note="수정"))
+    assert (
+        conn.execute("SELECT sync_status FROM games WHERE id=?", (game_id,)).fetchone()[
+            0
+        ]
+        == "pending"
+    )
+    assert conn.execute("SELECT COUNT(*) FROM sync_outbox").fetchone()[0] == 2
+
+    db.delete_game(conn, game_id)
+    deleted = conn.execute(
+        "SELECT deleted_at FROM games WHERE id=?", (game_id,)
+    ).fetchone()
+    delete_event = conn.execute(
+        "SELECT operation FROM sync_outbox ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    assert deleted["deleted_at"] is not None
+    assert delete_event["operation"] == "delete"
+    assert db.get_game(conn, game_id) is None
+    assert db.count_games(conn) == 0
+
+
+def test_outbox_failure_rolls_back_game_insert():
+    conn = make_conn()
+    conn.execute(
+        """
+        CREATE TRIGGER reject_outbox BEFORE INSERT ON sync_outbox
+        BEGIN
+            SELECT RAISE(ABORT, 'outbox unavailable');
+        END
+        """
+    )
+
+    with pytest.raises(sqlite3.IntegrityError, match="outbox unavailable"):
+        db.insert_game(conn, sample())
+
+    assert conn.execute("SELECT COUNT(*) FROM games").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM sync_outbox").fetchone()[0] == 0
+
+
+def test_outbox_failure_rolls_back_game_update_and_delete():
+    conn = make_conn()
+    game_id = db.insert_game(conn, sample(note="원본"))
+    conn.execute("DELETE FROM sync_outbox")
+    conn.execute(
+        """
+        CREATE TRIGGER reject_outbox BEFORE INSERT ON sync_outbox
+        BEGIN
+            SELECT RAISE(ABORT, 'outbox unavailable');
+        END
+        """
+    )
+    conn.commit()
+
+    with pytest.raises(sqlite3.IntegrityError, match="outbox unavailable"):
+        db.update_game(conn, game_id, sample(note="변경"))
+    row = conn.execute(
+        "SELECT note, deleted_at FROM games WHERE id=?", (game_id,)
+    ).fetchone()
+    assert row["note"] == "원본"
+    assert row["deleted_at"] is None
+
+    with pytest.raises(sqlite3.IntegrityError, match="outbox unavailable"):
+        db.delete_game(conn, game_id)
+    row = conn.execute(
+        "SELECT note, deleted_at FROM games WHERE id=?", (game_id,)
+    ).fetchone()
+    assert row["note"] == "원본"
+    assert row["deleted_at"] is None
