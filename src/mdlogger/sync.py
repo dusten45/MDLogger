@@ -1,4 +1,8 @@
-"""decks.json 온라인 동기화(GitHub Gist).
+"""덱 카탈로그 전용 온라인 동기화(GitHub Gist).
+
+게임 기록 동기화는 이 모듈의 책임이 아니며 향후 별도 계정 범위 구성요소로 둔다.
+
+기존 ``decks.json`` 동기화 동작:
 
 앱 시작 시 백그라운드 스레드로 원격 decks.json 을 ETag 조건부 GET 으로 확인하고,
 바뀐 경우 로컬과 '병합'(합집합)하여 다시 쓴다. 사용자가 로컬에 추가한 덱은 보존된다.
@@ -9,6 +13,7 @@
   상세 화면 진입 때마다 ``load_decks()`` 를 다시 부르는 기존 동작에 맡긴다.
 - ``DECKS_REMOTE_URL`` 이 비어 있으면 동기화를 끈다.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,6 +24,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from .decks import OTHER, _dedup, load_decks, save_decks
 from .paths import (
@@ -26,12 +32,20 @@ from .paths import (
     DECKS_REMOTE_URL,
     DECKS_SYNC_STATE_PATH,
     ensure_data_dir,
+    secure_data_file,
 )
 
 # 시작이 네트워크에 오래 묶이지 않게 하는 요청 타임아웃(초).
 _TIMEOUT = 4
 # 일부 GitHub 엔드포인트는 User-Agent 누락 요청을 거부하므로 명시한다.
 _USER_AGENT = "mdlogger-decks-sync"
+
+
+def _require_https(url: str) -> None:
+    """원격 덱 목록과 리디렉션 대상은 유효한 HTTPS URL이어야 한다."""
+    parsed = urlsplit(url)
+    if parsed.scheme.lower() != "https" or not parsed.hostname:
+        raise ValueError("decks URL must use HTTPS")
 
 
 def merge_decks(remote: list[str], local: list[str]) -> list[str]:
@@ -48,20 +62,21 @@ def merge_decks(remote: list[str], local: list[str]) -> list[str]:
     return _dedup(items)
 
 
-def _fetch_remote(
-    url: str, etag: str | None
-) -> tuple[list[str] | None, str | None]:
+def _fetch_remote(url: str, etag: str | None) -> tuple[list[str] | None, str | None]:
     """조건부 GET. ``304`` -> ``(None, etag)``, ``200`` -> ``(list[str], 새 etag)``.
 
     네트워크/HTTP/JSON 오류는 호출자(``sync_decks``)가 처리하도록 그대로 raise 한다.
     원격이 JSON 배열이 아니면 ``ValueError`` 를 낸다.
     """
+    _require_https(url)
     headers = {"User-Agent": _USER_AGENT}
     if etag:
         headers["If-None-Match"] = etag
     req = urllib.request.Request(url, headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+        # 최초 URL과 리디렉션 결과를 모두 HTTPS로 검사한다.
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:  # nosec B310
+            _require_https(resp.geturl())
             new_etag = resp.headers.get("ETag")
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
@@ -89,6 +104,7 @@ def _save_state(state_path: Path, etag: str | None) -> None:
     text = json.dumps(state, ensure_ascii=False, indent=2) + "\n"
     tmp = state_path.with_suffix(state_path.suffix + ".tmp")
     tmp.write_text(text, encoding="utf-8")
+    secure_data_file(tmp)
     os.replace(tmp, state_path)
 
 

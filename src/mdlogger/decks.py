@@ -3,13 +3,14 @@
 후보는 외부 JSON 파일(프로젝트 루트의 decks.json)에서 읽으며 사용자가 직접 편집한다.
 파일이 없으면 기본 시드를 한 번 써준다. 항상 "기타"가 포함되도록 보장한다.
 """
+
 from __future__ import annotations
 
 import json
 import os
 from pathlib import Path
 
-from .paths import DECKS_PATH
+from .paths import DECKS_PATH, secure_data_file
 
 OTHER = "기타"
 
@@ -36,6 +37,7 @@ def save_decks(decks: list[str], path: Path = DECKS_PATH) -> None:
     text = json.dumps(decks, ensure_ascii=False, indent=2) + "\n"
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(text, encoding="utf-8")
+    secure_data_file(tmp)
     os.replace(tmp, path)
 
 

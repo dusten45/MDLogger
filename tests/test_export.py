@@ -1,7 +1,10 @@
 """export 모듈 테스트 (CSV / XLSX 내용 검증)."""
+
 from __future__ import annotations
 
 import csv
+
+import pytest
 
 from mdlogger import db, export
 from mdlogger.db import COLUMNS
@@ -59,6 +62,38 @@ def test_export_csv(tmp_path):
     assert record["note"] == "좋음"
 
 
+@pytest.mark.parametrize("prefix", ["=", "+", "-", "@", "\t", "\r", "\n"])
+def test_spreadsheet_formula_prefixes_are_escaped(prefix):
+    assert export._spreadsheet_safe(f"{prefix}danger") == f"'{prefix}danger"
+
+
+def test_export_csv_escapes_formula(tmp_path):
+    conn = make_conn_with_rows()
+    db.update_game(
+        conn,
+        1,
+        {
+            "played_at": "2026-06-19T10:00:00",
+            "result": "win",
+            "turn_order": "first",
+            "my_deck": "스네이크아이",
+            "opp_deck": "=1+1",
+            "turns": 5,
+            "end_reason": "regular",
+            "score_after": 2600,
+            "note": "@SUM(1,1)",
+        },
+    )
+    out = tmp_path / "games.csv"
+    export.export_csv(out, db.get_all_games(conn))
+
+    with open(out, encoding="utf-8-sig") as f:
+        record = dict(zip(COLUMNS, list(csv.reader(f))[1]))
+
+    assert record["opp_deck"] == "'=1+1"
+    assert record["note"] == "'@SUM(1,1)"
+
+
 def test_export_xlsx(tmp_path):
     from openpyxl import load_workbook
 
@@ -76,3 +111,34 @@ def test_export_xlsx(tmp_path):
     assert values[1][COLUMNS.index("opp_deck")] == "블루아이즈"
     assert values[1][COLUMNS.index("score_after")] == 2600  # 정수 유지
     assert values[2][COLUMNS.index("end_reason")] == "surrender"
+
+
+def test_export_xlsx_escapes_formula(tmp_path):
+    from openpyxl import load_workbook
+
+    conn = make_conn_with_rows()
+    db.update_game(
+        conn,
+        1,
+        {
+            "played_at": "2026-06-19T10:00:00",
+            "result": "win",
+            "turn_order": "first",
+            "my_deck": "스네이크아이",
+            "opp_deck": "=1+1",
+            "turns": 5,
+            "end_reason": "regular",
+            "score_after": 2600,
+            "note": "+danger",
+        },
+    )
+    out = tmp_path / "games.xlsx"
+    export.export_xlsx(out, db.get_all_games(conn))
+
+    ws = load_workbook(out, data_only=False).active
+    opp_deck = ws.cell(row=2, column=COLUMNS.index("opp_deck") + 1)
+    note = ws.cell(row=2, column=COLUMNS.index("note") + 1)
+    assert opp_deck.value == "'=1+1"
+    assert opp_deck.data_type == "s"
+    assert note.value == "'+danger"
+    assert note.data_type == "s"

@@ -1,16 +1,26 @@
 """현재 기록 전체를 CSV / XLSX 로 내보낸다. 컬럼은 DB 스키마와 동일."""
+
 from __future__ import annotations
 
 import csv
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from .db import COLUMNS
 
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
+
+
+def _spreadsheet_safe(value):
+    """스프레드시트가 사용자 문자열을 수식으로 해석하지 못하게 한다."""
+    if isinstance(value, str) and value.startswith(_FORMULA_PREFIXES):
+        return f"'{value}"
+    return value
+
 
 def _row_values(row) -> list:
-    """sqlite3.Row 또는 dict 에서 스키마 컬럼 순서대로 값 추출."""
-    return [row[c] for c in COLUMNS]
+    """sqlite3.Row 또는 dict 에서 안전한 값을 스키마 컬럼 순서대로 추출."""
+    return [_spreadsheet_safe(row[c]) for c in COLUMNS]
 
 
 def export_csv(path: str | Path, rows: Sequence) -> None:
