@@ -1,0 +1,39 @@
+"""계정 서비스 추상 인터페이스.
+
+로드맵 2.1에 따라 인증 계층을 추상화해 이후 소셜 로그인 등 다른 제공자를
+추가할 수 있게 한다. UI와 동기화 계층은 이 인터페이스에만 의존한다.
+"""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
+from .models import AuthSession, SignUpResult
+
+
+class AccountService(ABC):
+    """이메일 기반 등록 계정 인증 동작의 경계."""
+
+    @abstractmethod
+    def sign_up(self, email: str, password: str) -> SignUpResult:
+        """이메일 회원가입. 이메일 인증 대기 상태일 수 있다."""
+
+    @abstractmethod
+    def sign_in(self, email: str, password: str) -> AuthSession:
+        """이메일·비밀번호 로그인."""
+
+    @abstractmethod
+    def refresh_session(self, refresh_token: str) -> AuthSession:
+        """refresh token으로 세션을 갱신한다. 토큰은 회전될 수 있다."""
+
+    @abstractmethod
+    def sign_out(self, access_token: str) -> None:
+        """서버 세션(refresh token)을 폐기한다."""
+
+    @abstractmethod
+    def resend_verification_email(self, email: str) -> None:
+        """가입 확인(이메일 인증) 메일을 다시 보낸다."""
+
+    @abstractmethod
+    def request_password_reset(self, email: str) -> None:
+        """비밀번호 재설정 메일 전송을 요청한다."""

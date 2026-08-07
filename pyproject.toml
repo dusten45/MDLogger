@@ -9,13 +9,20 @@ dependencies = [
     "pyqtgraph>=0.13",
     "numpy>=1.26",
     "openpyxl>=3.1",
+    "keyring>=25.0",
 ]
 
 [project.scripts]
 mdlogger = "mdlogger.app:main"
 
 [dependency-groups]
-dev = ["pytest>=8.0", "pyinstaller>=6.10"]
+dev = [
+    "pytest>=8.0",
+    "pyinstaller>=6.10",
+    "ruff>=0.16.1",
+    "setuptools>=83.0.0",
+    "ty>=0.0.69",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -23,3 +30,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mdlogger"]
+
+[tool.ruff]
+extend-exclude = [".agents"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]
+
+[tool.ty.src]
+exclude = [".agents"]

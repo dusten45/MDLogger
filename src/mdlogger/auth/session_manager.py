@@ -1,0 +1,176 @@
+"""오프라인 시작과 세션 복구 상태 머신(로드맵 단계 5, 결정 A).
+
+상태 의미:
+
+- ``SIGNED_OUT``: 이 장치에 저장된 세션이 없다. 온라인 기능은 로그인 필요.
+- ``AUTHENTICATED``: 유효한 세션이 메모리에 있다.
+- ``OFFLINE``: 저장된 refresh token은 있으나 지금은 서버를 확인할 수 없다.
+  로컬 기록은 기간 제한 없이 계속 허용하고 동기화만 멈춘다.
+- ``REAUTH_REQUIRED``: 서버가 token 폐기·만료를 확인해 줬다. 업로드를 멈추고
+  재로그인을 요구하되 로컬 기록과 DB는 보존한다.
+
+access token은 이 객체의 메모리에만 있고, refresh token은 OS 자격 증명
+저장소에만 있다. 비밀번호는 어디에도 저장하지 않는다.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+
+from .credential_store import CredentialStore, CredentialStoreError
+from .models import AuthError, AuthErrorKind, AuthSession, SignUpResult
+from .service import AccountService
+
+
+class SessionState(StrEnum):
+    SIGNED_OUT = "signed_out"
+    AUTHENTICATED = "authenticated"
+    OFFLINE = "offline"
+    REAUTH_REQUIRED = "reauth_required"
+
+
+@dataclass(frozen=True, slots=True)
+class SessionSnapshot:
+    """상태 머신의 현재 관측값."""
+
+    state: SessionState
+    session: AuthSession | None = None
+    error: AuthError | None = None
+
+
+class SessionManager:
+    """등록 계정 세션의 저장·복구·폐기를 관리한다."""
+
+    def __init__(self, service: AccountService, store: CredentialStore) -> None:
+        self._service = service
+        self._store = store
+        self._snapshot = SessionSnapshot(state=SessionState.SIGNED_OUT)
+
+    @property
+    def snapshot(self) -> SessionSnapshot:
+        return self._snapshot
+
+    @property
+    def state(self) -> SessionState:
+        return self._snapshot.state
+
+    @property
+    def session(self) -> AuthSession | None:
+        return self._snapshot.session
+
+    def register(self, email: str, password: str) -> SignUpResult:
+        """회원가입 요청만 수행하고 세션 저장은 프로필 전환 확정 뒤로 미룬다."""
+        return self._service.sign_up(email, password)
+
+    def authenticate(self, email: str, password: str) -> AuthSession:
+        """자격 증명만 확인하고 refresh token은 아직 저장하지 않는다."""
+        return self._service.sign_in(email, password)
+
+    def activate(self, session: AuthSession) -> SessionSnapshot:
+        """사용자 선택과 프로필 열기가 끝난 인증 세션을 안전하게 저장한다."""
+        self._remember_session(session)
+        return self._snapshot
+
+    def sign_up(self, email: str, password: str) -> SignUpResult:
+        """회원가입하고 즉시 세션이 발급되면 안전하게 저장한다."""
+        result = self.register(email, password)
+        if result.session is not None:
+            self.activate(result.session)
+        return result
+
+    def sign_in(self, email: str, password: str) -> SessionSnapshot:
+        """온라인 로그인. 성공하면 refresh token을 OS 저장소에 보관한다."""
+        return self.activate(self.authenticate(email, password))
+
+    def resend_verification_email(self, email: str) -> None:
+        self._service.resend_verification_email(email)
+
+    def request_password_reset(self, email: str) -> None:
+        self._service.request_password_reset(email)
+
+    def restore(self, account_id: str) -> SessionSnapshot:
+        """앱 시작 시 저장된 refresh token으로 세션을 복구한다.
+
+        - 저장된 token 없음 → ``SIGNED_OUT``
+        - 네트워크/일시적 서버 오류 → ``OFFLINE`` (token 보존, 로컬 사용 계속)
+        - 서버가 token 폐기·만료 확인 → token 제거 후 ``REAUTH_REQUIRED``
+        """
+        refresh_token = self._store.load_refresh_token(account_id)
+        if refresh_token is None:
+            self._snapshot = SessionSnapshot(state=SessionState.SIGNED_OUT)
+            return self._snapshot
+
+        try:
+            session = self._service.refresh_session(refresh_token)
+        except AuthError as error:
+            if error.kind is AuthErrorKind.NETWORK:
+                self._snapshot = SessionSnapshot(
+                    state=SessionState.OFFLINE, error=error
+                )
+            elif error.kind in (
+                AuthErrorKind.TOKEN_EXPIRED,
+                AuthErrorKind.CREDENTIALS,
+            ):
+                # 폐기가 확인된 token만 제거한다. 로컬 DB는 보존된다.
+                self._store.delete_refresh_token(account_id)
+                self._snapshot = SessionSnapshot(
+                    state=SessionState.REAUTH_REQUIRED, error=error
+                )
+            else:
+                # 서버 오류 등: 폐기가 확인되지 않았으므로 token을 보존하고
+                # 오프라인과 같은 방식으로 동기화만 멈춘다.
+                self._snapshot = SessionSnapshot(
+                    state=SessionState.OFFLINE, error=error
+                )
+            return self._snapshot
+
+        if session.account.user_id != account_id:
+            self._store.delete_refresh_token(account_id)
+            error = AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "저장된 계정과 복구된 세션이 일치하지 않습니다.",
+                code="account_mismatch",
+            )
+            self._snapshot = SessionSnapshot(
+                state=SessionState.REAUTH_REQUIRED, error=error
+            )
+            return self._snapshot
+
+        # Supabase는 refresh token을 회전하므로 같은 계정 키에 다시 저장한다.
+        self._store.save_refresh_token(account_id, session.tokens.refresh_token)
+        self._snapshot = SessionSnapshot(
+            state=SessionState.AUTHENTICATED, session=session
+        )
+        return self._snapshot
+
+    def refresh_for_sync(self, account_id: str) -> AuthSession | None:
+        """push 중 401을 받은 등록 계정 세션을 한 번 갱신한다."""
+        try:
+            snapshot = self.restore(account_id)
+        except CredentialStoreError:
+            return None
+        return (
+            snapshot.session if snapshot.state is SessionState.AUTHENTICATED else None
+        )
+
+    def sign_out(self, account_id: str) -> SessionSnapshot:
+        """로그아웃. 서버 폐기 실패와 무관하게 로컬 refresh token은 제거한다."""
+        session = self._snapshot.session
+        if session is not None:
+            try:
+                self._service.sign_out(session.tokens.access_token)
+            except AuthError:
+                # 오프라인 로그아웃도 허용한다. 서버 세션은 이후 만료된다.
+                pass
+        self._store.delete_refresh_token(account_id)
+        self._snapshot = SessionSnapshot(state=SessionState.SIGNED_OUT)
+        return self._snapshot
+
+    def _remember_session(self, session: AuthSession) -> None:
+        self._store.save_refresh_token(
+            session.account.user_id, session.tokens.refresh_token
+        )
+        self._snapshot = SessionSnapshot(
+            state=SessionState.AUTHENTICATED, session=session
+        )
