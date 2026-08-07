@@ -1,4 +1,5 @@
 """화면2 (상세 입력): 색 결과 헤더(되돌리기) + 입력 폼 + 확인."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
@@ -27,7 +28,7 @@ class DetailView(QWidget):
 
         # 색 결과 헤더 (클릭 = 결과 다시 고르기)
         self._banner = QPushButton()
-        self._banner.setCursor(Qt.PointingHandCursor)
+        self._banner.setCursor(Qt.CursorShape.PointingHandCursor)
         self._banner.setMinimumHeight(48)
         self._banner.clicked.connect(self.back_requested)
         root.addWidget(self._banner)
@@ -45,7 +46,7 @@ class DetailView(QWidget):
 
         # 확인
         self._confirm = QPushButton("확인")
-        self._confirm.setCursor(Qt.PointingHandCursor)
+        self._confirm.setCursor(Qt.CursorShape.PointingHandCursor)
         self._confirm.setMinimumHeight(46)
         self._confirm.setDefault(True)
         self._confirm.setStyleSheet(

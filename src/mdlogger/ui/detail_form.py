@@ -3,6 +3,7 @@
 필드: 선/후공 · 상대 덱 · 소요 턴 · 종료 방식 · 점수(+델타) · 메모.
 enum 은 전부 버튼/칩, 손 타이핑은 점수·메모뿐.
 """
+
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
@@ -71,7 +72,9 @@ class DetailForm(QWidget):
         self._score.setPlaceholderText("2nd STAGE 누적 점수")
         self._delta = QLabel("")
         self._delta.setMinimumWidth(84)
-        self._delta.setAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        self._delta.setAlignment(
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
+        )
         score_row = QHBoxLayout()
         score_row.setContentsMargins(0, 0, 0, 0)
         score_row.setSpacing(8)

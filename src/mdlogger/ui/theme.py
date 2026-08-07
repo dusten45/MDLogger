@@ -1,0 +1,516 @@
+"""애플리케이션 전역 디자인 토큰과 라이트·다크 테마 적용."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+
+from PySide6.QtCore import QObject, Qt, Signal, Slot
+from PySide6.QtGui import QColor, QFont, QPalette
+from PySide6.QtWidgets import QApplication, QStyleFactory, QWidget
+
+
+class ThemeMode(StrEnum):
+    """사용자가 선택할 수 있는 테마 모드."""
+
+    SYSTEM = "system"
+    LIGHT = "light"
+    DARK = "dark"
+
+
+class FontRole(StrEnum):
+    """시스템 기본 글꼴에서 파생하는 타이포그래피 역할."""
+
+    DISPLAY = "display"
+    TITLE = "title"
+    SECTION = "section"
+    BODY = "body"
+    LABEL = "label"
+    CAPTION = "caption"
+    NUMERIC = "numeric"
+
+
+@dataclass(frozen=True, slots=True)
+class ColorTokens:
+    """한 테마에서 사용하는 의미 기반 색상 토큰."""
+
+    background: str
+    surface: str
+    surface_subtle: str
+    surface_raised: str
+    text_primary: str
+    text_secondary: str
+    text_disabled: str
+    text_on_accent: str
+    border: str
+    border_strong: str
+    divider: str
+    focus_ring: str
+    accent: str
+    accent_hover: str
+    accent_pressed: str
+    selection: str
+    success: str
+    success_subtle: str
+    danger: str
+    danger_subtle: str
+    warning: str
+    warning_subtle: str
+    chart_axis: str
+    chart_grid: str
+    chart_primary: str
+    chart_secondary: str
+    chart_marker: str
+
+
+@dataclass(frozen=True, slots=True)
+class MetricTokens:
+    """플랫폼과 테마에 독립적인 크기·간격 토큰."""
+
+    space_1: int = 4
+    space_2: int = 8
+    space_3: int = 12
+    space_4: int = 16
+    space_6: int = 24
+    space_8: int = 32
+    control_height_small: int = 34
+    control_height: int = 38
+    control_height_primary: int = 44
+    result_height: int = 104
+    radius_control: int = 8
+    radius_surface: int = 12
+    border_width: int = 1
+    focus_width: int = 2
+    icon_small: int = 16
+    icon_medium: int = 20
+    icon_large: int = 24
+    motion_duration_ms: int = 0
+
+
+METRICS = MetricTokens()
+
+LIGHT_COLORS = ColorTokens(
+    background="#F5F7FA",
+    surface="#FFFFFF",
+    surface_subtle="#EEF2F6",
+    surface_raised="#FFFFFF",
+    text_primary="#18202A",
+    text_secondary="#667085",
+    text_disabled="#8A94A3",
+    text_on_accent="#FFFFFF",
+    border="#D8DEE8",
+    border_strong="#7B8798",
+    divider="#D8DEE8",
+    focus_ring="#356AE6",
+    accent="#356AE6",
+    accent_hover="#2857C7",
+    accent_pressed="#2048A8",
+    selection="#DCE7FF",
+    success="#168A5B",
+    success_subtle="#E8F6EF",
+    danger="#C43D4B",
+    danger_subtle="#FCECEF",
+    warning="#946200",
+    warning_subtle="#FFF4D6",
+    chart_axis="#667085",
+    chart_grid="#D8DEE8",
+    chart_primary="#356AE6",
+    chart_secondary="#168A5B",
+    chart_marker="#C43D4B",
+)
+
+DARK_COLORS = ColorTokens(
+    background="#11151B",
+    surface="#191F28",
+    surface_subtle="#222A35",
+    surface_raised="#252E3A",
+    text_primary="#F2F4F7",
+    text_secondary="#A7B0BE",
+    text_disabled="#737E8E",
+    text_on_accent="#11151B",
+    border="#343E4D",
+    border_strong="#667085",
+    divider="#343E4D",
+    focus_ring="#7EA2FF",
+    accent="#7EA2FF",
+    accent_hover="#95B3FF",
+    accent_pressed="#668CE8",
+    selection="#26395F",
+    success="#52C78C",
+    success_subtle="#17392B",
+    danger="#FF7A86",
+    danger_subtle="#45242B",
+    warning="#F5B942",
+    warning_subtle="#423616",
+    chart_axis="#A7B0BE",
+    chart_grid="#343E4D",
+    chart_primary="#7EA2FF",
+    chart_secondary="#52C78C",
+    chart_marker="#FF7A86",
+)
+
+
+def colors_for_mode(mode: ThemeMode) -> ColorTokens:
+    """명시적인 라이트·다크 모드의 색상 토큰을 반환한다."""
+
+    if mode is ThemeMode.DARK:
+        return DARK_COLORS
+    return LIGHT_COLORS
+
+
+def resolve_theme_mode(
+    mode: ThemeMode, color_scheme: Qt.ColorScheme = Qt.ColorScheme.Unknown
+) -> ThemeMode:
+    """시스템 색상 체계를 앱 테마로 변환하고 불명확하면 라이트로 fallback한다."""
+
+    if mode is not ThemeMode.SYSTEM:
+        return mode
+    if color_scheme is Qt.ColorScheme.Dark:
+        return ThemeMode.DARK
+    return ThemeMode.LIGHT
+
+
+def system_theme_mode(app: QApplication) -> ThemeMode:
+    """현재 Qt가 감지한 시스템 색상 체계를 해석한다."""
+
+    return resolve_theme_mode(ThemeMode.SYSTEM, app.styleHints().colorScheme())
+
+
+def relative_luminance(color: str) -> float:
+    """`#RRGGBB` 색상의 WCAG 상대 휘도를 계산한다."""
+
+    value = color.removeprefix("#")
+    if len(value) != 6:
+        raise ValueError("색상은 #RRGGBB 형식이어야 합니다.")
+
+    channels = [int(value[index : index + 2], 16) / 255 for index in (0, 2, 4)]
+    linear = [
+        channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in channels
+    ]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def contrast_ratio(foreground: str, background: str) -> float:
+    """두 `#RRGGBB` 색상의 WCAG 대비율을 반환한다."""
+
+    lighter, darker = sorted(
+        (relative_luminance(foreground), relative_luminance(background)), reverse=True
+    )
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def font_for_role(base_font: QFont, role: FontRole) -> QFont:
+    """시스템 기본 글꼴을 보존하면서 역할에 맞는 크기와 굵기를 파생한다."""
+
+    font = QFont(base_font)
+    base_size = base_font.pointSizeF()
+    if base_size <= 0:
+        base_size = 10.0
+
+    scale, weight = {
+        FontRole.DISPLAY: (1.7, QFont.Weight.Bold),
+        FontRole.TITLE: (1.35, QFont.Weight.DemiBold),
+        FontRole.SECTION: (1.08, QFont.Weight.DemiBold),
+        FontRole.BODY: (1.0, QFont.Weight.Normal),
+        FontRole.LABEL: (1.0, QFont.Weight.Medium),
+        FontRole.CAPTION: (0.92, QFont.Weight.Normal),
+        FontRole.NUMERIC: (1.35, QFont.Weight.DemiBold),
+    }[role]
+    font.setPointSizeF(max(9.0, base_size * scale))
+    font.setWeight(weight)
+    return font
+
+
+def set_style_property(widget: QWidget, name: str, value: str | bool | None) -> None:
+    """동적 스타일 속성을 바꾸고 해당 위젯만 다시 polish한다."""
+
+    if widget.property(name) == value:
+        return
+    widget.setProperty(name, value)
+    style = widget.style()
+    if style is not None:
+        style.unpolish(widget)
+        style.polish(widget)
+    widget.update()
+
+
+def build_palette(colors: ColorTokens) -> QPalette:
+    """Qt 기본 위젯과 대화상자도 테마를 따르도록 앱 팔레트를 생성한다."""
+
+    palette = QPalette()
+    role_colors = {
+        QPalette.ColorRole.Window: colors.background,
+        QPalette.ColorRole.WindowText: colors.text_primary,
+        QPalette.ColorRole.Base: colors.surface,
+        QPalette.ColorRole.AlternateBase: colors.surface_subtle,
+        QPalette.ColorRole.ToolTipBase: colors.surface_raised,
+        QPalette.ColorRole.ToolTipText: colors.text_primary,
+        QPalette.ColorRole.Text: colors.text_primary,
+        QPalette.ColorRole.Button: colors.surface_subtle,
+        QPalette.ColorRole.ButtonText: colors.text_primary,
+        QPalette.ColorRole.BrightText: colors.text_on_accent,
+        QPalette.ColorRole.Link: colors.accent,
+        QPalette.ColorRole.Highlight: colors.accent,
+        QPalette.ColorRole.HighlightedText: colors.text_on_accent,
+        QPalette.ColorRole.PlaceholderText: colors.text_secondary,
+    }
+    for role, color in role_colors.items():
+        palette.setColor(role, QColor(color))
+
+    disabled = QPalette.ColorGroup.Disabled
+    for role in (
+        QPalette.ColorRole.WindowText,
+        QPalette.ColorRole.Text,
+        QPalette.ColorRole.ButtonText,
+        QPalette.ColorRole.PlaceholderText,
+    ):
+        palette.setColor(disabled, role, QColor(colors.text_disabled))
+    palette.setColor(disabled, QPalette.ColorRole.Button, QColor(colors.surface_subtle))
+    return palette
+
+
+def build_stylesheet(colors: ColorTokens, metrics: MetricTokens = METRICS) -> str:
+    """의미 역할과 안정적인 상태 표현을 포함한 애플리케이션 QSS를 생성한다."""
+
+    return f"""
+QWidget {{
+    background-color: {colors.background};
+    color: {colors.text_primary};
+}}
+QMainWindow, QDialog {{
+    background-color: {colors.background};
+}}
+QToolTip {{
+    background-color: {colors.surface_raised};
+    color: {colors.text_primary};
+    border: {metrics.border_width}px solid {colors.border_strong};
+    padding: {metrics.space_1}px {metrics.space_2}px;
+}}
+QLabel {{
+    background-color: transparent;
+}}
+QLabel[role="title"] {{ font-weight: 600; }}
+QLabel[role="section"] {{ font-weight: 600; }}
+QLabel[tone="muted"] {{ color: {colors.text_secondary}; }}
+QLabel[tone="success"] {{ color: {colors.success}; }}
+QLabel[tone="danger"] {{ color: {colors.danger}; }}
+QFrame[surface="card"], QFrame[surface="summary-card"], QFrame[surface="section"] {{
+    background-color: {colors.surface};
+    border: {metrics.border_width}px solid {colors.border};
+    border-radius: {metrics.radius_surface}px;
+}}
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit, QPlainTextEdit {{
+    min-height: {metrics.control_height_small}px;
+    background-color: {colors.surface};
+    color: {colors.text_primary};
+    border: {metrics.focus_width}px solid {colors.border_strong};
+    border-radius: {metrics.radius_control}px;
+    padding: 0 {metrics.space_2}px;
+    selection-background-color: {colors.selection};
+    selection-color: {colors.text_primary};
+}}
+QTextEdit, QPlainTextEdit {{ padding: {metrics.space_2}px; }}
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus,
+QTextEdit:focus, QPlainTextEdit:focus {{
+    border-color: {colors.focus_ring};
+}}
+QLineEdit[invalid="true"], QComboBox[invalid="true"], QSpinBox[invalid="true"],
+QDoubleSpinBox[invalid="true"], QTextEdit[invalid="true"], QPlainTextEdit[invalid="true"] {{
+    border-color: {colors.danger};
+    background-color: {colors.danger_subtle};
+}}
+QPushButton {{
+    min-height: {metrics.control_height_small}px;
+    background-color: {colors.surface_subtle};
+    color: {colors.text_primary};
+    border: {metrics.focus_width}px solid {colors.border_strong};
+    border-radius: {metrics.radius_control}px;
+    padding: 0 {metrics.space_3}px;
+}}
+QPushButton:hover {{ background-color: {colors.surface_raised}; }}
+QPushButton:pressed {{ background-color: {colors.selection}; }}
+QPushButton:focus {{ border-color: {colors.focus_ring}; }}
+QPushButton:disabled {{
+    background-color: {colors.surface_subtle};
+    color: {colors.text_disabled};
+    border-color: {colors.border};
+}}
+QPushButton[role="primary"] {{
+    min-height: {metrics.control_height_primary}px;
+    background-color: {colors.accent};
+    color: {colors.text_on_accent};
+    border-color: {colors.accent};
+    font-weight: 600;
+}}
+QPushButton[role="primary"]:hover {{
+    background-color: {colors.accent_hover};
+    border-color: {colors.accent_hover};
+}}
+QPushButton[role="primary"]:pressed {{
+    background-color: {colors.accent_pressed};
+    border-color: {colors.accent_pressed};
+}}
+QPushButton[role="primary"]:focus {{ border-color: {colors.text_on_accent}; }}
+QPushButton[role="secondary"] {{ background-color: {colors.surface}; }}
+QPushButton[role="ghost"] {{
+    background-color: transparent;
+    border-color: transparent;
+}}
+QPushButton[role="ghost"]:hover {{
+    background-color: {colors.surface_subtle};
+    border-color: {colors.border};
+}}
+QPushButton[role="ghost"]:focus {{ border-color: {colors.focus_ring}; }}
+QPushButton[role="danger"] {{
+    background-color: {colors.danger};
+    color: {colors.text_on_accent};
+    border-color: {colors.danger};
+}}
+QPushButton[role="danger"]:hover {{ background-color: {colors.danger_subtle}; color: {colors.danger}; }}
+QPushButton[role="danger"]:focus {{ border-color: {colors.text_on_accent}; }}
+QPushButton[role="result-win"] {{
+    min-height: {metrics.result_height}px;
+    background-color: {colors.success_subtle};
+    color: {colors.success};
+    border-color: {colors.success};
+    font-weight: 600;
+}}
+QPushButton[role="result-loss"] {{
+    min-height: {metrics.result_height}px;
+    background-color: {colors.danger_subtle};
+    color: {colors.danger};
+    border-color: {colors.danger};
+    font-weight: 600;
+}}
+QPushButton[role="result-win"]:pressed, QPushButton[role="result-loss"]:pressed,
+QPushButton[role="result-win"]:checked, QPushButton[role="result-loss"]:checked {{
+    border-color: {colors.focus_ring};
+}}
+QPushButton[role="result-win"]:focus, QPushButton[role="result-loss"]:focus {{
+    border-color: {colors.focus_ring};
+}}
+QPushButton[role="segment"] {{
+    background-color: {colors.surface};
+    border-radius: {metrics.radius_control}px;
+}}
+QPushButton[role="segment"]:checked {{
+    background-color: {colors.selection};
+    color: {colors.text_primary};
+    border-color: {colors.accent};
+    font-weight: 600;
+}}
+QPushButton[role="segment"]:focus {{ border-color: {colors.focus_ring}; }}
+QPushButton[role="icon"] {{
+    min-width: {metrics.control_height_small}px;
+    max-width: {metrics.control_height_small}px;
+    padding: 0;
+}}
+QPushButton[role="primary"]:disabled, QPushButton[role="secondary"]:disabled,
+QPushButton[role="ghost"]:disabled, QPushButton[role="danger"]:disabled,
+QPushButton[role="result-win"]:disabled, QPushButton[role="result-loss"]:disabled,
+QPushButton[role="segment"]:disabled, QPushButton[role="icon"]:disabled {{
+    background-color: {colors.surface_subtle};
+    color: {colors.text_disabled};
+    border-color: {colors.border};
+}}
+QAbstractItemView {{
+    background-color: {colors.surface};
+    alternate-background-color: {colors.surface_subtle};
+    color: {colors.text_primary};
+    border: {metrics.border_width}px solid {colors.border};
+    selection-background-color: {colors.selection};
+    selection-color: {colors.text_primary};
+    outline: 0;
+}}
+QAbstractItemView:focus {{ border: {metrics.focus_width}px solid {colors.focus_ring}; }}
+QHeaderView::section {{
+    background-color: {colors.surface_subtle};
+    color: {colors.text_primary};
+    padding: {metrics.space_2}px;
+    border: 0;
+    border-bottom: {metrics.border_width}px solid {colors.border_strong};
+}}
+QTabWidget::pane {{
+    border: {metrics.border_width}px solid {colors.border};
+    background-color: {colors.surface};
+}}
+QTabBar::tab {{
+    min-height: {metrics.control_height_small}px;
+    padding: 0 {metrics.space_3}px;
+    color: {colors.text_secondary};
+    border-bottom: {metrics.focus_width}px solid transparent;
+}}
+QTabBar::tab:selected {{
+    color: {colors.text_primary};
+    border-bottom-color: {colors.accent};
+    font-weight: 600;
+}}
+QTabBar::tab:focus {{ border-bottom-color: {colors.focus_ring}; }}
+""".strip()
+
+
+def _fusion_style_name() -> str | None:
+    for style_name in QStyleFactory.keys():
+        if style_name.casefold() == "fusion":
+            return style_name
+    return None
+
+
+class ThemeController(QObject):
+    """앱 테마를 적용하고 시스템 색상 체계 변경을 추적한다."""
+
+    theme_changed = Signal(ThemeMode)
+
+    def __init__(self, app: QApplication, mode: ThemeMode = ThemeMode.SYSTEM) -> None:
+        super().__init__(app)
+        self._app = app
+        self._mode = mode
+        self._resolved_mode = ThemeMode.LIGHT
+        app.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
+        self.apply()
+
+    @property
+    def mode(self) -> ThemeMode:
+        return self._mode
+
+    @property
+    def resolved_mode(self) -> ThemeMode:
+        return self._resolved_mode
+
+    def set_mode(self, mode: ThemeMode) -> None:
+        if self._mode is mode:
+            return
+        self._mode = mode
+        self.apply()
+
+    def apply(self) -> None:
+        resolved_mode = (
+            system_theme_mode(self._app)
+            if self._mode is ThemeMode.SYSTEM
+            else self._mode
+        )
+        colors = colors_for_mode(resolved_mode)
+        self._app.setPalette(build_palette(colors))
+        self._app.setStyleSheet(build_stylesheet(colors))
+        self._app.setProperty("themeMode", resolved_mode.value)
+        changed = self._resolved_mode is not resolved_mode
+        self._resolved_mode = resolved_mode
+        if changed:
+            self.theme_changed.emit(resolved_mode)
+
+    @Slot(Qt.ColorScheme)
+    def _on_color_scheme_changed(self, _color_scheme: Qt.ColorScheme) -> None:
+        if self._mode is ThemeMode.SYSTEM:
+            self.apply()
+
+
+def apply_theme(
+    app: QApplication, mode: ThemeMode = ThemeMode.SYSTEM
+) -> ThemeController:
+    """Fusion을 사용할 수 있으면 선택하고 앱 테마 제어기를 생성한다."""
+
+    fusion_style = _fusion_style_name()
+    if fusion_style is not None:
+        app.setStyle(fusion_style)
+    return ThemeController(app, mode)

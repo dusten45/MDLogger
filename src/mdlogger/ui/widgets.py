@@ -5,6 +5,7 @@
 - Stepper : −/＋ 버튼만으로 조작하는 정수 스테퍼 (키 입력 불가)
 - Card : 통계 요약 카드
 """
+
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
@@ -52,25 +53,24 @@ class SingleSelect(QWidget):
         super().__init__(parent)
         color_map = color_map or {}
         self._buttons: dict[str, QPushButton] = {}
+        self._values: dict[QPushButton, str] = {}
         self._group = QButtonGroup(self)
         self._group.setExclusive(True)
 
-        if columns and columns > 0:
-            layout = QGridLayout(self)
-        else:
-            layout = QHBoxLayout(self)
+        layout = QGridLayout(self) if columns > 0 else QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
         for i, (value, text) in enumerate(options):
             btn = QPushButton(text)
             btn.setCheckable(True)
-            btn.setCursor(Qt.PointingHandCursor)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setMinimumHeight(38)
             btn.setStyleSheet(_seg_style(color_map.get(value, ACCENT)))
             self._group.addButton(btn)
             self._buttons[value] = btn
-            if columns and columns > 0:
+            self._values[btn] = value
+            if isinstance(layout, QGridLayout):
                 layout.addWidget(btn, i // columns, i % columns)
             else:
                 layout.addWidget(btn)
@@ -78,16 +78,11 @@ class SingleSelect(QWidget):
         self._group.buttonClicked.connect(self._on_clicked)
 
     def _on_clicked(self, btn: QPushButton) -> None:
-        for value, b in self._buttons.items():
-            if b is btn:
-                self.changed.emit(value)
-                return
+        self.changed.emit(self._values[btn])
 
     def value(self) -> str | None:
-        for value, b in self._buttons.items():
-            if b.isChecked():
-                return value
-        return None
+        checked = self._group.checkedButton()
+        return self._values.get(checked) if checked is not None else None
 
     def setValue(self, value: str | None) -> None:
         """프로그램적 선택 (changed 시그널은 발생하지 않음)."""
@@ -112,14 +107,15 @@ class SearchableDeckCombo(QComboBox):
         super().__init__(parent)
         self._decks: list[str] = []
         self.setEditable(True)
-        self.setInsertPolicy(QComboBox.NoInsert)
+        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.setMaxVisibleItems(12)
         self.setMinimumHeight(34)
 
         completer = self.completer()
-        completer.setCompletionMode(QCompleter.PopupCompletion)
-        completer.setFilterMode(Qt.MatchContains)
-        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        if completer is not None:
+            completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+            completer.setFilterMode(Qt.MatchFlag.MatchContains)
+            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
     def set_decks(self, decks: list[str]) -> None:
         self._decks = list(decks)
@@ -160,7 +156,9 @@ class Stepper(QWidget):
 
     changed = Signal(int)
 
-    def __init__(self, minimum: int = 1, maximum: int = 99, value: int = 1, parent=None):
+    def __init__(
+        self, minimum: int = 1, maximum: int = 99, value: int = 1, parent=None
+    ):
         super().__init__(parent)
         self._min = minimum
         self._max = maximum
@@ -174,7 +172,7 @@ class Stepper(QWidget):
         self._plus = QPushButton("＋")
         for b in (self._minus, self._plus):
             b.setFixedSize(40, 36)
-            b.setCursor(Qt.PointingHandCursor)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setStyleSheet(
                 "QPushButton { border:1px solid #c4c4c4; border-radius:6px;"
                 " background:#f3f3f3; font-size:16px; }"
@@ -182,7 +180,7 @@ class Stepper(QWidget):
             )
 
         self._label = QLabel(str(self._value))
-        self._label.setAlignment(Qt.AlignCenter)
+        self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._label.setMinimumWidth(48)
         self._label.setStyleSheet("font-size:15px; font-weight:600;")
 
@@ -211,7 +209,7 @@ class Card(QFrame):
     def __init__(self, title: str, value: str = "—", parent=None):
         super().__init__(parent)
         self.setObjectName("card")
-        self.setFrameShape(QFrame.StyledPanel)
+        self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setStyleSheet(
             "#card { background:#fafafa; border:1px solid #e0e0e0; border-radius:8px; }"
         )
