@@ -1,0 +1,6 @@
+{
+  "//": "Supabase Edge Function은 Deno 런타임에서 실행된다. 일반 TypeScript 언어 서버는 Deno 전역과 npm: specifier를 해석하지 못하므로 편집기 오류가 보일 수 있다. 검증은 `supabase functions serve`로 수행한다.",
+  "compilerOptions": {
+    "strict": true
+  }
+}

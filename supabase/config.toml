@@ -1,0 +1,10 @@
+# local Supabase 개발 스택 설정(로드맵 결정 11: local 검증 + hosted production).
+# `supabase start` / `supabase db reset` / `supabase test db`가 이 파일을 사용한다.
+# 명시하지 않은 값은 Supabase CLI 기본값을 따른다.
+
+project_id = "mdlogger"
+
+[functions.guest-ingest]
+# 게스트 클라이언트는 publishable(anon) key를 Bearer로 보낸다.
+# 사용자 로그인 JWT는 요구하지 않는다(로드맵 8.3).
+verify_jwt = true
