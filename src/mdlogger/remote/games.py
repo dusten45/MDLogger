@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from .. import __version__
 from .client import HttpResponse, JsonHttpClient
 from .config import RemoteConfig
 from .errors import NetworkError, RemoteError, ResponseFormatError
@@ -35,6 +36,7 @@ PRIVATE_GAME_FIELDS = (
     "event_points_before",
     "event_points_after",
     "timezone_offset_minutes",
+    "environment_version_id",
 )
 REMOTE_GAME_FIELDS = (
     "id",
@@ -45,6 +47,7 @@ REMOTE_GAME_FIELDS = (
     "change_version",
     "payload_version",
     "source_kind",
+    "client_version",
 )
 
 
@@ -123,6 +126,8 @@ def build_game_change(
     change: dict[str, Any] = {"op": remote_operation, "id": sync_id}
     if remote_operation != "create":
         change["expected_change_version"] = remote_version
+    # 게스트를 포함한 단일 출처 버전을 등록 게임에도 기록한다(하드닝 H4/N-1).
+    change["client_version"] = __version__
     change["payload"] = (
         {} if remote_operation == "delete" else private_game_payload(payload)
     )

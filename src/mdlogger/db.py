@@ -12,6 +12,7 @@ import uuid
 from datetime import date, datetime
 from pathlib import Path
 
+from .environment import current_environment_id
 from .migrations import MigrationResult, migrate
 from .paths import DB_PATH, ensure_data_dir, secure_data_file
 
@@ -101,6 +102,11 @@ def _enqueue_game_change(
     )
 
 
+def _environment_id() -> str | None:
+    """신규 기록에 부여할 현재 환경 version id(없으면 None). 테스트 주입용."""
+    return current_environment_id()
+
+
 def insert_game(conn: sqlite3.Connection, data: dict) -> int:
     payload = _payload(data)
     changed_at = _now_iso()
@@ -109,6 +115,7 @@ def insert_game(conn: sqlite3.Connection, data: dict) -> int:
         local_updated_at=changed_at,
         sync_status="pending",
         timezone_offset_minutes=_timezone_offset_minutes(),
+        environment_version_id=_environment_id(),
     )
     with conn:
         cur = conn.execute(
@@ -116,11 +123,11 @@ def insert_game(conn: sqlite3.Connection, data: dict) -> int:
             INSERT INTO games
                 (played_at, result, turn_order, my_deck, opp_deck, turns,
                  end_reason, score_after, note, sync_id, local_updated_at, sync_status,
-                 timezone_offset_minutes)
+                 timezone_offset_minutes, environment_version_id)
             VALUES
                 (:played_at, :result, :turn_order, :my_deck, :opp_deck, :turns,
                  :end_reason, :score_after, :note, :sync_id, :local_updated_at,
-                 :sync_status, :timezone_offset_minutes)
+                 :sync_status, :timezone_offset_minutes, :environment_version_id)
             """,
             payload,
         )

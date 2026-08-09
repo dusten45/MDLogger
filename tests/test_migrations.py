@@ -38,6 +38,7 @@ SYNC_COLUMNS = {
     "last_sync_error",
     "import_batch_id",
     "base_remote_payload",
+    "environment_version_id",
 }
 
 
@@ -106,6 +107,44 @@ def test_supported_old_databases_migrate_without_data_loss(
     assert row["event_points_after"] is None
     assert row["sync_status"] == "pending"
     assert conn.execute("SELECT COUNT(*) FROM sync_outbox").fetchone()[0] == 1
+
+
+def test_migration_5_preserves_existing_null_environment(tmp_path: Path):
+    """v4 이전 DB를 v5로 올려도 기존 행의 환경은 추측 없이 NULL로 유지된다."""
+    conn = db.connect(tmp_path / "games.db")
+    conn.execute("PRAGMA user_version = 4")
+    conn.execute(
+        "CREATE TABLE database_metadata ("
+        " id INTEGER PRIMARY KEY CHECK (id = 1),"
+        " schema_version INTEGER NOT NULL, owner_id TEXT, profile_kind TEXT,"
+        " created_at TEXT NOT NULL, last_opened_at TEXT NOT NULL)"
+    )
+    conn.execute(
+        "INSERT INTO database_metadata (id, schema_version, created_at, last_opened_at)"
+        " VALUES (1, 4, '2026-08-01T00:00:00', '2026-08-01T00:00:00')"
+    )
+    conn.execute(
+        "CREATE TABLE games (id INTEGER PRIMARY KEY, played_at TEXT, result TEXT,"
+        " turn_order TEXT, opp_deck TEXT, turns INTEGER, end_reason TEXT,"
+        " score_after INTEGER, note TEXT, sync_id TEXT, local_updated_at TEXT,"
+        " sync_status TEXT, timezone_offset_minutes INTEGER,"
+        " base_remote_payload TEXT)"
+    )
+    conn.execute(
+        "INSERT INTO games (played_at, result, turn_order, opp_deck, turns,"
+        " end_reason, score_after, note, sync_id, local_updated_at, sync_status)"
+        " VALUES ('2026-08-07T10:00:00', 'win', 'first', '블루아이즈', 5,"
+        "        'regular', 2600, '', 's1', '2026-08-07T10:00:00', 'synced')"
+    )
+    conn.commit()
+
+    db.init_db(conn)
+
+    assert _version(conn) == migrations.LATEST_SCHEMA_VERSION
+    assert "environment_version_id" in _columns(conn, "games")
+    row = conn.execute("SELECT environment_version_id FROM games").fetchone()
+    assert row["environment_version_id"] is None
+    conn.close()
 
 
 @pytest.mark.parametrize("database", [":memory:", "file"])
@@ -195,3 +234,24 @@ def test_restore_rejects_corrupt_backup(tmp_path: Path):
         migrations.restore_backup(db_path, backup_path)
 
     assert db_path.read_bytes() == b"original"
+
+
+def test_retain_backups_keeps_only_latest(tmp_path: Path):
+    """운영 결정: 마이그레이션 사전 백업은 최근 1개만 남기고 정리한다."""
+    db_path = tmp_path / "games.db"
+    (tmp_path / "games.db.pre-migration-v1.bak").write_bytes(b"old1")
+    (tmp_path / "games.db.pre-migration-v2.bak").write_bytes(b"old2")
+    latest = tmp_path / "games.db.pre-migration-v3.bak"
+    latest.write_bytes(b"new")
+    # 다른 DB의 백업과 임시 파일은 절대 건드리지 않아야 한다.
+    (tmp_path / "accounts.db.pre-migration-v7.bak").write_bytes(b"other-db")
+    (tmp_path / "games.db.pre-migration-v9.bak.tmp").write_bytes(b"tmp")
+
+    migrations._retain_backups(db_path)
+
+    assert latest.exists()
+    assert latest.read_bytes() == b"new"
+    assert not (tmp_path / "games.db.pre-migration-v1.bak").exists()
+    assert not (tmp_path / "games.db.pre-migration-v2.bak").exists()
+    assert (tmp_path / "accounts.db.pre-migration-v7.bak").exists()
+    assert (tmp_path / "games.db.pre-migration-v9.bak.tmp").exists()

@@ -12,12 +12,15 @@ from .auth.credential_store import KeyringCredentialStore
 from .auth.session_manager import SessionManager
 from .auth.supabase_auth import SupabaseAccountService
 from .decks import load_decks
+from .environment import refresh_from_server
 from .game_service import GameService
 from .game_sync.coordinator import SyncCoordinator
 from .game_sync.engine import SyncEngine
+from .paths import DATA_DIR
 from .profile_router import ProfileRouter
 from .profiles import ProfileManager
-from .remote.config import config_from_environment
+from .release_policy import resolve_policy_for_startup
+from .remote.config import get_remote_config
 from .remote.games import RegisteredGamesClient
 from .remote.guest_ingest import GuestIngestClient
 from .ui.main_window import MainWindow
@@ -32,7 +35,21 @@ def main() -> None:
     deck_sync.start_background_sync()  # 비차단; 다음 상세 진입에서 자동 반영
     decks = load_decks()
     profiles = ProfileManager()
-    remote_config = config_from_environment()
+    remote_config = get_remote_config()
+
+    # 릴리스 정책: 최소 지원 미만이면 온라인(로그인·업로드·pull)을 차단한다.
+    # 로컬 기록과 내보내기는 영향받지 않는다(로드맵 17.3.J). 조회 실패는
+    # 마지막 캐시를 사용하고, 정책이 없으면 최신 동작을 보존한다.
+    _release_policy, _online_allowed = resolve_policy_for_startup(
+        remote_config, DATA_DIR / "release_policy_cache.json"
+    )
+    if not _online_allowed:
+        remote_config = None
+
+    # 현재 환경 version을 조회·캐시해 신규 기록에만 부여한다(하드닝 H4).
+    # 오프라인이거나 조회 실패시 NULL로 두고 소급 부여하지 않는다.
+    refresh_from_server(remote_config)
+
     sessions = (
         SessionManager(SupabaseAccountService(remote_config), KeyringCredentialStore())
         if remote_config is not None

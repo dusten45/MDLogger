@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import sqlite3
 import uuid
@@ -12,7 +13,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-LATEST_SCHEMA_VERSION = 4
+LATEST_SCHEMA_VERSION = 5
+
+# 마이그레이션 사전 백업 보존 정책(운영 결정, open-items 항목 3): 백업은 내부
+# 전용이며, 새 백업을 만들면 이전 백업을 최근 keep개만 남기고 정리한다.
+# 사용자에게 별도로 노출하지 않고, 실패 시 복구 안내로만 사용한다.
+BACKUP_RETENTION = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +103,24 @@ def _create_verified_backup(
         return backup_path
     finally:
         temporary_path.unlink(missing_ok=True)
+
+
+def _retain_backups(db_path: Path, keep: int = BACKUP_RETENTION) -> None:
+    """백업 보존 정책 적용: 이 DB의 마이그레이션 사전 백업을 최근 keep개만 남긴다.
+
+    백업 이름은 버전 키(`<db>.pre-migration-v<version>.bak`)이므로 migration이
+    단조 증가한다는 점을 이용해 가장 높은 버전(가장 최근 migration)을 최신으로 본다.
+    다른 DB 파일이나 실제 DB(`-wal`/`-shm`)는 건드리지 않는다.
+    """
+    pattern = re.compile(rf"^{re.escape(db_path.name)}\.pre-migration-v(\d+)\.bak$")
+    versions: list[tuple[int, Path]] = []
+    for path in db_path.parent.glob("*.bak"):
+        match = pattern.match(path.name)
+        if match:
+            versions.append((int(match.group(1)), path))
+    versions.sort(reverse=True, key=lambda item: item[0])
+    for _, path in versions[keep:]:
+        path.unlink(missing_ok=True)
 
 
 def _column_names(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -290,12 +314,22 @@ def _migration_4(conn: sqlite3.Connection) -> None:
     _add_column(conn, "games", "base_remote_payload TEXT")
 
 
+def _migration_5(conn: sqlite3.Connection) -> None:
+    """하드닝 H4: 신규 기록의 월별 환경 version을 보존한다.
+
+    기존 행은 추측하지 않고 NULL로 유지한다(로드맵 7.6). 오프라인이거나
+    환경을 모르는 신규 기록도 NULL로 저장되고 소급 부여하지 않는다.
+    """
+    _add_column(conn, "games", "environment_version_id TEXT")
+
+
 Migration = Callable[[sqlite3.Connection], None]
 MIGRATIONS: dict[int, Migration] = {
     1: _migration_1,
     2: _migration_2,
     3: _migration_3,
     4: _migration_4,
+    5: _migration_5,
 }
 
 
@@ -315,6 +349,7 @@ def migrate(conn: sqlite3.Connection) -> MigrationResult:
     backup_path = None
     if db_path is not None and _table_names(conn):
         backup_path = _create_verified_backup(conn, db_path, from_version)
+        _retain_backups(db_path)
 
     original_row_factory = conn.row_factory
     conn.row_factory = sqlite3.Row

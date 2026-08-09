@@ -46,6 +46,7 @@ _DIRECT_FIELDS = (
     "rating_after",
     "event_points_before",
     "event_points_after",
+    "environment_version_id",
 )
 
 
