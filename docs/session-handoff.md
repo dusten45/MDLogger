@@ -37,13 +37,13 @@ Windows를 제외했을 때 남은 일을 **네 가지 분류**로 정리한다.
 
 ## ② 환경 실행 검증 — Windows 무관 (Linux/macOS)
 
-| #   | 항목                                                                            | 실행할 곳               | 비고                                                 |
-| --- | ------------------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------- |
-| 1   | 구버전 앱 → 0.1.5 업그레이드 rehearsal                                          | 소유자 Linux            | migration 경로 실증                                  |
-| 2   | 장시간 offline/online 전환 + 대량(1,000건) 동기화 스트레스                      | 소유자 Linux            | `test_sync_engine` 1,000건 매트릭스 재현             |
-| 3   | RLS·서버 함수 최종 공격 테스트 (`supabase db reset` + `test db`, 173 tests)     | **소유자 환경(podman)** | 이 에이전트 sandbox는 Docker 기반 Supabase 실행 불가 |
-| 4   | macOS/Linux secure storage(keyring/Secret Service)·데이터 경로·worker 종료 검증 | 소유자 Linux            | 단계 12 작업 분                                      |
-| 5   | 문서 최종 정합 재확인                                                           | 임의                    | `final_bugs`·`open-items`·`hardening`·`runbook`      |
+| #   | 항목                                                                            | 실행할 곳                      | 비고                                                                                   |
+| --- | ------------------------------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------- |
+| 1   | 구버전 앱 → 0.1.5 업그레이드 rehearsal                                          | 소유자 Linux                   | migration 경로 실증                                                                    |
+| 2   | 장시간 offline/online 전환 + 대량(1,000건) 동기화 스트레스                      | 소유자 Linux                   | `test_sync_engine` 1,000건 매트릭스 재현                                               |
+| 3   | RLS·서버 함수 최종 공격 테스트 (`supabase db reset` + `test db`, 173 tests)     | **소유자 환경(podman)**        | 이 에이전트 sandbox는 Docker 기반 Supabase 실행 불가                                   |
+| 4   | macOS/Linux secure storage(keyring/Secret Service)·데이터 경로·worker 종료 검증 | 소유자 Linux                   | 단계 12 작업 분                                                                        |
+| 5   | 문서 최종 정합 재확인                                                           | **완료(2026-08-10 정리 세션)** | `final_bugs`·`open-items`·`hardening`·`runbook` · 원본 로드맵 — pytest 수치 261로 갱신 |
 
 서버 검증(3)은 이 세션에서 실제 실행했던 `supabase db reset`/`test db`가 소유자 환경
 (podman, migration `0001~0016`, 173 tests 통과)에서 이미 완료되어 있으나, 단계 12

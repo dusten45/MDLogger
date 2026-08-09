@@ -802,8 +802,8 @@ flowchart TD
 - [x] 소유자 환경에서 Edge Function(`guest-ingest`, `account-delete`)이 검증되었다. (2026-08-10: `guest-ingest` 정상 200 / disallowed 422 / rate-limit 429, `account-delete` 200 · auth 종속 게임 삭제 · 분석 observation 보존)
 - [ ] 패키징된 Windows 빌드에서 로그인·게스트 ingest가 실제로 동작한다.
 - [ ] 빌드 산출물 시크릿 스캔이 통과했다.
-- [x] `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check`, `uv run pytest`가 전부 실제 통과했다. (2026-08-10: ruff/format/ty 통과, pytest 252 passed, 4 skipped)
-- [x] 원본 로드맵, `docs/open-items.md`, `docs/operations/runbook.md`, 이 문서가 상호 모순 없이 실제 구현 상태를 기술한다. (2026-08-10: `final_bugs`·`open-items`·`hardening` 간 pytest 수치 252·Qt UI 클릭 테스트 추가 반영 등 정합 갱신. 로드맵 단계별 수치는 해당 단계 시점의 스냅샷으로 유지)
+- [x] `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check`, `uv run pytest`가 전부 실제 통과했다. (2026-08-10: ruff/format/ty 통과, pytest 261 passed, 4 skipped — Qt UI 클릭 테스트 보강 반영)
+- [x] 원본 로드맵, `docs/open-items.md`, `docs/operations/runbook.md`, 이 문서가 상호 모순 없이 실제 구현 상태를 기술한다. (2026-08-10: `final_bugs`·`open-items`·`hardening` 간 pytest 수치 261·Qt UI 클릭 테스트 추가 반영 등 정합 갱신. 로드맵 단계별 수치와 final_bugs 검증 현황은 해당 시점의 스냅샷으로 유지)
 - [x] 이번 릴리스에서 미루기로 확정한 항목(§5)이 문서에 명시되어 있고, 사용자에게 미치는 영향이 파악되었다. (2026-08-10: §5 비목표·`open-items` #2·4·7·8·9·runbook §3.1에 휴대용 아카이브 미배선·세션 폐기 지연·Turnstile/tombstone·DTO 범위 제외와 CSV/XLSX 대체 경로 명시)
 
 ---
@@ -833,14 +833,14 @@ flowchart TD
 
 ### H1~H6 구현 상태
 
-| 단계 | 해소된 문제        | 실 구현(파일)                                                                                                                                    | 자동 검증                                                          | 남은 위험(소유자 환경)                                      |
-| ---- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------- |
-| H1   | B1                 | `remote/config.py`(환경 > 번들 > None), `scripts/generate_build_config.py`, `secret_scan.py`, `.gitignore`, runbook §1.1                         | `tests/test_build_config.py` 17개 통과, 시크릿 검사 자동화         | 실제 Windows PyInstaller 빌드·시크릿 스캔                   |
-| H2   | B2, M3, H-1, H-2   | `0011_permission_forward_fix.sql`, `08_hardening.test.sql`, supabase README                                                                      | pgTAP 08(24 assertion) 작성; 클라이언트 회귀 없음(전체 pytest)     | `supabase db reset`/`supabase test db`(Docker)              |
-| H3   | B3, N-1            | `0012_release_policy.sql`, `release_policy.py`, `_version.py`(단일 출처 0.1.5), `app.py` 정책 차단, runbook §1.2                                 | `tests/test_release_policy.py` 20개 통과                           | D-7 확정(최소=최신=0.1.5)                                   |
-| H4   | M2(환경)           | `0013_environment_version.sql`, `environment.py`, 로컬 schema v5, `db.py` stamping, allowlist 배선                                               | `tests/test_environment.py`·`test_migrations.py` 통과, 전체 pytest | `supabase db reset`/`test db`(Docker)                       |
-| H5   | H-3~H-9            | `0014_guest_abuse.sql`, guest-ingest Edge(rate limit+allowlist), account-delete 재구성, `config.toml`, runbook                                   | pgTAP 09/10/11 작성; 클라이언트 회귀 없음                          | Edge Function 로컬 검증, salt 백업 rehearsal                |
-| H6   | N-2~N-9, M1 문서화 | `profile_router.py` 안내, decks 번들(`data/decks.json`), `pyproject` 상한·pyinstaller 고정, 라벨 통일, `test_sync_engine` 1,000건, 문서 3종 정합 | `uv run ruff/format/ty/pytest` 전부 통과(252 passed, 4 skipped)    | 통계 창·편집 흐름 등 UI 클릭 테스트는 단계 12에서 보강 예정 |
+| 단계 | 해소된 문제        | 실 구현(파일)                                                                                                                                    | 자동 검증                                                          | 남은 위험(소유자 환경)                                                                                                                                   |
+| ---- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H1   | B1                 | `remote/config.py`(환경 > 번들 > None), `scripts/generate_build_config.py`, `secret_scan.py`, `.gitignore`, runbook §1.1                         | `tests/test_build_config.py` 17개 통과, 시크릿 검사 자동화         | 실제 Windows PyInstaller 빌드·시크릿 스캔                                                                                                                |
+| H2   | B2, M3, H-1, H-2   | `0011_permission_forward_fix.sql`, `08_hardening.test.sql`, supabase README                                                                      | pgTAP 08(24 assertion) 작성; 클라이언트 회귀 없음(전체 pytest)     | `supabase db reset`/`supabase test db`(Docker)                                                                                                           |
+| H3   | B3, N-1            | `0012_release_policy.sql`, `release_policy.py`, `_version.py`(단일 출처 0.1.5), `app.py` 정책 차단, runbook §1.2                                 | `tests/test_release_policy.py` 20개 통과                           | D-7 확정(최소=최신=0.1.5)                                                                                                                                |
+| H4   | M2(환경)           | `0013_environment_version.sql`, `environment.py`, 로컬 schema v5, `db.py` stamping, allowlist 배선                                               | `tests/test_environment.py`·`test_migrations.py` 통과, 전체 pytest | `supabase db reset`/`test db`(Docker)                                                                                                                    |
+| H5   | H-3~H-9            | `0014_guest_abuse.sql`, guest-ingest Edge(rate limit+allowlist), account-delete 재구성, `config.toml`, runbook                                   | pgTAP 09/10/11 작성; 클라이언트 회귀 없음                          | Edge Function 로컬 검증, salt 백업 rehearsal                                                                                                             |
+| H6   | N-2~N-9, M1 문서화 | `profile_router.py` 안내, decks 번들(`data/decks.json`), `pyproject` 상한·pyinstaller 고정, 라벨 통일, `test_sync_engine` 1,000건, 문서 3종 정합 | `uv run ruff/format/ty/pytest` 전부 통과(261 passed, 4 skipped)    | 통계 창·편집/삭제·구버전 마이그레이션·계정 다이얼로그 클릭 테스트 추가(2026-08-10 정리 세션). 실제 hosted/네트워크 연동 확인은 단계 12에서 소유자가 수행 |
 
 ### §8 결정 필요 항목 — 소유자 확정 (2026-08-09)
 
