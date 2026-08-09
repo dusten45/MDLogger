@@ -4,24 +4,39 @@
 위젯을 클릭해 화면1(결과 선택) → 화면2(상세 입력) → 저장/취소 흐름을 구동하는
 자동 테스트가 없었다. 여기서는 Qt 스택 오프스크린에서 `QTest.mouseClick`으로
 실제 버튼을 눌러 저장·취소·유효성 검증을 확인한다.
+
+이 파일의 잔여분(open-items #1)으로 통계 창 렌더링과 편집/삭제 다이얼로그 흐름도
+추가한다. 편집·삭제는 모달(`exec()`)로 열므로, 클릭 직전에 `QTimer.singleShot`으로
+모달 이벤트 루프 안에서의 상호작용을 예약해 실제 다이얼로그를 구동한다.
 """
 
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QPushButton
+from PySide6.QtWidgets import (
+    QAbstractButton,
+    QApplication,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTabWidget,
+    QWidget,
+)
 
 from mdlogger.game_service import GameService
 from mdlogger.profiles import ProfileManager
+from mdlogger.ui.edit_dialog import EditDialog
 from mdlogger.ui.main_window import MainWindow
+from mdlogger.ui.stats_window import StatsWindow
 
 DECKS = ["융합 덱", "싱크로 덱"]
 
@@ -32,7 +47,7 @@ def qapp():
     yield application
 
 
-def _click(button: QPushButton) -> None:
+def _click(button: QAbstractButton) -> None:
     QTest.mouseClick(button, Qt.MouseButton.LeftButton)
 
 
@@ -64,6 +79,76 @@ def _fill_form(window: MainWindow, *, my_deck: str, opp_deck: str) -> None:
     form._deck.setEditText(opp_deck)
     form._score.setText("1200")
     form._note.setText("통합 테스트 메모")
+
+
+def _make_record(**overrides: str | int) -> dict:
+    """통계/편집 테스트의 결정적 레코드를 만든다 (DetailForm.values()와 동일 키)."""
+    record: dict = {
+        "result": "win",
+        "turn_order": "first",
+        "my_deck": "융합 덱",
+        "opp_deck": "싱크로 덱",
+        "turns": 3,
+        "end_reason": "regular",
+        "score_after": 1200,
+        "note": "",
+    }
+    record.update(overrides)
+    return record
+
+
+def _open_stats(window: MainWindow, qapp: QApplication) -> StatsWindow:
+    """화면1의 '통계 / 기록' 버튼을 실제 클릭해 통계 창을 연다."""
+    _click(_find_button(window._result_view, "통계 / 기록"))
+    qapp.processEvents()
+    stats = window._stats
+    assert stats is not None
+    return stats
+
+
+def _select_records_row(stats: StatsWindow) -> None:
+    """기록 관리 탭으로 전환하고 첫 행을 선택한다."""
+    tabs = stats.findChild(QTabWidget)
+    assert tabs is not None
+    tabs.setCurrentIndex(1)
+    stats._rtable.selectRow(0)
+    stats._rtable.setCurrentCell(0, 0)
+
+
+def _cell_text(table: QTableWidget, row: int, col: int) -> str:
+    """테이블 셀의 표시 텍스트. 누락된 셀은 실패로 처리한다."""
+    item = table.item(row, col)
+    assert item is not None, f"셀({row},{col})이 비어 있다"
+    return item.text()
+
+
+def _schedule_modal_action(
+    qapp: QApplication, action: Callable[[QWidget], None]
+) -> None:
+    """모달(`exec()`)이 열리기 전에, 그 이벤트 루프 안에서 action(modal)을 예약한다.
+
+    편집/삭제 등의 모달 다이얼로그는 호출 스레드 블로킹으로 열리므로, 다음 클릭이
+    `exec()`를 시작하자마자 단발 타이머가 발화해 실제 다이얼로그 위젯을 조작한다.
+    """
+
+    def _worker() -> None:
+        modal = qapp.activeModalWidget()
+        if modal is None or not modal.isVisible():
+            raise AssertionError("모달 다이얼로그가 열리지 않았다")
+        qapp.processEvents()
+        action(modal)
+
+    QTimer.singleShot(0, _worker)
+
+
+def _confirm_delete(qapp: QApplication) -> None:
+    def _interact(modal: QWidget) -> None:
+        assert isinstance(modal, QMessageBox)
+        yes = modal.button(QMessageBox.StandardButton.Yes)
+        assert yes is not None
+        _click(yes)
+
+    _schedule_modal_action(qapp, _interact)
 
 
 def test_save_flow_clicks_win_and_persists_record(
@@ -141,6 +226,119 @@ def test_confirm_without_deck_selection_shows_validation_and_does_not_save(
     assert "정확히 선택하세요" in window._detail_view._status.text()
     assert window._stack.currentWidget() is window._detail_view
     assert games.count_games() == 0
+
+    window.close_profile_windows()
+    games.close()
+
+
+def test_stats_window_opens_and_renders_summary_and_records(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    window.refresh_header()
+
+    stats = _open_stats(window, qapp)
+    _select_records_row(stats)
+
+    # 데이터가 없을 때: 빈 요약/기록 테이블
+    assert stats._card_total._value.text() == "0판 0승 0패"
+    assert stats._rtable.rowCount() == 0
+
+    # 기록 추가 후 새로고침 → 통계 창에 반영
+    games.insert_game(_make_record(note="통계용 기록"))
+    window.refresh_header()
+    stats.refresh()
+
+    assert stats._card_total._value.text() == "1판 1승 0패"
+    assert stats._rtable.rowCount() == 1
+    assert _cell_text(stats._rtable, 0, 2) == "승"  # 결과
+    assert _cell_text(stats._rtable, 0, 5) == "싱크로 덱"  # 상대 덱
+    assert _cell_text(stats._rtable, 0, 8) == "1200"  # 점수
+    assert _cell_text(stats._rtable, 0, 9) == "통계용 기록"  # 메모
+
+    window.close_profile_windows()
+    games.close()
+
+
+def test_edit_dialog_saves_changes_and_toggles_result(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    games.insert_game(_make_record(note="원본 메모"))
+    window.refresh_header()
+
+    stats = _open_stats(window, qapp)
+    _select_records_row(stats)
+
+    def _interact(dlg: QWidget) -> None:
+        assert isinstance(dlg, EditDialog)
+        dlg._result.setValue("lose")  # 결과 토글 (승 → 패)
+        dlg.form._note.setText("수정된 메모")
+        _click(_find_button(dlg, "저장"))
+
+    _schedule_modal_action(qapp, _interact)
+    _click(_find_button(stats, "편집"))
+    qapp.processEvents()
+
+    gid = int(games.get_all_games()[0]["id"])
+    updated = games.get_game(gid)
+    assert updated is not None
+    assert updated["result"] == "lose"
+    assert updated["note"] == "수정된 메모"
+    # 저장 쪽 실제 새로고침 경로(데이터_changed → refresh)를 통해 테이블 갱신 확인
+    assert _cell_text(stats._rtable, 0, 2) == "패"
+    assert _cell_text(stats._rtable, 0, 9) == "수정된 메모"
+
+    window.close_profile_windows()
+    games.close()
+
+
+def test_edit_dialog_cancel_discards_changes(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    games.insert_game(_make_record(note="원본 메모"))
+    window.refresh_header()
+
+    stats = _open_stats(window, qapp)
+    _select_records_row(stats)
+
+    def _interact(dlg: QWidget) -> None:
+        assert isinstance(dlg, EditDialog)
+        dlg.form._note.setText("반영되면 안 됨")
+        _click(_find_button(dlg, "취소"))
+
+    _schedule_modal_action(qapp, _interact)
+    _click(_find_button(stats, "편집"))
+    qapp.processEvents()
+
+    gid = int(games.get_all_games()[0]["id"])
+    unchanged = games.get_game(gid)
+    assert unchanged is not None
+    assert unchanged["note"] == "원본 메모"
+    assert _cell_text(stats._rtable, 0, 9) == "원본 메모"
+
+    window.close_profile_windows()
+    games.close()
+
+
+def test_delete_selected_removes_record_after_confirm(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    games.insert_game(_make_record())
+    window.refresh_header()
+
+    stats = _open_stats(window, qapp)
+    _select_records_row(stats)
+    assert stats._rtable.rowCount() == 1
+
+    _confirm_delete(qapp)
+    _click(_find_button(stats, "삭제"))
+    qapp.processEvents()
+
+    assert games.count_games() == 0
+    assert stats._rtable.rowCount() == 0
 
     window.close_profile_windows()
     games.close()
