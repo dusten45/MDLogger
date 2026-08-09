@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from mdlogger import db, migrations
 from mdlogger.game_service import GameService
 from mdlogger.profiles import ProfileManager
 from mdlogger.ui.edit_dialog import EditDialog
@@ -56,6 +57,26 @@ def _find_button(parent, text: str) -> QPushButton:
         if button.text() == text:
             return button
     raise AssertionError(f"버튼을 찾지 못함: {text!r}")
+
+
+def _create_old_guest_db(path: Path) -> None:
+    """실제 마이그레이션 1~4를 순서대로 적용해 v4 로컬 스키마를 그대로 재현한다.
+
+    (환경 버전 컬럼은 v5에서 추가되므로 v4까지로 끝낸다.)"""
+    conn = db.connect(path)
+    conn.execute("PRAGMA user_version = 0")
+    for version in range(1, 5):  # 1~4 적용해 환경 버전 컬럼(v5) 전까지 재현
+        migrations.MIGRATIONS[version](conn)
+        conn.execute(f"PRAGMA user_version = {version}")
+    conn.execute(
+        "INSERT INTO games (played_at, result, turn_order, my_deck, opp_deck, turns,"
+        " end_reason, score_after, note, sync_id, local_updated_at, sync_status)"
+        " VALUES ('2026-08-07T10:00:00', 'win', 'first', '융합 덱', '블루아이즈', 5,"
+        "        'regular', 2600, '구버전에서 마이그레이션됨', 'old1',"
+        "        '2026-08-07T10:00:00', 'synced')"
+    )
+    conn.commit()
+    conn.close()
 
 
 def _open_window(
@@ -339,6 +360,62 @@ def test_delete_selected_removes_record_after_confirm(
 
     assert games.count_games() == 0
     assert stats._rtable.rowCount() == 0
+
+    window.close_profile_windows()
+    games.close()
+
+
+def test_startup_migrates_old_db_and_retains_backup(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """구버전(v4) DB를 실제 시작 경로로 열면 마이그레이션·백업 보존이 일어나고
+    이후 실제 클릭 기록이 남는다. (마이그레이션/백업 확인 다이얼로그는 없으므로
+    시작 경로 전체를 구동한다.)"""
+    monkeypatch.setattr("mdlogger.ui.main_window.load_decks", lambda: list(DECKS))
+    profiles = ProfileManager(tmp_path)
+    profile = profiles.guest()
+    db_path = profile.database_path
+    _create_old_guest_db(db_path)
+
+    guest_dir = db_path.parent
+    stale_v2 = guest_dir / "games.db.pre-migration-v2.bak"
+    stale_v3 = guest_dir / "games.db.pre-migration-v3.bak"
+    stale_v2.write_bytes(b"stale2")
+    stale_v3.write_bytes(b"stale3")
+
+    # 실제 시작 경로: 마이그레이션 + 검증된 백업 생성/보존 + 소유권 귀속
+    profiles.prepare_database(profile)
+
+    # 백업 보존(최신 1개): 새 v4 백업만 남고 이전 스테일 백업은 정리된다
+    backups = sorted(p.name for p in guest_dir.glob("games.db.pre-migration-v*.bak"))
+    assert backups == ["games.db.pre-migration-v4.bak"]
+    backup = guest_dir / "games.db.pre-migration-v4.bak"
+    assert backup.stat().st_size > 0
+    if os.name != "nt":
+        assert backup.stat().st_mode & 0o777 == 0o600
+    assert not stale_v2.exists()
+    assert not stale_v3.exists()
+
+    # 실제 앱 창을 열어 마이그레이션된 DB를 구동
+    games = GameService.open(profile.database_path)
+    window = MainWindow(games, DECKS, profile)
+    window.show()
+    qapp.processEvents()
+
+    # 실제 클릭으로 신규 기록 추가 → 마이그레이션된 DB에 저장
+    _click(_find_button(window._result_view, "승"))
+    qapp.processEvents()
+    _fill_form(window, my_deck="융합 덱", opp_deck="싱크로 덱")
+    qapp.processEvents()
+    _click(_find_button(window._detail_view, "확인"))
+    qapp.processEvents()
+
+    assert games.count_games() == 2
+    migrated = games.get_all_games()
+    assert migrated[0]["sync_id"] == "old1"
+    assert migrated[0]["note"] == "구버전에서 마이그레이션됨"
+    # 신규 기록은 오프라인 → 환경 버전 추측 없이 NULL
+    assert migrated[1]["environment_version_id"] is None
 
     window.close_profile_windows()
     games.close()
