@@ -85,7 +85,10 @@ uv run python -m mdlogger.checksum dist/MDLogger.exe
 
 - 결과물: `dist/MDLogger.exe`와 무결성 확인용 `dist/MDLogger.exe.sha256`
 - 두 파일을 같은 공식 배포 위치에 게시하세요. 가능하면 체크섬은 별도의 신뢰할 수 있는 채널에도 공지하세요.
-- 이후엔 생성된 스펙으로 재빌드 가능: `uv run pyinstaller MDLogger.spec`
+- 재빌드는 위와 같은 명령을 다시 실행하면 됩니다. 네트워크에 연결되지 않은 첫 실행에도
+  기본 덱 목록이 보이도록 기본 덱 카탈로그가 앱에 번들되어 있습니다(하드닝 N-4).
+- PyInstaller가 만드는 `MDLogger.spec`은 로컬 아이콘 경로 등 환경 의존 설정을 담아
+  저장소에 추적되지 않으므로, 공유 가능한 재사용 레시피가 아닙니다.
 
 ### 실행 / 데이터
 

@@ -233,6 +233,47 @@ def test_registered_push_then_pull_acknowledges_and_completes_initial_sync(
     games.close()
 
 
+def test_large_1000_game_sync_completes(tmp_path: Path):
+    """하드닝 N-8: 오프라인에서 1,000건을 쌓아도 전체가 동기화된다(§14.4)."""
+    profile, games = prepare_registered(tmp_path)
+    for index in range(1000):
+        games.insert_game(sample(f"memo {index}"))
+    games.close()
+
+    transport = RegisteredTransport()
+    engine = SyncEngine(
+        profile,
+        registered_client=RegisteredGamesClient(
+            CONFIG, client=JsonHttpClient(transport)
+        ),
+        token_provider=lambda: "token",
+    )
+    for _ in range(500):
+        engine.run_once()
+        if not outbox_rows(profile):
+            break
+
+    assert len(transport.remote_games) == 1000
+    assert outbox_rows(profile) == []
+
+    connection = db.connect(profile.database_path)
+    try:
+        synced = int(
+            connection.execute(
+                "SELECT count(*) FROM games WHERE sync_status='synced'"
+            ).fetchone()[0]
+        )
+        kept = int(
+            connection.execute(
+                "SELECT count(*) FROM games WHERE deleted_at IS NULL"
+            ).fetchone()[0]
+        )
+    finally:
+        connection.close()
+    assert synced == 1000
+    assert kept == 1000
+
+
 def test_acknowledgement_preserves_edit_created_while_request_is_in_flight(
     tmp_path: Path,
 ):

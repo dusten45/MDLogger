@@ -658,6 +658,9 @@ class ProfileRouter:
         """모든 장치에서 로그아웃한다(로드맵 단계 11)."""
         sessions = self._sessions
         if sessions is None:
+            QMessageBox.information(
+                dialog, "모든 기기에서 로그아웃", "온라인 계정 설정이 없습니다."
+            )
             return
         answer = QMessageBox.question(
             dialog,
@@ -679,13 +682,16 @@ class ProfileRouter:
         QMessageBox.information(
             dialog,
             "모든 기기 로그아웃 완료",
-            f"{count}대의 기기에서 로그아웃했습니다.\n다른 기기는 다음 시작 시 다시 로그인해야 합니다.",
+            f"{count}대의 기기의 장치 정보를 해제했습니다.\n"
+            "해제된 기기는 이전 세션의 유효 기간까지 계속 동기화할 수 있고,\n"
+            "이후 다시 로그인하면 재등록됩니다(하드닝 H-3 한계).",
         )
 
     def _manage_devices(self, dialog: AccountDialog) -> None:
         """등록된 장치를 나열하고 특정 장치를 해제한다(로드맵 단계 11)."""
         sessions = self._sessions
         if sessions is None:
+            QMessageBox.information(dialog, "장치 관리", "온라인 계정 설정이 없습니다.")
             return
         try:
             devices = sessions.list_devices()
@@ -713,6 +719,7 @@ class ProfileRouter:
         """계정 삭제를 서버에 요청한다(로드맵 단계 11, 결정 4)."""
         sessions = self._sessions
         if sessions is None:
+            QMessageBox.information(dialog, "계정 삭제", "온라인 계정 설정이 없습니다.")
             return
         answer = QMessageBox.warning(
             dialog,

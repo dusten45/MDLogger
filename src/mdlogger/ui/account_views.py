@@ -505,7 +505,7 @@ class ConflictDialog(QDialog):
         "opp_deck": "상대 덱",
         "turns": "턴 수",
         "end_reason": "종료 방식",
-        "score_after": "경기 후 점수",
+        "score_after": "누적 점수",  # README: 2nd STAGE 누적 점수(절댓값)(N-7)
         "note": "개인 메모",
         "deleted_at": "삭제 상태",
     }
