@@ -39,6 +39,10 @@ data/
 games.csv
 games.xlsx
 
+# ---- Supabase CLI scratch dirs ----
+supabase/.branches/
+supabase/.temp/
+
 # ---- Claude Code local settings ----
 .claude/settings.local.json
 
