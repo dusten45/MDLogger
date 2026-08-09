@@ -28,7 +28,7 @@ from mdlogger.auth.session_manager import SessionManager, SessionState
 from mdlogger.game_service import GameService
 from mdlogger.profile_router import CONSENT_VERSION, ProfileRouter
 from mdlogger.profiles import ProfileContext, ProfileKind, ProfileManager
-from mdlogger.ui.account_views import AuthWindow
+from mdlogger.ui.account_views import AuthWindow, GuestRecordChoice
 
 USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 
@@ -92,6 +92,21 @@ class FakeAccountService(AccountService):
     def request_password_reset(self, email: str) -> None:
         self.reset_calls.append(email)
 
+    def export_account_data(self, access_token: str):
+        raise NotImplementedError
+
+    def list_devices(self, access_token: str):
+        raise NotImplementedError
+
+    def revoke_device(self, access_token: str, installation_id: str) -> None:
+        raise NotImplementedError
+
+    def sign_out_all_devices(self, access_token: str) -> int:
+        raise NotImplementedError
+
+    def delete_account(self, access_token: str, user_id: str | None = None):
+        raise NotImplementedError
+
 
 class TrackingWindow:
     def __init__(self, games: GameService, profile: ProfileContext) -> None:
@@ -133,7 +148,8 @@ def make_router(tmp_path: Path, auth_window: AuthWindow | None = None):
         sessions,
         auth_window=auth_window,
         consent_prompt=lambda registered, parent: True,
-        guest_records_prompt=lambda count, parent: True,
+        guest_records_prompt=lambda count, parent: GuestRecordChoice.KEEP,
+        import_result_prompt=lambda result, error, parent: True,
     )
     return (
         router,
@@ -235,25 +251,33 @@ def test_saved_registered_profile_opens_local_data_when_network_is_offline(
     controller.close()
 
 
-def test_guest_login_asks_about_records_but_does_not_import_before_stage_nine(
+def test_guest_login_imports_records_into_registered_home_and_preserves_guest(
     qapp: QApplication, tmp_path: Path
 ):
     values = make_router(tmp_path)
     router, profiles, controller, _, _, services = values[:6]
     choices: list[int] = []
-    router._guest_records_prompt = lambda count, parent: choices.append(count) or True
+    router._guest_records_prompt = lambda count, parent: (
+        choices.append(count) or GuestRecordChoice.IMPORT
+    )
 
     router.request_guest()
     services[-1].insert_game(sample("guest-original"))
     guest_path = profiles.guest().database_path
+    guest_sync_id = services[-1].get_last_game()["sync_id"]
 
     router.sign_in("a@test.local", "password")
 
     assert choices == [1]
     assert controller.current_profile is not None
     assert controller.current_profile.kind is ProfileKind.REGISTERED
-    assert services[-1].count_games() == 0
+    assert services[-1].count_games() == 1
+    imported = services[-1].get_last_game()
+    assert imported["note"] == "guest-original"
+    assert imported["sync_id"] == guest_sync_id
+    assert imported["sync_status"] == "pending"
 
+    # 원본 게스트 DB는 삭제되지 않고 기록이 보존된다.
     guest_games = GameService.open(guest_path)
     guest_record = guest_games.get_last_game()
     assert guest_record is not None
@@ -268,7 +292,7 @@ def test_cancelled_guest_record_choice_does_not_commit_authenticated_session(
 ):
     values = make_router(tmp_path)
     router, _, controller, _, store, services = values[:6]
-    router._guest_records_prompt = lambda count, parent: False
+    router._guest_records_prompt = lambda count, parent: GuestRecordChoice.LATER
     router.request_guest()
     services[-1].insert_game(sample("guest"))
 
