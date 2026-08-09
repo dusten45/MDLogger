@@ -202,6 +202,9 @@ where requested_at < now() - interval '1 day';`).
        reconciliation을 강제한다(결정 17.3 C).
 - 복원은 데이터 파괴 사고 시에만 사용한다. 일반 결함은 forward-fix
   migration으로 대응한다(README rollback 절 참고).
+- **대응 원칙·최소 지원 버전 재확인(2026-08-10, 소유자 ①-3 확정)**: 일반 결함은
+  forward-fix migration으로 대응하고, 백업 복원은 데이터 파괴 사고 시에만 쓴다.
+  최소 지원 앱 버전 = `0.1.5`(D-7, 유일 버전이라 최소=최신).
 
 ## 9. key rotation
 
