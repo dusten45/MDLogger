@@ -83,6 +83,115 @@ supabase functions serve guest-ingest account-delete
 모든 migration/함수 변경은 hosted 적용 전에 이 절차를 통과해야 한다. 이
 sandbox는 Docker 기반 Supabase를 실행할 수 없으므로 소유자 환경에서 수행한다.
 
+### 2.1 장시간 offline/online 전환 + 대량(1,000건) 동기화 스트레스
+
+핸드오프 ②-2. `test_sync_engine.py::test_large_1000_game_sync_completes`
+매트릭스를 hosted Supabase에 대해 재현한다. **게스트 경로를 기본**으로
+한다(등록 경로는 아래 선택 항목).
+
+중요한 동작 특성:
+
+- **offline/online 전환 = 앱 재시작.** `MDLOGGER_SUPABASE_URL`/
+  `MDLOGGER_SUPABASE_ANON_KEY`는 시작 시 `remote/config.py`가 읽고 실행 중엔
+  바뀌지 않으므로, offline→online 전환은 환경변수 유무를 바꾼 뒤 재시작한다.
+- **게스트 1,000건 = 10배치**(엔진 `BATCH_SIZE=100`)이고, 초과 직전 통과가
+  rate limit(1분/10회)의 경계다. 반복 실행이나 다른 게스트와 같은 IP면
+  IP 카운터도 공유되므로, 429 출력 후 재실행할 땐 1분 이상 기다린다.
+- 실제 사용자 데이터를 건드리지 않도록 **반드시 스크래치 `MDLOGGER_DATA_DIR`**
+  로 앱·스크립트를 함께 띄운다.
+
+```bash
+# 0) 사전 준비: hosted 값 준비 + 스크래치 디렉터리
+#    MDLOGGER_SUPABASE_URL / MDLOGGER_SUPABASE_ANON_KEY는 hosted 프로젝트 값.
+export MDLOGGER_DATA_DIR=/tmp/mdlogger-stress
+unset MDLOGGER_SUPABASE_URL MDLOGGER_SUPABASE_ANON_KEY
+rm -rf "$MDLOGGER_DATA_DIR"
+```
+
+```bash
+# 1) OFFLINE 앱 기동 → 게스트로 자동 시작
+uv run python run.py
+```
+
+```bash
+# 2) 앱을 끈 뒤(또는 별도 터미널에서) 1,000건 pending 기록 생성
+#    UI 입력과 같은 경로(GameService -> db.insert_game -> sync_outbox).
+uv run python scripts/add_stress_games.py --count 1000 \
+    --output /tmp/stress-syncids.txt
+# 기대: 생성 완료 — games=1000, pending outbox=1000
+```
+
+```bash
+# 3) 장시간 offline 유지: 앱을 다시 오프라인으로 띄워 기록이 pending으로
+#    남는지 몇 분간 확인. 기록이 `sync_outbox`에 pending으로 쌓인 상태.
+uv run python run.py   # (여전히 환경변수 미설정 = 오프라인)
+# 통계 화면 games=1000, 동기화 상태는 '오프라인/보류' 유지 확인
+```
+
+```bash
+# 4) ONLINE 전환: 앱 종료 후 hosted 환경변수를 설정하고 재기동
+export MDLOGGER_SUPABASE_URL=<hosted project url>
+export MDLOGGER_SUPABASE_ANON_KEY=<hosted anon key>
+uv run python run.py
+# 게스트 coordinator가 자동으로 10배치를 업로드한다.
+# 앱 동기화 상태가 '최신/동기화됨'으로, pending이 줄어 0이 되는지 확인.
+```
+
+```bash
+# 5) 로컬 측 검증 (앱 종료 후)
+uv run python scripts/add_stress_games.py --count 0
+# 기대: 생성 완료 — games=1000(+0), pending outbox=0(+0)
+# 막 생성이 아니라 로컬 잔여를 재확인하는 용도(--count 0 허용).
+# 또는 앱 통계 창에서 게임 수 1000 확인.
+```
+
+**서버 측 검증** — Supabase Dashboard SQL Editor(또는 service-role psql)에서
+`analytics.duel_observations`를 조회한다(analytics 스키마는 service-role 전용).
+
+```sql
+-- 게스트 관측치 수(설치 pseudonym 기준). installation_id는
+-- $MDLOGGER_DATA_DIR/global/profiles.json 의 "installation_id" 값.
+select count(*) as obs
+from analytics.duel_observations
+where source_kind = 'guest'
+  and contributor_key = analytics.pseudonym_for('<installation_id>');
+-- 기대: obs = 1000
+
+-- 보다 엄밀한 교차 검증: 스크립트가 남긴 sync_id 파일과 일치 개수.
+-- (정확 비교가 필요할 때만; 1,000개라 매번은 번거로움)
+
+-- 배치 요약: 10배치, accepted 합계 1000, skipped/rejected 0
+select count(*) as batches,
+       sum(accepted_count) as accepted,
+       sum(skipped_count)  as skipped,
+       sum(rejected_count) as rejected
+from analytics.ingestion_batches
+where source_kind = 'guest'
+  and installation_key = analytics.pseudonym_for('<installation_id>');
+-- 기대: batches=10, accepted=1000, skipped=0, rejected=0
+```
+
+**체크리스트**: ☐ 1) 오프라인 게스트 기동 ☐ 2) 1,000건 pending 생성(games=1000,
+pending=1000) ☐ 3) 장시간 offline 유지(기록 손실·중복 없음) ☐ 4) online 전환 후
+자동 업로드 ☐ 5) 로컬 pending 0·games 1000 유지 ☐ 6) 서버 `duel_observations`
+== 1000(또는 sync_id 일치) ☐ 7) `ingestion_batches` 10배치 accepted 1000·거부 0.
+
+**등록 계정 경로(선택)**: 호스티드에 Supabase Auth 계정이 필요하다. (a) online으로
+로그인해 등록 프로필을 만든 뒤, (b) 환경변수를 제거한 오프라인 재시작으로 로컬
+기록을 쌓고(스크립트는 `--kind registered --user-id <계정 uuid>`), (c) 다시 online
+재시작해 양방향(푸시+풀) 동기화를 확인한다. 서버 게임 수는 `public.games`(해당
+사용자/장치)로, 관측치는 아래로 확인한다.
+
+```sql
+select count(*) as obs
+from analytics.duel_observations
+where source_kind = 'registered'
+  and contributor_key = analytics.pseudonym_for('<user_uuid>');
+```
+
+**정리**: 스크래치 디렉터리 삭제, hosted의 테스트 관측치·rate 이벤트는 진단 목적이므로
+원하면 `public.guest_rate_events` 과거 행·`guest-ingest` 테스트를 정리한다(§6, §11).
+
 ## 3. 계정 데이터 내보내기 (사용자 요청 대응)
 
 사용자가 개인 데이터 사본을 요청하면 클라이언트의 "내 데이터 내보내기"가
