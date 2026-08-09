@@ -6,8 +6,9 @@ import sqlite3
 from pathlib import Path
 from typing import Protocol
 
-from . import db, export
+from . import db, export, portable
 from .paths import DB_PATH
+from .profiles import ProfileKind
 
 
 class GameRepository(Protocol):
@@ -154,3 +155,15 @@ class GameService:
 
     def export_xlsx(self, path: str | Path) -> None:
         export.export_xlsx(path, self._repository.get_all_games())
+
+    def export_portable_archive(
+        self,
+        path: str | Path,
+        *,
+        profile_kind: ProfileKind = ProfileKind.GUEST,
+    ) -> Path:
+        return portable.export_portable_archive(
+            path,
+            self._repository.get_all_games(),
+            profile_kind=profile_kind,
+        )
