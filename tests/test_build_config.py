@@ -1,0 +1,196 @@
+"""하드닝 H1 — 배포 빌드 설정 주입 테스트.
+
+설정 우선순위(환경변수 > 번들 빌드 설정 > 없음)와, 번들 생성 모듈의
+커밋 금지·비밀 미포함 강제를 검증한다.
+"""
+
+from __future__ import annotations
+
+import importlib
+import subprocess
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+import mdlogger.remote.config as config_module
+from mdlogger.remote.config import RemoteConfig, bundled_config, get_remote_config
+from mdlogger.secret_scan import (
+    assert_not_secret,
+    is_publishable_key,
+    is_service_role_key,
+    scan_file,
+)
+
+URL = "https://xyzproject.supabase.co"
+ANON_PREFIX_KEY = "sb_publishable_AAAbb00"
+SERVICE_ROLE_PREFIX_KEY = "sb_secret_abc123"
+SERVICE_ROLE_JWT = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    "eyJyb2xlIjoic2VydmljZV9yb2xlIn0.abcdefghijklmnopqrst"
+)
+
+
+@pytest.fixture(autouse=True)
+def _clear_env(monkeypatch):
+    monkeypatch.delenv("MDLOGGER_SUPABASE_URL", raising=False)
+    monkeypatch.delenv("MDLOGGER_SUPABASE_ANON_KEY", raising=False)
+
+
+# ----- 설정 우선순위 -----
+
+
+def test_config_from_environment_returns_none_when_missing():
+    assert config_module.config_from_environment() is None
+
+
+def test_bundled_config_injected_module():
+    fake = SimpleNamespace(SUPABASE_URL=URL, SUPABASE_ANON_KEY=ANON_PREFIX_KEY)
+    cfg = bundled_config(fake)
+    assert cfg is not None
+    assert cfg.base_url == URL
+    assert cfg.anon_key == ANON_PREFIX_KEY
+
+
+def test_bundled_config_ignores_incomplete_module():
+    fake_empty = SimpleNamespace(SUPABASE_URL="", SUPABASE_ANON_KEY="")
+    assert bundled_config(fake_empty) is None
+    fake_partial = SimpleNamespace(SUPABASE_URL=URL, SUPABASE_ANON_KEY="")
+    assert bundled_config(fake_partial) is None
+
+
+def test_bundled_config_default_absorbs_missing_module():
+    # 개발 저장소에는 _bundled_config가 없다(별도 테스트로 강제). ImportError 흡수 → None.
+    importlib.invalidate_caches()
+    assert bundled_config() is None
+
+
+def test_environment_overrides_bundled(monkeypatch):
+    bundle_cfg = RemoteConfig(
+        base_url="https://bundle.example.com", anon_key=ANON_PREFIX_KEY
+    )
+    monkeypatch.setattr(config_module, "bundled_config", lambda: bundle_cfg)
+    monkeypatch.setenv("MDLOGGER_SUPABASE_URL", "https://env.example.com")
+    monkeypatch.setenv("MDLOGGER_SUPABASE_ANON_KEY", ANON_PREFIX_KEY)
+    cfg = get_remote_config()
+    assert cfg is not None
+    assert cfg.base_url == "https://env.example.com"
+
+
+def test_bundled_used_when_no_environment(monkeypatch):
+    bundle_cfg = RemoteConfig(
+        base_url="https://bundle.example.com", anon_key=ANON_PREFIX_KEY
+    )
+    monkeypatch.setattr(config_module, "bundled_config", lambda: bundle_cfg)
+    cfg = get_remote_config()
+    assert cfg is not None and cfg.base_url == bundle_cfg.base_url
+
+
+def test_none_when_no_environment_and_no_bundle(monkeypatch):
+    monkeypatch.setattr(config_module, "bundled_config", lambda: None)
+    assert get_remote_config() is None
+
+
+# ----- 비밀 미포함 검사 -----
+
+
+def test_service_role_detection_prefix_and_jwt():
+    assert is_service_role_key(SERVICE_ROLE_PREFIX_KEY)
+    assert is_service_role_key(SERVICE_ROLE_JWT)
+    assert not is_service_role_key(ANON_PREFIX_KEY)
+    assert not is_service_role_key(f"{URL}/rest/v1")
+
+
+def test_publishable_detection():
+    assert is_publishable_key(ANON_PREFIX_KEY)
+    assert not is_publishable_key(SERVICE_ROLE_JWT)
+
+
+def test_assert_not_secret_rejects_service_role():
+    with pytest.raises(ValueError):
+        assert_not_secret(URL, SERVICE_ROLE_PREFIX_KEY)
+    with pytest.raises(ValueError):
+        assert_not_secret(URL, SERVICE_ROLE_JWT)
+    with pytest.raises(ValueError):
+        assert_not_secret("https://user:pass@host.example.com", ANON_PREFIX_KEY)
+
+
+def test_assert_not_secret_allows_anon():
+    assert_not_secret(URL, ANON_PREFIX_KEY)
+
+
+def test_scan_file(tmp_path):
+    bad = tmp_path / "bad.exe"
+    bad.write_bytes(b"release " + SERVICE_ROLE_PREFIX_KEY.encode())
+    assert scan_file(bad)
+    good = tmp_path / "good.exe"
+    good.write_bytes(b"release " + ANON_PREFIX_KEY.encode())
+    assert not scan_file(good)
+
+
+# ----- 생성 모듈 gitignore 강제 + 생성 스크립트 -----
+
+
+def test_generated_module_is_gitignored():
+    gitignore = (Path(__file__).resolve().parents[1] / ".gitignore").read_text(
+        encoding="utf-8"
+    )
+    assert "src/mdlogger/remote/_bundled_config.py" in gitignore
+
+
+def test_generated_module_not_present_in_source():
+    module_path = (
+        Path(__file__).resolve().parents[1]
+        / "src"
+        / "mdlogger"
+        / "remote"
+        / "_bundled_config.py"
+    )
+    assert not module_path.exists(), "번들 모듈은 저장소에 커밋되지 않아야 한다"
+
+
+def _run_generator(tmp_path, dest, *, url, anon_key):
+    script = (
+        Path(__file__).resolve().parents[1] / "scripts" / "generate_build_config.py"
+    )
+    return subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--url",
+            url,
+            "--anon-key",
+            anon_key,
+            "--dest",
+            str(dest),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+
+
+def test_generate_script_rejects_service_role_before_writing(tmp_path):
+    dest = tmp_path / "out" / "_bundled_config.py"
+    proc = _run_generator(tmp_path, dest, url=URL, anon_key=SERVICE_ROLE_PREFIX_KEY)
+    assert proc.returncode != 0
+    assert not dest.exists(), "service-role key로는 파일을 쓰면 안 된다"
+
+
+def test_generate_script_writes_anon_bundle(tmp_path):
+    dest = tmp_path / "out" / "_bundled_config.py"
+    proc = _run_generator(tmp_path, dest, url=URL, anon_key=ANON_PREFIX_KEY)
+    assert proc.returncode == 0, proc.stderr
+    assert dest.exists()
+    text = dest.read_text(encoding="utf-8")
+    assert URL in text
+    assert ANON_PREFIX_KEY in text
+    assert not scan_file(dest), "생성 모듈에 비밀이 없어야 한다"
+
+
+def test_generate_script_fails_on_empty_values(tmp_path):
+    dest = tmp_path / "out" / "_bundled_config.py"
+    proc = _run_generator(tmp_path, dest, url="", anon_key=ANON_PREFIX_KEY)
+    assert proc.returncode != 0
+    assert not dest.exists()

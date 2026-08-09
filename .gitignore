@@ -18,6 +18,10 @@ env/
 .serena/
 .cache/
 
+# ---- Generated build config (see scripts/generate_build_config.py) ----
+# publishable(anon) Supabase 값을 담아 PyInstaller가 번들한다. 커밋 금지.
+src/mdlogger/remote/_bundled_config.py
+
 # ---- PyInstaller build output ----
 build/
 dist/
@@ -31,6 +35,9 @@ dist/
 # The SQLite DB is per-user gameplay data, and decks_sync.json is local ETag state.
 # decks.json (project root) is the curated deck list and IS tracked.
 data/
+# 번들 덱 카탈로그는 패키지 내부이며 커밋한다(하드닝 N-4). 위의 `data/` 규칙을 예외 처리.
+!src/mdlogger/data/
+!src/mdlogger/data/decks.json
 *.db
 *.sqlite
 *.sqlite3
