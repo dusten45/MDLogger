@@ -1,13 +1,10 @@
--- R4: 분석 데이터 경계 테스트.
--- 분석 테이블에 직접 식별자와 note가 들어가지 않아야 하고,
--- 클라이언트는 분석 스키마에 접근할 수 없어야 한다.
+-- 단계 8: RPC mutation 이후에도 분석 데이터 경계와 tombstone projection 유지.
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(12);
+select plan(14);
 
--- 스키마 수준 보증: 분석 테이블에는 note/email/직접 식별자 컬럼이 없다.
 select hasnt_column(
     'analytics', 'duel_observations', 'note',
     'duel_observations에는 note 컬럼이 없다'
@@ -24,18 +21,22 @@ select hasnt_column(
 insert into auth.users (id, email)
 values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'user-a@test.local');
 
--- 등록 계정 게임 저장 → projection 트리거가 observation을 만든다.
 set local role authenticated;
 set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 
-insert into public.games
-    (id, user_id, played_at, result, turn_order, note, timezone_offset_minutes)
-values ('11111111-1111-4111-8111-111111111111',
-        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        '2026-08-07T10:00:00', 'win', 'first', '개인 메모', 540);
+select is(
+    public.apply_game_changes(
+        1, 1,
+        '[{"op":"create","id":"11111111-1111-4111-8111-111111111111",
+           "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
+                      "turn_order":"first","note":"개인 메모",
+                      "timezone_offset_minutes":540}}]'::jsonb
+    ) -> 'results' -> 0 ->> 'status',
+    'applied',
+    '등록 게임 RPC가 정상 저장된다'
+);
 
--- 클라이언트는 분석 스키마를 읽거나 쓸 수 없다.
 select throws_ok(
     $$ select count(*) from analytics.duel_observations $$,
     '42501',
@@ -75,7 +76,6 @@ select throws_ok(
     'anon은 guest ingest 함수를 실행할 수 없다'
 );
 
--- 서버 관점 검증(트리거 projection 내용).
 reset role;
 
 select results_eq(
@@ -93,12 +93,23 @@ select isnt(
     'contributor_key는 auth user ID 원문이 아니다'
 );
 
--- 개인 기록 삭제(tombstone)는 observation 철회로 반영된다.
 set local role authenticated;
 set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
-update public.games set deleted_at = now()
-where id = '11111111-1111-4111-8111-111111111111';
+select is(
+    public.apply_game_changes(
+        1, 1,
+        jsonb_build_array(jsonb_build_object(
+            'op', 'delete',
+            'id', '11111111-1111-4111-8111-111111111111',
+            'expected_change_version',
+                (select change_version from public.games
+                 where id = '11111111-1111-4111-8111-111111111111')
+        ))
+    ) -> 'results' -> 0 ->> 'status',
+    'applied',
+    'RPC tombstone이 적용된다'
+);
 reset role;
 
 select ok(

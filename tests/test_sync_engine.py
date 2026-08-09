@@ -1,8 +1,9 @@
-"""단계 7 outbox push engine 및 fault-injection 테스트."""
+"""단계 8 양방향 sync engine 및 fault-injection 테스트."""
 
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -46,65 +47,125 @@ class Clock:
         self.value += timedelta(seconds=seconds)
 
 
-class StatefulTransport:
-    def __init__(self, outcomes) -> None:
-        self.outcomes = list(outcomes)
+class RegisteredTransport:
+    def __init__(self) -> None:
         self.requests: list[dict] = []
         self.remote_games: dict[str, dict] = {}
-        self.guest_batches: dict[str, dict] = {}
+        self.version = 0
+        self.drop_apply_response_once = False
+        self.reject_first_request = False
+        self.on_apply = None
 
     def request(self, method, url, headers, body, timeout):
         payload = json.loads(body.decode()) if body else None
         request = {"method": method, "url": url, "headers": headers, "body": payload}
         self.requests.append(request)
-        outcome = self.outcomes.pop(0)
-        if callable(outcome):
-            return outcome(self, request)
-        if isinstance(outcome, Exception):
-            raise outcome
-        return outcome
+        if self.reject_first_request:
+            self.reject_first_request = False
+            return HttpResponse(status=401, body=b'{"code":"jwt_expired"}')
+        if url.endswith("/rpc/register_or_touch_device"):
+            return HttpResponse(status=200, body=b"{}")
+        if url.endswith("/rpc/apply_game_changes"):
+            assert isinstance(payload, dict)
+            if self.on_apply is not None:
+                callback, self.on_apply = self.on_apply, None
+                callback()
+            results = [self._apply(change) for change in payload["changes"]]
+            if self.drop_apply_response_once:
+                self.drop_apply_response_once = False
+                raise NetworkError("응답 유실")
+            return HttpResponse(
+                status=200, body=json.dumps({"results": results}).encode()
+            )
+        if "/games?" in url:
+            match = re.search(r"change_version=gt\.(\d+)", url)
+            cursor = int(match.group(1)) if match else 0
+            rows = sorted(
+                (
+                    row
+                    for row in self.remote_games.values()
+                    if row["change_version"] > cursor
+                ),
+                key=lambda row: row["change_version"],
+            )
+            limit_match = re.search(r"limit=(\d+)", url)
+            limit = int(limit_match.group(1)) if limit_match else len(rows)
+            return HttpResponse(status=200, body=json.dumps(rows[:limit]).encode())
+        if url.endswith("/rpc/acknowledge_device_version"):
+            return HttpResponse(status=200, body=b"{}")
+        raise AssertionError(url)
 
-
-def registered_ok(transport: StatefulTransport, request: dict) -> HttpResponse:
-    rows = request["body"]
-    response_rows = []
-    for row in rows:
-        transport.remote_games[row["id"]] = row
-        response_rows.append({"id": row["id"], "change_version": 7})
-    return HttpResponse(status=201, body=json.dumps(response_rows).encode())
-
-
-def registered_apply_then_drop(
-    transport: StatefulTransport, request: dict
-) -> HttpResponse:
-    for row in request["body"]:
-        transport.remote_games[row["id"]] = row
-    raise NetworkError("응답 유실")
-
-
-def guest_ok(transport: StatefulTransport, request: dict) -> HttpResponse:
-    payload = request["body"]
-    batch_id = payload["batch_id"]
-    replayed = batch_id in transport.guest_batches
-    transport.guest_batches.setdefault(batch_id, payload)
-    return HttpResponse(
-        status=200,
-        body=json.dumps(
-            {
-                "batch_id": batch_id,
-                "accepted": 0 if replayed else len(payload["observations"]),
-                "skipped": len(payload["observations"]) if replayed else 0,
-                "rejected": 0,
-                "replayed": replayed,
+    def _apply(self, change: dict) -> dict:
+        game_id = change["id"]
+        current = self.remote_games.get(game_id)
+        expected = change.get("expected_change_version")
+        operation = change["op"]
+        if operation == "create" and current is None:
+            row = {"id": game_id, **change["payload"], "deleted_at": None}
+        elif (
+            current is not None
+            and expected == current["change_version"]
+            and (
+                (operation == "update" and current.get("deleted_at") is None)
+                or operation == "delete"
+                or (operation == "restore" and current.get("deleted_at") is not None)
+            )
+        ):
+            row = dict(current)
+            if operation == "delete":
+                row["deleted_at"] = "2026-08-07T01:00:00+00:00"
+            else:
+                row.update(change["payload"])
+                if operation == "restore":
+                    row["deleted_at"] = None
+        else:
+            return {
+                "id": game_id,
+                "status": "conflict",
+                "current_change_version": (
+                    current["change_version"] if current is not None else None
+                ),
+                "remote": current,
             }
-        ).encode(),
-    )
+        self.version += 1
+        row.update(
+            change_version=self.version,
+            payload_version=1,
+            source_kind="native",
+            created_at="2026-08-07T01:00:00+00:00",
+            updated_at="2026-08-07T01:00:00+00:00",
+        )
+        self.remote_games[game_id] = row
+        return {"id": game_id, "status": "applied", "change_version": self.version}
 
 
-def guest_apply_then_drop(transport: StatefulTransport, request: dict) -> HttpResponse:
-    payload = request["body"]
-    transport.guest_batches[payload["batch_id"]] = payload
-    raise NetworkError("응답 유실")
+class GuestTransport:
+    def __init__(self, *, drop_once: bool = False) -> None:
+        self.drop_once = drop_once
+        self.requests: list[dict] = []
+        self.batches: dict[str, dict] = {}
+
+    def request(self, method, url, headers, body, timeout):
+        payload = json.loads(body.decode())
+        self.requests.append({"body": payload})
+        batch_id = payload["batch_id"]
+        replayed = batch_id in self.batches
+        self.batches.setdefault(batch_id, payload)
+        if self.drop_once:
+            self.drop_once = False
+            raise NetworkError("응답 유실")
+        return HttpResponse(
+            status=200,
+            body=json.dumps(
+                {
+                    "batch_id": batch_id,
+                    "accepted": 0 if replayed else len(payload["observations"]),
+                    "skipped": len(payload["observations"]) if replayed else 0,
+                    "rejected": 0,
+                    "replayed": replayed,
+                }
+            ).encode(),
+        )
 
 
 def prepare_registered(tmp_path: Path) -> tuple[ProfileContext, GameService]:
@@ -142,11 +203,13 @@ def test_local_commit_and_outbox_survive_immediate_service_close(tmp_path: Path)
         reopened.close()
 
 
-def test_registered_latest_change_is_batched_once_and_acknowledged(tmp_path: Path):
+def test_registered_push_then_pull_acknowledges_and_completes_initial_sync(
+    tmp_path: Path,
+):
     profile, games = prepare_registered(tmp_path)
     game_id = games.insert_game(sample("처음"))
     games.update_game(game_id, sample("수정"))
-    transport = StatefulTransport([registered_ok])
+    transport = RegisteredTransport()
     engine = SyncEngine(
         profile,
         registered_client=RegisteredGamesClient(
@@ -158,8 +221,14 @@ def test_registered_latest_change_is_batched_once_and_acknowledged(tmp_path: Pat
     status = engine.run_once()
 
     assert status.phase is SyncPhase.SYNCED
-    assert len(transport.requests[0]["body"]) == 1
-    assert transport.requests[0]["body"][0]["note"] == "수정"
+    assert status.initial_sync_completed is True
+    apply_request = next(
+        request
+        for request in transport.requests
+        if request["url"].endswith("/rpc/apply_game_changes")
+    )
+    assert len(apply_request["body"]["changes"]) == 1
+    assert apply_request["body"]["changes"][0]["payload"]["note"] == "수정"
     assert outbox_rows(profile) == []
     games.close()
 
@@ -169,14 +238,8 @@ def test_acknowledgement_preserves_edit_created_while_request_is_in_flight(
 ):
     profile, games = prepare_registered(tmp_path)
     game_id = games.insert_game(sample("전송 시작값"))
-
-    def update_during_request(
-        transport: StatefulTransport, request: dict
-    ) -> HttpResponse:
-        games.update_game(game_id, sample("요청 중 새 수정"))
-        return registered_ok(transport, request)
-
-    transport = StatefulTransport([update_during_request, registered_ok])
+    transport = RegisteredTransport()
+    transport.on_apply = lambda: games.update_game(game_id, sample("요청 중 새 수정"))
     engine = SyncEngine(
         profile,
         registered_client=RegisteredGamesClient(
@@ -191,18 +254,26 @@ def test_acknowledgement_preserves_edit_created_while_request_is_in_flight(
     assert first.phase is SyncPhase.PENDING
     assert first.pending_count == 1
     assert second.phase is SyncPhase.SYNCED
-    assert transport.requests[0]["body"][0]["note"] == "전송 시작값"
-    assert transport.requests[1]["body"][0]["note"] == "요청 중 새 수정"
+    apply_requests = [
+        request
+        for request in transport.requests
+        if request["url"].endswith("/rpc/apply_game_changes")
+    ]
+    assert apply_requests[0]["body"]["changes"][0]["payload"]["note"] == "전송 시작값"
+    assert (
+        apply_requests[1]["body"]["changes"][0]["payload"]["note"] == "요청 중 새 수정"
+    )
     games.close()
 
 
-def test_registered_response_loss_retries_same_uuid_without_remote_duplicate(
+def test_registered_response_loss_retries_uuid_and_accepts_matching_remote(
     tmp_path: Path,
 ):
     profile, games = prepare_registered(tmp_path)
     games.insert_game(sample())
     clock = Clock()
-    transport = StatefulTransport([registered_apply_then_drop, registered_ok])
+    transport = RegisteredTransport()
+    transport.drop_apply_response_once = True
     engine = SyncEngine(
         profile,
         registered_client=RegisteredGamesClient(
@@ -218,19 +289,16 @@ def test_registered_response_loss_retries_same_uuid_without_remote_duplicate(
 
     assert first.phase is SyncPhase.OFFLINE
     assert second.phase is SyncPhase.SYNCED
-    first_id = transport.requests[0]["body"][0]["id"]
-    second_id = transport.requests[1]["body"][0]["id"]
-    assert first_id == second_id
-    assert list(transport.remote_games) == [first_id]
+    assert len(transport.remote_games) == 1
+    assert outbox_rows(profile) == []
     games.close()
 
 
-def test_registered_401_refreshes_once_and_retries_batch(tmp_path: Path):
+def test_registered_401_refreshes_once_and_retries_cycle(tmp_path: Path):
     profile, games = prepare_registered(tmp_path)
     games.insert_game(sample())
-    transport = StatefulTransport(
-        [HttpResponse(status=401, body=b'{"code":"jwt_expired"}'), registered_ok]
-    )
+    transport = RegisteredTransport()
+    transport.reject_first_request = True
     refreshed: list[bool] = []
     engine = SyncEngine(
         profile,
@@ -250,11 +318,157 @@ def test_registered_401_refreshes_once_and_retries_batch(tmp_path: Path):
     games.close()
 
 
+def test_large_initial_sync_resumes_from_committed_cursor_after_restart(tmp_path: Path):
+    transport = RegisteredTransport()
+    for index in range(205):
+        transport._apply(
+            {
+                "op": "create",
+                "id": f"00000000-0000-4000-8000-{index:012d}",
+                "payload": {
+                    "played_at": "2026-08-07T10:00:00",
+                    "result": "win",
+                    "turn_order": "first",
+                    "my_deck": "테스트 덱",
+                    "opp_deck": "상대 덱",
+                    "turns": 4,
+                    "end_reason": "regular",
+                    "score_after": 1500,
+                    "note": str(index),
+                    "timezone_offset_minutes": 540,
+                },
+            }
+        )
+    profile, games = prepare_registered(tmp_path)
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+
+    first_engine = SyncEngine(
+        profile, registered_client=client, token_provider=lambda: "token"
+    )
+    first = first_engine.run_once()
+    assert first.phase is SyncPhase.PENDING
+    assert first.last_pulled_version == 100
+    assert games.count_games() == 100
+
+    resumed_engine = SyncEngine(
+        profile, registered_client=client, token_provider=lambda: "token"
+    )
+    second = resumed_engine.run_once()
+    third = resumed_engine.run_once()
+    assert second.phase is SyncPhase.PENDING
+    assert second.last_pulled_version == 200
+    assert third.phase is SyncPhase.SYNCED
+    assert third.last_pulled_version == 205
+    assert third.initial_sync_completed is True
+    assert games.count_games() == 205
+    games.close()
+
+
+def test_two_device_create_update_delete_round_trip(tmp_path: Path):
+    transport = RegisteredTransport()
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+
+    manager_a = ProfileManager(tmp_path / "pc-a")
+    profile_a = manager_a.registered(ACCOUNT_ID, "user@example.com")
+    manager_a.prepare_database(profile_a)
+    games_a = GameService.open(profile_a.database_path)
+    engine_a = SyncEngine(
+        profile_a, registered_client=client, token_provider=lambda: "token"
+    )
+
+    manager_b = ProfileManager(tmp_path / "pc-b")
+    profile_b = manager_b.registered(ACCOUNT_ID, "user@example.com")
+    manager_b.prepare_database(profile_b)
+    games_b = GameService.open(profile_b.database_path)
+    engine_b = SyncEngine(
+        profile_b, registered_client=client, token_provider=lambda: "token"
+    )
+
+    game_a_id = games_a.insert_game(sample("A 생성"))
+    assert engine_a.run_once().phase is SyncPhase.SYNCED
+    assert engine_b.run_once().phase is SyncPhase.SYNCED
+    assert games_b.count_games() == 1
+
+    game_b = games_b.get_last_game()
+    assert game_b is not None
+    games_b.update_game(game_b["id"], sample("B 수정"))
+    assert engine_b.run_once().phase is SyncPhase.SYNCED
+    assert engine_a.run_once().phase is SyncPhase.SYNCED
+    updated_a = games_a.get_game(game_a_id)
+    assert updated_a is not None
+    assert updated_a["note"] == "B 수정"
+
+    games_a.delete_game(game_a_id)
+    assert engine_a.run_once().phase is SyncPhase.SYNCED
+    assert engine_b.run_once().phase is SyncPhase.SYNCED
+    assert games_b.count_games() == 0
+
+    games_a.close()
+    games_b.close()
+
+
+def test_two_device_concurrent_update_and_update_delete_conflicts_are_resolvable(
+    tmp_path: Path,
+):
+    transport = RegisteredTransport()
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+
+    manager_a = ProfileManager(tmp_path / "pc-a")
+    profile_a = manager_a.registered(ACCOUNT_ID, "user@example.com")
+    manager_a.prepare_database(profile_a)
+    games_a = GameService.open(profile_a.database_path)
+    engine_a = SyncEngine(
+        profile_a, registered_client=client, token_provider=lambda: "token"
+    )
+
+    manager_b = ProfileManager(tmp_path / "pc-b")
+    profile_b = manager_b.registered(ACCOUNT_ID, "user@example.com")
+    manager_b.prepare_database(profile_b)
+    games_b = GameService.open(profile_b.database_path)
+    engine_b = SyncEngine(
+        profile_b, registered_client=client, token_provider=lambda: "token"
+    )
+
+    game_a_id = games_a.insert_game(sample("기준"))
+    engine_a.run_once()
+    engine_b.run_once()
+    game_b = games_b.get_last_game()
+    assert game_b is not None
+    game_b_id = game_b["id"]
+
+    games_a.update_game(game_a_id, sample("A 수정"))
+    games_b.update_game(game_b_id, sample("B 수정"))
+    engine_a.run_once()
+    conflict_status = engine_b.run_once()
+    assert conflict_status.conflict_count == 1
+    conflict = engine_b.list_conflicts()[0]
+    assert conflict.local_payload["note"] == "B 수정"
+    assert conflict.remote_payload["note"] == "A 수정"
+    engine_b.resolve_conflict(conflict.id, "remote")
+    resolved_b = games_b.get_game(game_b_id)
+    assert resolved_b is not None
+    assert resolved_b["note"] == "A 수정"
+
+    games_a.update_game(game_a_id, sample("A 두 번째 수정"))
+    games_b.delete_game(game_b_id)
+    engine_a.run_once()
+    delete_conflict_status = engine_b.run_once()
+    assert delete_conflict_status.conflict_count == 1
+    delete_conflict = engine_b.list_conflicts()[0]
+    engine_b.resolve_conflict(delete_conflict.id, "local")
+    assert engine_b.run_once().conflict_count == 0
+    assert engine_a.run_once().phase is SyncPhase.SYNCED
+    assert games_a.count_games() == 0
+
+    games_a.close()
+    games_b.close()
+
+
 def test_guest_response_loss_reuses_batch_id_and_never_sends_note(tmp_path: Path):
     profile, games = prepare_guest(tmp_path)
     games.insert_game(sample("절대 전송 금지"))
     clock = Clock()
-    transport = StatefulTransport([guest_apply_then_drop, guest_ok])
+    transport = GuestTransport(drop_once=True)
     engine = SyncEngine(
         profile,
         guest_client=GuestIngestClient(
@@ -276,7 +490,7 @@ def test_guest_response_loss_reuses_batch_id_and_never_sends_note(tmp_path: Path
     assert first_body["observations"][0]["op"] == "upsert"
     assert "note" not in json.dumps(first_body, ensure_ascii=False)
     assert isinstance(first_body["observations"][0]["timezone_offset_minutes"], int)
-    assert len(transport.guest_batches) == 1
+    assert len(transport.batches) == 1
     games.close()
 
 

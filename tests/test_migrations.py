@@ -37,6 +37,7 @@ SYNC_COLUMNS = {
     "deleted_at",
     "last_sync_error",
     "import_batch_id",
+    "base_remote_payload",
 }
 
 

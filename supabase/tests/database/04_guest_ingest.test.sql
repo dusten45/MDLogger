@@ -163,10 +163,12 @@ set local role authenticated;
 set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 insert into public.profiles (id) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
-insert into public.games (id, user_id, played_at, result, turn_order, note)
-values ('55555555-5555-4555-8555-555555555555',
-        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        '2026-08-07T13:00:00', 'win', 'first', '지워질 개인 메모');
+select public.apply_game_changes(
+    1, 1,
+    '[{"op":"create","id":"55555555-5555-4555-8555-555555555555",
+       "payload":{"played_at":"2026-08-07T13:00:00","result":"win",
+                  "turn_order":"first","note":"지워질 개인 메모"}}]'::jsonb
+);
 set local role service_role;
 
 select is(

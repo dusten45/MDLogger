@@ -55,6 +55,19 @@ class FakeSync:
     def request_sync(self, *, retry_failed: bool = False) -> None:
         self.requests.append(retry_failed)
 
+    def list_conflicts(self) -> list:
+        return []
+
+    def resolve_conflict(
+        self,
+        conflict_id: int,
+        resolution: str,
+        merged_payload: dict | None = None,
+        *,
+        expected_remote_version: int | None = None,
+    ) -> None:
+        pass
+
     def stop(self, *, timeout_seconds: float = 5.0) -> None:
         self.stopped = True
 

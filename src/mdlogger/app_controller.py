@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import Any, Protocol
 
 from .game_service import GameService
+from .game_sync.models import SyncConflict
 from .profiles import ProfileContext, ProfileManager
 
 
@@ -28,6 +29,17 @@ class SyncScope(Protocol):
     def start(self) -> None: ...
 
     def request_sync(self, *, retry_failed: bool = False) -> None: ...
+
+    def list_conflicts(self) -> list[SyncConflict]: ...
+
+    def resolve_conflict(
+        self,
+        conflict_id: int,
+        resolution: str,
+        merged_payload: dict | None = None,
+        *,
+        expected_remote_version: int | None = None,
+    ) -> None: ...
 
     def stop(self, *, timeout_seconds: float = 5.0) -> None: ...
 
@@ -73,6 +85,25 @@ class AppController:
     def request_sync(self, *, retry_failed: bool = False) -> None:
         if self._sync is not None:
             self._sync.request_sync(retry_failed=retry_failed)
+
+    def list_conflicts(self) -> list[SyncConflict]:
+        return self._sync.list_conflicts() if self._sync is not None else []
+
+    def resolve_conflict(
+        self,
+        conflict_id: int,
+        resolution: str,
+        merged_payload: dict | None = None,
+        *,
+        expected_remote_version: int | None = None,
+    ) -> None:
+        if self._sync is not None:
+            self._sync.resolve_conflict(
+                conflict_id,
+                resolution,
+                merged_payload,
+                expected_remote_version=expected_remote_version,
+            )
 
     def start_guest(self) -> None:
         self.switch_profile(self._profiles.guest())

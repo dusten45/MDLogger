@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
+from typing import cast
 
 from mdlogger.game_service import GameService
 from mdlogger.game_sync.coordinator import SyncCoordinator
 from mdlogger.game_sync.engine import SyncEngine
-from mdlogger.game_sync.models import SyncPhase
+from mdlogger.game_sync.models import SyncPhase, SyncStatus
 from mdlogger.profiles import ProfileManager
 from mdlogger.remote.client import HttpResponse, JsonHttpClient
 from mdlogger.remote.config import RemoteConfig
@@ -47,6 +48,35 @@ def sample() -> dict:
         "score_after": 1500,
         "note": "로컬 전용",
     }
+
+
+class ConflictEngine:
+    def __init__(self) -> None:
+        self.run_count = 0
+        self._status = SyncStatus(
+            SyncPhase.SYNCED,
+            pending_count=0,
+            failed_count=0,
+            conflict_count=1,
+        )
+
+    def status(self) -> SyncStatus:
+        return self._status
+
+    def run_once(self) -> SyncStatus:
+        self.run_count += 1
+        return self._status
+
+
+def test_unresolved_conflict_waits_for_interval_instead_of_busy_loop():
+    engine = ConflictEngine()
+    coordinator = SyncCoordinator(cast(SyncEngine, engine), interval_seconds=0.5)
+
+    coordinator.start()
+    time.sleep(0.08)
+    coordinator.stop()
+
+    assert engine.run_count == 1
 
 
 def test_worker_uses_own_sqlite_connection_and_stops_cleanly(tmp_path: Path):

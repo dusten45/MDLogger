@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-LATEST_SCHEMA_VERSION = 3
+LATEST_SCHEMA_VERSION = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -285,11 +285,17 @@ def _migration_3(conn: sqlite3.Connection) -> None:
     _add_column(conn, "games", "timezone_offset_minutes INTEGER")
 
 
+def _migration_4(conn: sqlite3.Connection) -> None:
+    """단계 8의 3-way merge를 위한 마지막 서버 payload를 보존한다."""
+    _add_column(conn, "games", "base_remote_payload TEXT")
+
+
 Migration = Callable[[sqlite3.Connection], None]
 MIGRATIONS: dict[int, Migration] = {
     1: _migration_1,
     2: _migration_2,
     3: _migration_3,
+    4: _migration_4,
 }
 
 

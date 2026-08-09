@@ -1,4 +1,4 @@
-"""profile 종류별 outbox push 동기화 엔진."""
+"""outbox push, change-version pull 및 conflict 조정 엔진."""
 
 from __future__ import annotations
 
@@ -7,12 +7,13 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
+from .. import __version__
 from ..profiles import ProfileContext, ProfileKind
 from ..remote.games import (
     RegisteredGamesClient,
     RegisteredGamesError,
     RegisteredGamesErrorKind,
-    build_registered_game,
+    build_game_change,
 )
 from ..remote.guest_ingest import (
     GuestIngestClient,
@@ -21,7 +22,7 @@ from ..remote.guest_ingest import (
     build_observation,
     build_withdrawal,
 )
-from .models import OutboxEntry, SyncPhase, SyncStatus
+from .models import OutboxEntry, SyncConflict, SyncPhase, SyncStatus
 from .repository import SyncRepository
 
 BATCH_SIZE = 100
@@ -30,7 +31,7 @@ TokenRefresher = Callable[[], str | None]
 
 
 class SyncEngine:
-    """한 번의 제한된 push batch를 실행하고 로컬 outbox를 반영한다."""
+    """프로필 종류에 따라 guest push 또는 registered 양방향 sync를 실행한다."""
 
     def __init__(
         self,
@@ -54,7 +55,10 @@ class SyncEngine:
     def status(self, *, phase: SyncPhase | None = None) -> SyncStatus:
         repository = self._repository_factory(self._profile.database_path)
         try:
-            return repository.status(phase=phase)
+            return repository.status(
+                phase=phase,
+                require_initial_sync=self._profile.kind is ProfileKind.REGISTERED,
+            )
         finally:
             repository.close()
 
@@ -65,15 +69,41 @@ class SyncEngine:
         finally:
             repository.close()
 
+    def list_conflicts(self) -> list[SyncConflict]:
+        repository = self._repository_factory(self._profile.database_path)
+        try:
+            return repository.list_conflicts()
+        finally:
+            repository.close()
+
+    def resolve_conflict(
+        self,
+        conflict_id: int,
+        resolution: str,
+        merged_payload: dict | None = None,
+        *,
+        expected_remote_version: int | None = None,
+    ) -> None:
+        repository = self._repository_factory(self._profile.database_path)
+        try:
+            repository.resolve_conflict(
+                conflict_id,
+                resolution,
+                merged_payload,
+                expected_remote_version=expected_remote_version,
+            )
+        finally:
+            repository.close()
+
     def run_once(self) -> SyncStatus:
         repository = self._repository_factory(self._profile.database_path)
         try:
             entries = repository.fetch_due(limit=BATCH_SIZE, now=self._now())
-            if not entries:
-                return repository.status()
             if self._profile.kind is ProfileKind.GUEST:
+                if not entries:
+                    return repository.status()
                 return self._push_guest(repository, entries)
-            return self._push_registered(repository, entries)
+            return self._sync_registered(repository, entries)
         finally:
             repository.close()
 
@@ -133,39 +163,26 @@ class SyncEngine:
         repository.acknowledge(entries, completed_at=self._now())
         return repository.status()
 
-    def _push_registered(
+    def _sync_registered(
         self, repository: SyncRepository, entries: list[OutboxEntry]
     ) -> SyncStatus:
         client = self._registered_client
-        user_id = self._profile.remote_user_id
-        if client is None or user_id is None or self._token_provider is None:
+        if client is None or self._token_provider is None:
             return repository.status(phase=SyncPhase.OFFLINE)
-        access_token = self._token_provider()
-        if not access_token:
+        token = self._token_provider()
+        if not token:
             return repository.status(phase=SyncPhase.REAUTH_REQUIRED)
-        games = [
-            build_registered_game(
-                entry.payload,
-                sync_id=entry.game_sync_id,
-                user_id=user_id,
-                operation=entry.operation,
-                payload_version=entry.payload_version,
-            )
-            for entry in entries
-        ]
         try:
-            result = client.upsert_batch(games, access_token=access_token)
+            self._registered_cycle(repository, entries, token)
         except RegisteredGamesError as error:
             if (
                 error.kind is RegisteredGamesErrorKind.AUTH_REQUIRED
                 and self._token_refresher is not None
             ):
-                refreshed_token = self._token_refresher()
-                if refreshed_token:
+                refreshed = self._token_refresher()
+                if refreshed:
                     try:
-                        result = client.upsert_batch(
-                            games, access_token=refreshed_token
-                        )
+                        self._registered_cycle(repository, entries, refreshed)
                     except RegisteredGamesError as retry_error:
                         return self._record_registered_failure(
                             repository, entries, retry_error
@@ -174,12 +191,58 @@ class SyncEngine:
                     return repository.status(phase=SyncPhase.REAUTH_REQUIRED)
             else:
                 return self._record_registered_failure(repository, entries, error)
-        repository.acknowledge(
-            entries,
-            remote_versions=result.remote_versions,
-            completed_at=self._now(),
+        return repository.status(require_initial_sync=True)
+
+    def _registered_cycle(
+        self,
+        repository: SyncRepository,
+        entries: list[OutboxEntry],
+        access_token: str,
+    ) -> None:
+        client = self._registered_client
+        if client is None:
+            return
+        client.register_device(
+            installation_id=self._profile.installation_id,
+            display_name=self._profile.display_name,
+            client_version=__version__,
+            access_token=access_token,
         )
-        return repository.status()
+        if entries:
+            changes = [
+                build_game_change(
+                    entry.payload,
+                    sync_id=entry.game_sync_id,
+                    operation=entry.operation,
+                    remote_version=(
+                        int(entry.payload["remote_version"])
+                        if entry.payload.get("remote_version") is not None
+                        else None
+                    ),
+                )
+                for entry in entries
+            ]
+            result = client.apply_changes(changes, access_token=access_token)
+            repository.apply_push_results(
+                entries, result.results, completed_at=self._now()
+            )
+
+        cursor = repository.pull_cursor()
+        pull = client.pull_changes(
+            after_version=cursor,
+            limit=BATCH_SIZE,
+            access_token=access_token,
+        )
+        new_cursor = repository.apply_pull_batch(
+            pull.games,
+            completed_at=self._now(),
+            initial_sync_completed=len(pull.games) < BATCH_SIZE,
+        )
+        client.acknowledge_device_version(
+            installation_id=self._profile.installation_id,
+            acknowledged_version=new_cursor,
+            access_token=access_token,
+        )
 
     def _record_registered_failure(
         self,
@@ -191,17 +254,18 @@ class SyncEngine:
             RegisteredGamesErrorKind.NETWORK,
             RegisteredGamesErrorKind.SERVER,
         )
-        repository.record_failure(
-            entries,
-            code=error.code or error.kind.value,
-            detail=str(error),
-            retryable=retryable,
-            failed_at=self._now(),
-        )
+        if entries:
+            repository.record_failure(
+                entries,
+                code=error.code or error.kind.value,
+                detail=str(error),
+                retryable=retryable,
+                failed_at=self._now(),
+            )
         if error.kind is RegisteredGamesErrorKind.AUTH_REQUIRED:
             phase = SyncPhase.REAUTH_REQUIRED
         elif retryable:
             phase = SyncPhase.OFFLINE
         else:
             phase = SyncPhase.FAILED
-        return repository.status(phase=phase)
+        return repository.status(phase=phase, require_initial_sync=True)

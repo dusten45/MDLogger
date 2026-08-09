@@ -7,11 +7,11 @@ from threading import Event, Lock, Thread
 from PySide6.QtCore import QObject, Signal
 
 from .engine import SyncEngine
-from .models import SyncPhase, SyncStatus
+from .models import SyncConflict, SyncPhase, SyncStatus
 
 
 class SyncCoordinator(QObject):
-    """UI 연결을 공유하지 않는 단일 profile push coordinator."""
+    """UI 연결을 공유하지 않는 단일 profile 양방향 sync coordinator."""
 
     status_changed = Signal(object)
 
@@ -45,6 +45,26 @@ class SyncCoordinator(QObject):
             self._engine.retry_failed()
         self._wake.set()
 
+    def list_conflicts(self) -> list[SyncConflict]:
+        return self._engine.list_conflicts()
+
+    def resolve_conflict(
+        self,
+        conflict_id: int,
+        resolution: str,
+        merged_payload: dict | None = None,
+        *,
+        expected_remote_version: int | None = None,
+    ) -> None:
+        self._engine.resolve_conflict(
+            conflict_id,
+            resolution,
+            merged_payload,
+            expected_remote_version=expected_remote_version,
+        )
+        self._set_status(self._engine.status())
+        self._wake.set()
+
     def stop(self, *, timeout_seconds: float = 5.0) -> None:
         self._stop.set()
         self._wake.set()
@@ -63,18 +83,20 @@ class SyncCoordinator(QObject):
     def _run(self) -> None:
         while not self._stop.is_set():
             current = self._engine.status()
-            if current.pending_count:
-                self._set_status(
-                    SyncStatus(
-                        phase=SyncPhase.SYNCING,
-                        pending_count=current.pending_count,
-                        failed_count=current.failed_count,
-                        last_error=current.last_error,
-                    )
+            self._set_status(
+                SyncStatus(
+                    phase=SyncPhase.SYNCING,
+                    pending_count=current.pending_count,
+                    failed_count=current.failed_count,
+                    last_error=current.last_error,
+                    conflict_count=current.conflict_count,
+                    initial_sync_completed=current.initial_sync_completed,
+                    last_pulled_version=current.last_pulled_version,
                 )
-                status = self._engine.run_once()
-                self._set_status(status)
-                if status.phase in (SyncPhase.SYNCED, SyncPhase.PENDING):
-                    continue
+            )
+            status = self._engine.run_once()
+            self._set_status(status)
+            if status.phase is SyncPhase.PENDING:
+                continue
             self._wake.wait(self._interval_seconds)
             self._wake.clear()

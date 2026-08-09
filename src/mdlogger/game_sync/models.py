@@ -31,6 +31,17 @@ class OutboxEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class SyncConflict:
+    """사용자가 해결할 때까지 양쪽 payload를 보존하는 충돌."""
+
+    id: int
+    game_sync_id: str
+    local_payload: dict[str, Any]
+    remote_payload: dict[str, Any]
+    base_remote_version: int | None
+
+
+@dataclass(frozen=True, slots=True)
 class SyncStatus:
     """프로필별 push 상태 요약."""
 
@@ -38,11 +49,16 @@ class SyncStatus:
     pending_count: int
     failed_count: int
     last_error: str | None = None
+    conflict_count: int = 0
+    initial_sync_completed: bool = True
+    last_pulled_version: int = 0
 
     @property
     def display_text(self) -> str:
         if self.phase is SyncPhase.SYNCING:
             return f"동기화 중 · {self.pending_count}건 대기"
+        if self.conflict_count:
+            return f"충돌 {self.conflict_count}건 · 확인 필요"
         if self.phase is SyncPhase.FAILED:
             return f"동기화 실패 · {self.failed_count}건 확인 필요"
         if self.phase is SyncPhase.OFFLINE:

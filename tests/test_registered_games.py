@@ -1,4 +1,4 @@
-"""등록 계정 PostgREST games push adapter 테스트."""
+"""등록 계정 versioned games/device adapter 테스트."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from mdlogger.remote.games import (
     RegisteredGamesClient,
     RegisteredGamesError,
     RegisteredGamesErrorKind,
+    build_game_change,
     build_registered_game,
 )
 
@@ -21,8 +22,8 @@ USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 
 
 class FakeTransport:
-    def __init__(self, response: HttpResponse) -> None:
-        self.response = response
+    def __init__(self, responses: list[HttpResponse]) -> None:
+        self.responses = list(responses)
         self.requests: list[dict] = []
 
     def request(self, method, url, headers, body, timeout):
@@ -31,11 +32,11 @@ class FakeTransport:
                 "method": method,
                 "url": url,
                 "headers": headers,
-                "body": json.loads(body.decode()),
+                "body": json.loads(body.decode()) if body else None,
                 "timeout": timeout,
             }
         )
-        return self.response
+        return self.responses.pop(0)
 
 
 def private_payload() -> dict:
@@ -72,29 +73,117 @@ def test_build_registered_game_keeps_private_note_but_excludes_local_metadata():
     assert "sync_status" not in row
 
 
-def test_upsert_batch_uses_uuid_conflict_resolution_and_returns_versions():
+def test_apply_changes_uses_versioned_rpc_and_returns_applied_and_conflict():
     transport = FakeTransport(
-        HttpResponse(
-            status=201,
-            body=json.dumps([{"id": SYNC_ID, "change_version": 7}]).encode(),
-        )
+        [
+            HttpResponse(
+                status=200,
+                body=json.dumps(
+                    {
+                        "results": [
+                            {
+                                "id": SYNC_ID,
+                                "status": "applied",
+                                "change_version": 7,
+                            },
+                            {
+                                "id": "44444444-4444-4444-8444-444444444444",
+                                "status": "conflict",
+                                "current_change_version": 8,
+                                "remote": {"id": "444", "change_version": 8},
+                            },
+                        ]
+                    }
+                ).encode(),
+            )
+        ]
     )
     client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
-    row = build_registered_game(
-        private_payload(),
-        sync_id=SYNC_ID,
-        user_id=USER_ID,
-        operation="upsert",
-        payload_version=1,
-    )
+    changes = [
+        build_game_change(
+            private_payload(),
+            sync_id=SYNC_ID,
+            operation="upsert",
+            remote_version=None,
+        ),
+        build_game_change(
+            private_payload(),
+            sync_id="44444444-4444-4444-8444-444444444444",
+            operation="upsert",
+            remote_version=6,
+        ),
+    ]
 
-    result = client.upsert_batch([row], access_token="access-token")
+    result = client.apply_changes(changes, access_token="access-token")
 
     assert result.remote_versions == {SYNC_ID: 7}
+    assert result.results[1].status == "conflict"
+    assert result.results[1].remote == {"id": "444", "change_version": 8}
     request = transport.requests[0]
-    assert request["url"].endswith("/rest/v1/games?on_conflict=id")
+    assert request["url"].endswith("/rest/v1/rpc/apply_game_changes")
     assert request["headers"]["Authorization"] == "Bearer access-token"
-    assert "resolution=merge-duplicates" in request["headers"]["Prefer"]
+    assert request["body"]["sync_schema_version"] == 1
+    assert request["body"]["payload_version"] == 1
+    assert request["body"]["changes"][1]["expected_change_version"] == 6
+
+
+def test_pull_and_device_calls_use_cursor_and_version_contract():
+    transport = FakeTransport(
+        [
+            HttpResponse(status=200, body=b'[{"id":"x","change_version":9}]'),
+            HttpResponse(status=200, body=b"{}"),
+            HttpResponse(status=200, body=b"{}"),
+        ]
+    )
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+
+    pull = client.pull_changes(after_version=7, limit=100, access_token="token")
+    client.register_device(
+        installation_id="77777777-7777-4777-8777-777777777777",
+        display_name="PC A",
+        client_version="0.1.0",
+        access_token="token",
+    )
+    client.acknowledge_device_version(
+        installation_id="77777777-7777-4777-8777-777777777777",
+        acknowledged_version=9,
+        access_token="token",
+    )
+
+    assert pull.games[0]["change_version"] == 9
+    assert "change_version=gt.7" in transport.requests[0]["url"]
+    assert "order=change_version.asc" in transport.requests[0]["url"]
+    assert transport.requests[1]["body"]["sync_schema_version"] == 1
+    assert transport.requests[2]["body"]["acknowledged_version"] == 9
+
+
+def test_applied_result_without_positive_change_version_is_rejected():
+    transport = FakeTransport(
+        [
+            HttpResponse(
+                status=200,
+                body=json.dumps(
+                    {"results": [{"id": SYNC_ID, "status": "applied"}]}
+                ).encode(),
+            )
+        ]
+    )
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+
+    with pytest.raises(RegisteredGamesError) as exc_info:
+        client.apply_changes(
+            [
+                build_game_change(
+                    private_payload(),
+                    sync_id=SYNC_ID,
+                    operation="upsert",
+                    remote_version=None,
+                )
+            ],
+            access_token="token",
+        )
+
+    assert exc_info.value.kind is RegisteredGamesErrorKind.SERVER
 
 
 @pytest.mark.parametrize(
@@ -106,19 +195,18 @@ def test_upsert_batch_uses_uuid_conflict_resolution_and_returns_versions():
         (500, RegisteredGamesErrorKind.SERVER),
     ],
 )
-def test_upsert_batch_classifies_server_errors(status, kind):
-    transport = FakeTransport(HttpResponse(status=status, body=b'{"code":"failure"}'))
+def test_apply_changes_classifies_server_errors(status, kind):
+    transport = FakeTransport([HttpResponse(status=status, body=b'{"code":"failure"}')])
     client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
 
     with pytest.raises(RegisteredGamesError) as exc_info:
-        client.upsert_batch(
+        client.apply_changes(
             [
-                build_registered_game(
+                build_game_change(
                     private_payload(),
                     sync_id=SYNC_ID,
-                    user_id=USER_ID,
                     operation="upsert",
-                    payload_version=1,
+                    remote_version=None,
                 )
             ],
             access_token="token",
