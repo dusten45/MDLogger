@@ -241,3 +241,12 @@ auth rate limit은 **Authentication → Rate Limits**에서 구성한다(로드�
 로컬 개발은 `supabase/config.toml`의 `[auth.email.template.*]`를 쓴다. 기본값으로도
 동작하며, 남용이 관찰되면 rate limit을 조정한다. guest ingest rate limit·이상
 탐지·Turnstile은 `guest-ingest`의 `checkAbuseGuards` 확장 경계에 추가한다(로드맵 12.3).
+
+- guest ingest rate limit **운영값 확정(2026-08-10)**: installation·IP 각각
+  **1분 창 최대 10회**(`RATE_MAX_PER_WINDOW=10`, `RATE_WINDOW_MINUTES=1`, 하드닝
+  H5/D-4). 초과 시 `429` + `retry_after` 사용자가 몰아 기록하는 정상 사용을
+  방해하지 않는다.
+- **Turnstile 도입 판단 기준(2026-08-10 확정)**: guest 업로드 중 rate-limit
+  (`429`)에 걸리는 배치가 반복 관측되거나, 알 수 없는 installation이 대량
+  거부되는 남용이 이어지면 Turnstile 도입을 검토하기로 정한다. 도입 전까지는
+  정상 사용자를 귀찮게 하지 않도록 CAPTCHA 없이 동작한다(결정 12).
