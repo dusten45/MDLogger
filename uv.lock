@@ -164,7 +164,6 @@ wheels = [
 
 [[package]]
 name = "mdlogger"
-version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "keyring" },
@@ -185,17 +184,17 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "keyring", specifier = ">=25.0" },
-    { name = "numpy", specifier = ">=1.26" },
-    { name = "openpyxl", specifier = ">=3.1" },
-    { name = "pyqtgraph", specifier = ">=0.13" },
-    { name = "pyside6", specifier = ">=6.8" },
+    { name = "keyring", specifier = ">=25.0,<27" },
+    { name = "numpy", specifier = ">=2,<3" },
+    { name = "openpyxl", specifier = ">=3.1,<4" },
+    { name = "pyqtgraph", specifier = ">=0.13,<1" },
+    { name = "pyside6", specifier = ">=6.8,<7" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pyinstaller", specifier = ">=6.10" },
-    { name = "pytest", specifier = ">=8.0" },
+    { name = "pyinstaller", specifier = "==6.21.0" },
+    { name = "pytest", specifier = ">=8.0,<10" },
     { name = "ruff", specifier = ">=0.16.1" },
     { name = "setuptools", specifier = ">=83.0.0" },
     { name = "ty", specifier = ">=0.0.69" },

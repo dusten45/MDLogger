@@ -1,15 +1,15 @@
 [project]
 name = "mdlogger"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Master Duel WCQ 전적 로거 — 듀얼 한 판마다 결과를 빠르게 기록하는 데스크톱 앱"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    "PySide6>=6.8",
-    "pyqtgraph>=0.13",
-    "numpy>=1.26",
-    "openpyxl>=3.1",
-    "keyring>=25.0",
+    "PySide6>=6.8,<7",
+    "pyqtgraph>=0.13,<1",
+    "numpy>=2,<3",  # NumPy 1→2 ABI 경계를 넘지 않는다(하드닝 N-6)
+    "openpyxl>=3.1,<4",
+    "keyring>=25.0,<27",
 ]
 
 [project.scripts]
@@ -17,8 +17,8 @@ mdlogger = "mdlogger.app:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "pyinstaller>=6.10",
+    "pytest>=8.0,<10",
+    "pyinstaller==6.21.0",  # keyring 번들링은 내장 hook-keyring.py에 의존(N-6)
     "ruff>=0.16.1",
     "setuptools>=83.0.0",
     "ty>=0.0.69",
@@ -30,6 +30,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mdlogger"]
+
+[tool.hatch.version]
+path = "src/mdlogger/_version.py"
 
 [tool.ruff]
 extend-exclude = [".agents"]
