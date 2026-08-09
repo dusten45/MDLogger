@@ -176,7 +176,7 @@ select throws_ok(
 
 set local role postgres;
 select is(
-    (public.prune_guest_ingest_diagnostics(90) ->> 'pruned_batches')::bigint,
+    (public.prune_guest_ingest_diagnostics(90) ->> 'pruned_batches')::int,
     1,
     '90일보다 오래된 진단 batch만 정리된다'
 );
@@ -187,8 +187,17 @@ select results_eq(
     '최근 진단 batch는 보존된다'
 );
 
+-- 위 첫 prune(90) 호출에서 오래된 rejected 행도 함께 지워졌으므로, 새 오래된 거부
+-- 기록을 넣어 rejected 정리를 다시 검증한다(이중 호출 순서로 인한 원인 2 후속 보정).
+insert into analytics.rejected_observations (
+    batch_id, source_game_id, reason, received_at
+) values (
+    'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    'invalid_value', now() - interval '120 days'
+);
 select is(
-    (public.prune_guest_ingest_diagnostics(90) ->> 'pruned_rejected')::bigint,
+    (public.prune_guest_ingest_diagnostics(90) ->> 'pruned_rejected')::int,
     1,
     '오래된 거부 기록도 정리된다'
 );
