@@ -6,18 +6,27 @@
 
 ## 구성
 
-| 경로                                       | 내용                                                                          |
-| ------------------------------------------ | ----------------------------------------------------------------------------- |
-| `migrations/0001_profiles.sql`             | 개인용 `profiles`, 공용 `updated_at` 트리거                                   |
-| `migrations/0002_games.sql`                | 개인용 `games`(naive ISO `played_at` 보존)와 `devices`                        |
-| `migrations/0003_rls.sql`                  | 등록 사용자의 소유자 전용 RLS 정책                                            |
-| `migrations/0004_change_version.sql`       | 서버 부여 `change_version` sequence와 서버 관리 필드 강제 트리거              |
-| `migrations/0005_analytics_projection.sql` | `analytics` 스키마, 등록 games projection 트리거, 게스트용 제한된 ingest 함수 |
-| `migrations/0006_account_operations.sql`   | 계정 삭제용 서버 함수 인터페이스(`delete_account_data`)                       |
-| `migrations/0010_account_operations.sql`   | 단계 11: 계정 데이터 내보내기·장치 해제·guest ingest 진단 정리                |
-| `functions/guest-ingest/`                  | Guest Ingest Edge Function(남용 방어 확장 경계 포함)                          |
-| `functions/account-delete/`                | 계정 삭제 Edge Function(service_role, Auth Admin)                             |
-| `tests/database/`                          | pgTAP 기반 R4 공격 테스트                                                     |
+| 경로                                           | 내용                                                                                           |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `migrations/0001_profiles.sql`                 | 개인용 `profiles`, 공용 `updated_at` 트리거                                                    |
+| `migrations/0002_games.sql`                    | 개인용 `games`(naive ISO `played_at` 보존)와 `devices`                                         |
+| `migrations/0003_rls.sql`                      | 등록 사용자의 소유자 전용 RLS 정책                                                             |
+| `migrations/0004_change_version.sql`           | 서버 부여 `change_version` sequence와 서버 관리 필드 강제 트리거                               |
+| `migrations/0005_analytics_projection.sql`     | `analytics` 스키마, 등록 games projection 트리거, 게스트용 제한된 ingest 함수                  |
+| `migrations/0006_account_operations.sql`       | 계정 삭제용 서버 함수 인터페이스(`delete_account_data`)                                        |
+| `migrations/0007_push_timezone_projection.sql` | 단계 7 push: 기록 시각 UTC offset 보존·timezone projection                                     |
+| `migrations/0008_guest_upsert.sql`             | 단계 7 push: 게스트 upsert/withdraw ingest(필드 allowlist + idempotent)                        |
+| `migrations/0009_stage8_sync.sql`              | 단계 8: change-version cursor, 낙관적 동시성 게임 mutation, 장치 등록/ack                      |
+| `migrations/0010_account_operations.sql`       | 단계 11: 계정 데이터 내보내기·장치 해제·guest ingest 진단 정리                                 |
+| `migrations/0011_permission_forward_fix.sql`   | 하드닝 H2: 함수 EXECUTE 명시 회수, projection 철회 가드, RLS 활성화, profiles 서버 필드 트리거 |
+| `migrations/0012_release_policy.sql`           | 하드닝 H3: 릴리스 정책(최소 지원 버전·킬 스위치), 읽기 전용 RLS                                |
+| `migrations/0013_environment_version.sql`      | 하드닝 H4: 환경 기준정보 + games에 환경/클라 버전 배선, projection 보정, ingest 거부           |
+| `migrations/0014_guest_abuse.sql`              | 하드닝 H5: guest ingest rate limit 카운터·검사 함수(installation/IP)                           |
+| `migrations/0015_fix_guest_rate_ok.sql`        | forward-fix: `guest_rate_ok` 파라미터/컬럼 이름 충돌 해소(`p_bucket_key`로 DROP·재정의)        |
+| `migrations/0016_export_account_data_anon.sql` | forward-fix: anon `export_account_data` EXECUTE 재부여 → 본문이 28000(인증 필요) 반환          |
+| `functions/guest-ingest/`                      | Guest Ingest Edge Function(필드 allowlist + rate limit 포함)                                   |
+| `functions/account-delete/`                    | 계정 삭제 Edge Function(auth 먼저 삭제 → FK cascade, service_role)                             |
+| `tests/database/`                              | pgTAP 기반 R4 공격 테스트(`01`~`11`)                                                           |
 
 ## 보안 경계 요약
 
@@ -27,7 +36,17 @@
 - `games`/`profiles`/`devices`는 RLS로 소유자 본인만 접근한다. 클라이언트
   물리 `DELETE`는 없고 개인 기록 삭제는 `deleted_at` tombstone UPDATE다.
 - `user_id`, `created_at`, `updated_at`, `change_version`은 트리거가 서버
-  값으로 강제한다.
+  값으로 강제한다. `profiles`의 `id`/`created_at`(불변)/`updated_at`도 트리거가
+  강제한다(하드닝 H2).
+- 등록 RPC·trigger 함수의 EXECUTE는 `anon`/`authenticated`에서 명시적으로
+  회수한다(`from public, anon, authenticated`). `next_game_change_version`은
+  소유권 검사가 없는 쓰기 함수이므로 특히 차단된다(하드닝 B2).
+- `analytics` 테이블(`contributor_salt`, `duel_observations`,
+  `ingestion_batches`, `rejected_observations`)과 `game_change_cursors`에 RLS를
+  켜 기본 전면 거부로 둔다. `security definer` 함수는 소유자로 실행돼 그대로
+  동작한다(하드닝 H-1).
+- 분석 observation은 한 번 철회되면 어떤 경로의 upsert로도 `withdrawn_at`을
+  지우지 않는다. 철회 마커는 무기한 보존된다(하드닝 M3, 로드맵 결정 6).
 - `analytics` 스키마는 anon/authenticated 접근이 없다. 등록 기록은 DB
   trigger로, 게스트 기록은 service_role 전용 `public.ingest_guest_batch`
   wrapper(Edge Function 경유)로만 들어온다. 두 경로 모두 game UUID
@@ -109,6 +128,22 @@ checkout이나 SELinux context 복원 후 함수 source가 다시 `user_home_t`�
   full reconciliation(로드맵 17.3 C)을 강제해야 한다.
 - 모든 rollback/forward-fix는 적용 전에 tests/database/ 공격 테스트를
   다시 통과해야 한다.
+
+### 부분 적용·재개 (하드닝 H-7)
+
+- 마이그레이션은 새 migration 파일 기준으로 한 번에 적용한다. 하나의
+  migration 안에서 실패(예: `0009`의 unique index 생성 실패)하면 중단 지점에
+  부분 적용 상태가 남는다.
+- **안전한 재개**: 아직 어디에도 적용되지 않은 로컬 검증 실패는 파일을 수정한
+  뒤 `supabase db reset`으로 처음부터 재검증한다. hosted에 부분 적용됐다면
+  실패한 migration의 앞부분을 재실행 가능한 형태로 forward-fix로 보완하는
+  대신, 문제가 되는 구간을 새 migration으로 수정해 처음부터 표준 절차로
+  적용한다. 일반적으로 `supabase db reset`(개발) 또는 역방향 SQL(운영, 데이터
+  유실 없는 경우)을 사용한다.
+- `0005`의 `contributor_salt` 1회성 insert는 `id=true` 싱글톤 제약으로 두 번
+  실행 시 안전하게 실패한다(중복 삽입이 아닌 중단 지점 검출 수단). 재개는 위
+  절차를 따른다. 이런 1회성 데이터 부작용은 forward-fix로 만들지 않고 새 행 추가
+  시에는 unattached insert가 아니라 guarded insert를 사용한다.
 
 ## 이 sandbox에서의 한계
 

@@ -6,17 +6,70 @@
 
 ## 1. 환경 구성: local / production
 
-| 항목                  | local 개발                         | production                          |
-| --------------------- | ---------------------------------- | ----------------------------------- |
-| Supabase CLI          | 2.109.1 고정                       | 소유자 장비만 사용                  |
-| 데이터베이스          | `supabase start` (Docker)          | hosted project (지역은 결정 17.3 G) |
-| publishable(anon) key | `.env`/환경 변수                   | hosted 프로젝트의 anon key          |
-| service-role key      | Edge Function 서버 환경 변수만     | hosted 프로젝트의 service-role key  |
-| 테스트                | `supabase test db`                 | staging에서 동일 절차               |
+| 항목                  | local 개발                     | production                          |
+| --------------------- | ------------------------------ | ----------------------------------- |
+| Supabase CLI          | 2.109.1 고정                   | 소유자 장비만 사용                  |
+| 데이터베이스          | `supabase start` (Docker)      | hosted project (지역은 결정 17.3 G) |
+| publishable(anon) key | `.env`/환경 변수               | hosted 프로젝트의 anon key          |
+| service-role key      | Edge Function 서버 환경 변수만 | hosted 프로젝트의 service-role key  |
+| 테스트                | `supabase test db`             | staging에서 동일 절차               |
 
 클라이언트 앱은 `MDLOGGER_SUPABASE_URL`과 `MDLOGGER_SUPABASE_ANON_KEY` 두
-환경 변수만 읽는다(`remote/config.py`). service-role/secret key는
+환경 변수를 읽는다(우선순위: 환경변수 > 번들 빌드 설정 > 없음, `remote/config.py`).
+배포 빌드는 §1.1의 절차로 anon key를 번들에 주입한다. service-role/secret key는
 `remote/config.py` 어디에도 들어가지 않는다.
+
+### 1.1 배포 빌드 절차 (publishable 설정 주입)
+
+배포용 exe가 로그인·게스트 ingest를 활성화하려면 빌드 시점에 publishable
+(anon) 값을 주입해야 한다(하드닝 H1). 우선순위는 **환경변수 > 번들 빌드 설정
+
+> 없음(오프라인)** 이며, 개발·테스트에서 환경변수가 번들 값을 덮어쓴다.
+
+```bash
+# 1) 값 주입 — 빈 값이면 스크립트가 실패한다. service-role/secret key를 넣으면
+#    `assert_not_secret`/재스캔에서 중단된다.
+MDLOGGER_SUPABASE_URL=<hosted project url> \
+MDLOGGER_SUPABASE_ANON_KEY=<hosted anon key> \
+    uv run python scripts/generate_build_config.py
+#    → src/mdlogger/remote/_bundled_config.py 생성 (gitignore 대상, 커밋 금지)
+
+# 2) 빌드 — 생성 모듈이 패키지 내부에 존재하므로 PyInstaller가 자동 번들한다.
+uv run pyinstaller --noconfirm --clean --onefile --windowed --name MDLogger run.py
+
+# 3) 산출물 시크릿 스캔 — service-role key·secret JWT·URL 자격 증명 0건이어야 한다.
+uv run python -m mdlogger.secret_scan dist/MDLogger.exe
+
+# 4) 체크섬
+uv run python -m mdlogger.checksum dist/MDLogger.exe
+```
+
+- `_bundled_config.py`에는 오직 URL과 anon key만 담는다. 생성 후 재스캔으로
+  service-role key(`sb_secret_`/role=`service_role` JWT)와 임베드된 자격 증명이
+  없음을 보장한다.
+- anon key는 로드맵 8.1에 따라 산출물 포함이 허용된다. service-role/secret key를
+  클라이언트 산출물에 넣는 경로는 `scripts/generate_build_config.py`와
+  `src/mdlogger/secret_scan.py`가 모두 차단한다.
+- `README.md`는 사용자 관점이므로 이 절차를 넣지 않는다(소유자 runbook 전용).
+
+### 1.2 릴리스 정책 운영 (하드닝 H3)
+
+서버 `public.release_policies`가 릴리스 킬 스위치와 최소 지원 버전을 강제한다.
+클라이언트 버전은 단일 출처(`src/mdlogger/_version.py`, hatchling dynamic
+version)에서 오며 게스트 ingest·장치 등록·아카이브 manifest로 전송된다.
+릴리스는 이 값을 실제 tag로 올린 뒤 배포한다.
+
+- 초기 정책(결정 D-7 확정): `latest_version = minimum_supported_version = 0.1.5`
+  (0.1.5가 유일한 버전이라 최소=최신), `update_url`은 비워 둔다(당장 마이그레이션할
+  업데이트 없음). 이후 업데이트가 생기면 이 행의 latest/minimum/update_url을
+  갱신하고 배포한다. 0.1.5 미만 클라이언트는 온라인에서 차단된다.
+- 정책은 RLS로 읽기 전용이며 anon/authenticated가 조회할 수 있다. 클라이언트는
+  최소 지원 미만이면 온라인(로그인·업로드·pull)을 차단하되 로컬 기록·내보내기는
+  항상 허용한다(로드맵 17.3.J).
+- 정책 값 갱신 절차:
+  `supabase link --project-ref <ref>` → `supabase db push`(전체) 또는 제어판에서
+  해당 행 UPDATE. 기존 릴리스의 pending 기록은 삭제되지 않고, 업데이트 후
+  전송된다.
 
 ## 2. 확인 절차 (로컬 검증)
 
@@ -36,8 +89,11 @@ sandbox는 Docker 기반 Supabase를 실행할 수 없으므로 소유자 환경
 `export_account_data` RPC를 호출해 profile·games·devices를 JSON으로 저장한다.
 
 - 분석용 `duel_observations`는 내보내기에 포함되지 않는다(로드맵 12.4).
-- 게스트 계정은 auth 프로필이 없으므로 내보내기 대상이 아니다. 게스트는
-  휴대용 아카이브(단계 10)를 사용한다.
+- 게스트 계정은 auth 프로필이 없으므로 내보내기 대상이 아니다.
+- **휴대용 아카이브(단계 10)는 현 릴리스에서 UI가 배선되지 않아 사용할 수
+  없다**(결정 H-3, 하드닝 M1). 게스트/로컬 데이터를 옮겨야 하면 통계 창의
+  **CSV/XLSX 내보내기**를 사용한다(데이터 탈출 경로 보장, 로드맵 17.3.J).
+  휴대용 아카이브는 다음 릴리스에서 저위험으로 추가한다.
 
 ## 4. 계정 삭제 절차
 
@@ -64,10 +120,21 @@ token을 제거하고 게스트로 전환한다.
 ## 5. 장치 해제
 
 - "모든 기기에서 로그아웃": `revoke_all_devices` RPC. 서버에서 이 계정의
-  모든 `devices` 행을 삭제한다. 이 장치의 로컬 세션은 유지되나, 다음 시작 시
-  저장된 refresh token이 서버에서 폐기됐으므로 재로그인이 필요하다.
+  모든 `devices` 행을 삭제한다.
 - "특정 장치 해제": `revoke_device(installation_id)` RPC. 해당 장치만
   해제한다.
+
+### 한계 (하드닝 H-3, 결정 D-6)
+
+- `revoke_all_devices`/`revoke_device`는 **장치 행만 삭제**한다. 이미 발급된
+  access token의 세션·refresh token을 Auth Admin API로 폐기하지 않으므로,
+  해제된 이전 장치는 JWT 만료까지 계속 동기화할 수 있고 이후 자유롭게
+  재로그인해 재등록될 수 있다.
+- **현 단계 공지**: 실제 세션 폐기는 다음 릴리스에서 Auth Admin API 경로로
+  구현한다. 지금은 클라이언트가 "모든 기기에서 로그아웃" 후 자신의 저장된
+  refresh token을 제거하고 재로그인하도록 안내하며(클라이언트 계약),
+  서버 측 활성 세션 폐기는 미완이다. 유출 대응(10절)에서 refresh token 유출 시
+  이 한계를 고려해 임계 판단한다.
 
 `devices` 행 삭제는 pull cursor acknowledgment 정보를 잃지만, 삭제된 장치가
 다시 로그인하면 `register_or_touch_device`로 재등록된다.
@@ -88,6 +155,11 @@ select public.prune_guest_ingest_diagnostics(90);
 클라이언트(anon/authenticated)는 이 함수를 직접 호출할 수 없다. service_role
 전용이다.
 
+`public.guest_rate_events`(guest ingest rate limit 카운터, 하드닝 H5)는
+진단·남용 방어용이다. 자유롭게 삭제해도 되며, 운영에서 주기적으로 오래된 행을
+정리한다(예: `delete from public.guest_rate_events
+where requested_at < now() - interval '1 day';`).
+
 ## 7. 보존 정책
 
 - 개인용 `games.deleted_at` **tombstone**: 무기한 보존. 모든 장치가 삭제
@@ -99,14 +171,35 @@ select public.prune_guest_ingest_diagnostics(90);
 
 ## 8. 백업과 복구
 
-- Supabase PITR/연속 백업을 활성화한다(hosted). 로컬은 SQL 덤프로 산출물을
-  보관한다.
+- Supabase **PITR과 일일 자동 백업은 Pro 이상 유료 플랜 전용**이다(Pro 7일, Team
+  14일, Enterprise 30일 보존). 무료 플랜은 자동 백업이 없으므로, **CLI로 정기적으로
+  SQL 덤프를 떠서 오프사이트에 보관**한다.
+
+    ```bash
+    # 주기 실행(예: cron) — 전체 DB를 SQL 덤프로 보관
+    supabase db dump -f backups/mdlogger-$(date +%Y%m%d).sql
+    ```
+
+- 로컬 개발 DB도 SQL 덤프로 산출물을 보관한다.
+
+### contributor_salt 백업·재생성(하드닝 H-8)
+
+- `analytics.contributor_salt`는 분석 pseudonym `contributor_key`의 결합 키로,
+  서버 전용(service secret 아님)이다. 백업/복원 시 반드시 함께 복원해야 한다
+  (`analytics` 스키마 덤프 포함).
+- **salt가 재생성되면(예: `db reset`, 다른 프로젝트로 덤프 미포함 복원) 모든
+  `contributor_key`가 바뀌어 종단 분석이 단절된다.** 이를 탐지하는 version
+  marker는 아직 없으므로, 복구 rehearsal(아래)에서 salt가 보존됐는지
+  `select salt from analytics.contributor_salt`로 확인한다.
+- salt 회전은 pseudonym 전체 재결합 위험이 있어 기본적으로 금지(9절).
 - **복구 rehearsal**: 백업에서 복원한 뒤 다음을 확인한다.
-  1. RLS 정책이 복원되는가(`\dp`로 acl 확인).
-  2. 서버 함수와 트리거가 유지되는가(`\df`, `\dft`).
-  3. `auth.users`/`auth.schema_migrations`가 함께 복원되는가.
-  4. 클라이언트 `last_pulled_version`이 복원된 서버보다 앞서면 full
-     reconciliation을 강제한다(결정 17.3 C).
+    1. RLS 정책이 복원되는가(`\dp`로 acl 확인, `analytics` 4개 테이블 RLS 활성 확인. 2026-08-10 로컬 rehearsal에서 유지됨).
+    2. 서버 함수와 트리거가 유지되는가(`\df`, `\dft`).
+    3. `auth.users`/`auth.schema_migrations`가 함께 복원되는가.
+    4. `pseudonym_for`가 같은 익명키를 도출하는가: `select analytics.pseudonym_for('<user_id>')` 를 복원 전·후 비교(2026-08-10 rehearsal: 일치 확인).
+    5. **`extensions` 스키마(및 pgcrypto)도 함께 복원되는가**: `pseudonym_for`는 `extensions.digest`(pgcrypto sha256)를 호출하므로, `analytics` 스키마만 복원하면 익명키 계산이 깨진다(`schema extensions does not exist`).
+    6. 클라이언트 `last_pulled_version`이 복원된 서버보다 앞서면 full
+       reconciliation을 강제한다(결정 17.3 C).
 - 복원은 데이터 파괴 사고 시에만 사용한다. 일반 결함은 forward-fix
   migration으로 대응한다(README rollback 절 참고).
 
@@ -116,10 +209,10 @@ select public.prune_guest_ingest_diagnostics(90);
   `MDLOGGER_SUPABASE_ANON_KEY`를 새 값으로 갱신하고 앱을 재배포한다. 구 키는
   폐기 전 일정 기간 병행한다.
 - **service-role key**: Edge Function 환경 변수로만 존재. 회전 시:
-  1. 새 key를 생성.
-  2. Edge Function 환경 변수(`SUPABASE_SERVICE_ROLE_KEY`)를 새 값으로 갱신.
-  3. 함수를 재배포.
-  4. 구 key를 폐기.
+    1. 새 key를 생성.
+    2. Edge Function 환경 변수(`SUPABASE_SERVICE_ROLE_KEY`)를 새 값으로 갱신.
+    3. 함수를 재배포.
+    4. 구 key를 폐기.
 - **contributor_salt**: 분석 pseudonym용 서버 전용 salt(0005). 회전하면 기존
   pseudonym이 모두 바뀌어 분석 정합성이 깨지므로 **회전하지 않는다**. 유출 시
   아래 10절을 따른다.
@@ -129,13 +222,13 @@ select public.prune_guest_ingest_diagnostics(90);
 1. **확인과 격리**: 유출된 값의 종류(anon/service-role/access/refresh,
    contributor_salt)와 범위를 확인한다.
 2. **영향 평가**:
-   - `service-role key` 유출: 데이터베이스와 관리 API에 대한 완전 접근. 즉시
-     회전(9절)하고 감사 로그를 확인한다.
-   - `refresh token` 유출: 해당 세션만 영향. `revoke_all_devices`로 이 계정의
-     모든 세션을 폐기하고 사용자에게 재로그인 안내.
-   - `anon key` 유출: 공개 값이므로 영향이 제한적. 회전만 수행.
-   - `contributor_salt` 유출: 분석 pseudonym 재결합 위험. 소유자가 판단해
-     salt 회전과 분석 dataset 재검토.
+    - `service-role key` 유출: 데이터베이스와 관리 API에 대한 완전 접근. 즉시
+      회전(9절)하고 감사 로그를 확인한다.
+    - `refresh token` 유출: 해당 세션만 영향. `revoke_all_devices`로 이 계정의
+      모든 세션을 폐기하고 사용자에게 재로그인 안내.
+    - `anon key` 유출: 공개 값이므로 영향이 제한적. 회전만 수행.
+    - `contributor_salt` 유출: 분석 pseudonym 재결합 위험. 소유자가 판단해
+      salt 회전과 분석 dataset 재검토.
 3. **차단**: service-role 유출 시 프로젝트 접근 키를 회전하고, 필요하면
    데이터베이스 접근을 제한한다.
 4. **고지**: 개인정보 유출 가능성에 따라 사용자·소유자에게 통지한다.
@@ -143,7 +236,8 @@ select public.prune_guest_ingest_diagnostics(90);
 
 ## 11. 이메일 템플릿 / rate limit
 
-이메일 템플릿(가입 확인, 비밀번호 재설정)과 auth rate limit은 Supabase
-Dashboard의 Auth 설정에서 소유자가 구성한다(로드맵 단계 11). guest ingest
-rate limit·이상 탐지·Turnstile은 `guest-ingest`의 `checkAbuseGuards` 확장
-경계에 추가한다(로드맵 12.3).
+이메일 템플릿(가입 확인, 비밀번호 재설정)은 대시보드 **Authentication → Emails**,
+auth rate limit은 **Authentication → Rate Limits**에서 구성한다(로드맵 단계 11).
+로컬 개발은 `supabase/config.toml`의 `[auth.email.template.*]`를 쓴다. 기본값으로도
+동작하며, 남용이 관찰되면 rate limit을 조정한다. guest ingest rate limit·이상
+탐지·Turnstile은 `guest-ingest`의 `checkAbuseGuards` 확장 경계에 추가한다(로드맵 12.3).

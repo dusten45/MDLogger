@@ -1,8 +1,8 @@
 # MDLogger 온라인 계정·게스트·듀얼 데이터 로드맵
 
-- 상태: 단계 0~~11 구현 완료 (R0~~R11 검토 반영), 단계 12 미착수
+- 상태: 단계 0~~11 + 하드닝 H1~~H6 구현 완료. 단계 12 미착수(진입 조건은 `docs/pre-release-hardening-roadmap.md` §10 참조)
 - 작성일: 2026-08-07
-- 최근 개정: 2026-08-09 (단계 11 계정 관리·운영 기능 및 R11 검토 결과 반영)
+- 최근 개정: 2026-08-09 (단계 11 + 하드닝 H1~H6 배포 전 하드닝 반영)
 - 대상 프로젝트: MDLogger (`mdlogger`)
 - 클라이언트: Python 3.13, PySide6, SQLite
 - 기준 백엔드: Supabase Auth + PostgreSQL + Row Level Security
@@ -1599,7 +1599,7 @@ R9 검토 결과:
 
 #### 단계 10 구현 기록 (2026-08-09)
 
-상태: **구현 완료, 검증·중복 방지·round-trip 테스트 통과**
+상태: **코어 구현 완료. UI 배선(휴대용 내보내기 버튼/import 대화상자)은 미배선 → 미완료로 취급**(하드닝 결정 H-3).
 
 구현 내용:
 
@@ -1629,7 +1629,7 @@ R10 검토 결과:
 - **credential/secret 미포함: 통과.** 아카이브에는 개인 `note` 를 포함하되 token/password/publishable key 는 포함하지 않는다. 소유권은 대상 인증 계정에만 설정한다.
 - **손상·변조·과대 안전 거부: 통과.** checksum 불일치, 손상 JSON 줄, 지원하지 않는 format version, 예상 외 추가 파일, 파일 누락을 모두 거부하고 대상 DB 를 변경하지 않는다.
 - **재가져오기 중복 없음: 통과.** 같은 아카이브를 두 번 가져오면 두 번째는 `already_imported` 로 판정되어 outbox 가 증가하지 않는다.
-- **오프라인 PC → 온라인 PC: 통과.** export → 새 DB import round-trip 의 sync_id·played_at·note·score_after 가 일치하고 outbox 에 등록된다.
+- **오프라인 PC → 온라인 PC: 테스트 범위에서 통과(한정).** export → 새 DB import round-trip 의 sync_id·played_at·note·score_after 가 일치하고 outbox 에 등록된다. 단, 하드닝 M1/H-3에 따라 **UI 배선이 없어 실사용자는 이 흐름을 사용할 수 없다.** 대체 경로로 CSV/XLSX 내보내기를 제공하고, 휴대용 아카이브 UI는 다음 릴리스로 미룬다.
 - **부분 손상 없음: 통과.** 전체 import 를 단일 transaction 으로 처리해 중간 실패 시 rollback 된다.
 
 완료 조건 결과와 단계 11 전 진입 주의점:
@@ -1768,6 +1768,8 @@ R11 검토 결과(코드 수준):
 ### 단계 12 — 최종 통합·위험 검토·점진 배포
 
 이 단계는 앞선 검토를 대신하지 않는다. 전체 시스템 경계가 연결된 상태에서 교차 위험을 다시 검증한다.
+
+**진입 조건은 `docs/pre-release-hardening-roadmap.md` §10을 참조한다.** 하드닝 RH1~RH6과 소유자 환경 검증(`supabase db reset`/`supabase test db`, Edge Function, Windows 빌드)이 선행돼야 한다.
 
 작업:
 
