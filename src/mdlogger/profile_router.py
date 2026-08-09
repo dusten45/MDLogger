@@ -2,30 +2,44 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from concurrent.futures import Future
+from datetime import datetime
+from pathlib import Path
 from threading import Thread
 from typing import Any
 
 from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QApplication, QDialog, QMessageBox, QWidget
+from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QWidget
 
 from .app_controller import AppController
 from .auth.credential_store import CredentialStoreError
 from .auth.models import AuthError, AuthErrorKind, AuthSession, SignUpResult
 from .auth.session_manager import SessionManager, SessionState
+from .guest_import import (
+    GuestImportError,
+    GuestImportResult,
+    import_guest_records,
+)
 from .profiles import ProfileContext, ProfileError, ProfileKind, ProfileManager
 from .ui.account_views import (
     AccountDialog,
     AuthWindow,
+    ConflictDialog,
+    DeviceManagementDialog,
     GuestNoticeDialog,
+    GuestRecordChoice,
     GuestRecordChoiceDialog,
 )
 from .ui.main_window import MainWindow
 
 CONSENT_VERSION = "duel-data-v1"
 ConsentPrompt = Callable[[bool, QWidget | None], bool]
-GuestRecordsPrompt = Callable[[int, QWidget | None], bool]
+GuestRecordsPrompt = Callable[[int, QWidget | None], GuestRecordChoice]
+ImportResultPrompt = Callable[
+    [GuestImportResult | None, BaseException | None, QWidget | None], bool
+]
 
 
 def _default_consent_prompt(registered: bool, parent: QWidget | None) -> bool:
@@ -33,9 +47,33 @@ def _default_consent_prompt(registered: bool, parent: QWidget | None) -> bool:
     return dialog.exec() == QDialog.DialogCode.Accepted
 
 
-def _default_guest_records_prompt(record_count: int, parent: QWidget | None) -> bool:
+def _default_guest_records_prompt(
+    record_count: int, parent: QWidget | None
+) -> GuestRecordChoice:
     dialog = GuestRecordChoiceDialog(record_count, parent)
-    return dialog.exec() == QDialog.DialogCode.Accepted
+    dialog.exec()
+    return dialog.choice
+
+
+def _default_import_result_prompt(
+    result: GuestImportResult | None,
+    error: BaseException | None,
+    parent: QWidget | None,
+) -> bool:
+    if error is not None:
+        QMessageBox.critical(
+            parent,
+            "게스트 기록 가져오기 실패",
+            f"게스트 기록을 가져오지 못했습니다. 게스트 데이터는 그대로 보존됩니다.\n{error}",
+        )
+        return False
+    if result is None:
+        return False
+    message = f"게스트 기록 {result.imported_count}건을 계정으로 가져왔습니다."
+    if result.skipped_count:
+        message += f"\n{result.skipped_count}건은 이미 계정에 있어 건너뛰었습니다."
+    QMessageBox.information(parent, "게스트 기록 가져오기 완료", message)
+    return True
 
 
 class ProfileRouter:
@@ -50,6 +88,7 @@ class ProfileRouter:
         auth_window: AuthWindow | None = None,
         consent_prompt: ConsentPrompt = _default_consent_prompt,
         guest_records_prompt: GuestRecordsPrompt = _default_guest_records_prompt,
+        import_result_prompt: ImportResultPrompt = _default_import_result_prompt,
     ) -> None:
         self._profiles = profiles
         self._app = app_controller
@@ -57,6 +96,7 @@ class ProfileRouter:
         self._auth = auth_window if auth_window is not None else AuthWindow()
         self._consent_prompt = consent_prompt
         self._guest_records_prompt = guest_records_prompt
+        self._import_result_prompt = import_result_prompt
         self._pending: set[Future[Any]] = set()
         self._auth_generation = 0
         self._closing = False
@@ -183,13 +223,58 @@ class ProfileRouter:
         parent = self._main_window()
         registered = profile.kind is ProfileKind.REGISTERED
         status = self._profile_status(profile)
+        sync_status = self._app.sync_status
+        conflict_count = (
+            int(getattr(sync_status, "conflict_count", 0))
+            if sync_status is not None
+            else 0
+        )
         dialog = AccountDialog(
-            profile.display_name, status, registered=registered, parent=parent
+            profile.display_name,
+            status,
+            registered=registered,
+            conflict_count=conflict_count,
+            parent=parent,
         )
         dialog.login_requested.connect(lambda: self._open_auth_from_account(dialog))
         dialog.logout_requested.connect(lambda: self._logout_from_dialog(dialog))
         dialog.sync_requested.connect(lambda: self._app.request_sync(retry_failed=True))
+        dialog.conflicts_requested.connect(lambda: self._open_conflicts(dialog))
+        dialog.export_requested.connect(lambda: self._export_account_data(dialog))
+        dialog.sign_out_all_requested.connect(
+            lambda: self._sign_out_all_devices(dialog)
+        )
+        dialog.delete_account_requested.connect(lambda: self._delete_account(dialog))
+        dialog.manage_devices_requested.connect(lambda: self._manage_devices(dialog))
         dialog.exec()
+
+    def _open_conflicts(self, account_dialog: QDialog) -> None:
+        account_dialog.hide()
+        parent = self._main_window()
+        try:
+            for conflict in self._app.list_conflicts():
+                dialog = ConflictDialog(conflict, parent)
+                if dialog.exec() != QDialog.DialogCode.Accepted:
+                    break
+                if dialog.resolution is not None:
+                    try:
+                        self._app.resolve_conflict(
+                            conflict.id,
+                            dialog.resolution,
+                            dialog.merged_payload,
+                            expected_remote_version=int(
+                                conflict.remote_payload["change_version"]
+                            ),
+                        )
+                    except (KeyError, TypeError, ValueError) as error:
+                        QMessageBox.information(
+                            parent,
+                            "충돌 정보 갱신 필요",
+                            f"{error}\n최신 충돌 내용을 다시 확인해 주세요.",
+                        )
+                        break
+        finally:
+            account_dialog.accept()
 
     def close(self) -> None:
         self._closing = True
@@ -390,21 +475,26 @@ class ProfileRouter:
         if not self._ensure_consent(registered=True):
             return
         current = self._app.current_profile
+        guest_choice = GuestRecordChoice.KEEP
         if (
             current is not None
             and current.kind is ProfileKind.GUEST
             and self._app.current_game_count > 0
-            and not self._guest_records_prompt(
+        ):
+            guest_choice = self._guest_records_prompt(
                 self._app.current_game_count, self._main_window()
             )
-        ):
-            return
+            if guest_choice is GuestRecordChoice.LATER:
+                return
         profile = self._profiles.registered(
             session.account.user_id,
             session.account.email,
             session_state="authenticated",
         )
         previous = self._app.current_profile
+        if guest_choice is GuestRecordChoice.IMPORT and current is not None:
+            if not self._import_guest_records(current, profile):
+                return
         if not self._open_profile(profile):
             return
         sessions = self._sessions
@@ -420,6 +510,17 @@ class ProfileRouter:
             self.show_auth(f"{error} OS 보안 저장소를 확인한 뒤 다시 시도해 주세요.")
             return
         self._auth.hide()
+
+    def _import_guest_records(
+        self, guest: ProfileContext, registered: ProfileContext
+    ) -> bool:
+        """게스트 기록을 등록 계정 DB로 비파괴 import하고 결과를 알린다."""
+        try:
+            self._profiles.prepare_database(registered)
+            result = import_guest_records(guest.database_path, registered.database_path)
+        except (GuestImportError, ProfileError, OSError) as error:
+            return self._import_result_prompt(None, error, self._main_window())
+        return self._import_result_prompt(result, None, self._main_window())
 
     def _ensure_consent(self, *, registered: bool) -> bool:
         if self._profiles.has_data_consent(CONSENT_VERSION):
@@ -493,6 +594,150 @@ class ProfileRouter:
                 )
                 return
         dialog.accept()
+        self._open_profile(self._profiles.guest())
+
+    def _export_account_data(self, dialog: AccountDialog) -> None:
+        """본인 개인 데이터를 파일로 내보낸다(로드맵 12.4)."""
+        sessions = self._sessions
+        if sessions is None:
+            QMessageBox.information(
+                dialog, "데이터 내보내기", "온라인 계정 설정이 없습니다."
+            )
+            return
+        try:
+            data = sessions.export_account_data()
+        except AuthError as error:
+            QMessageBox.warning(
+                dialog, "데이터 내보내기 실패", self._auth_error_message(error)
+            )
+            return
+
+        default_name = (
+            f"mdlogger-account-data-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+        )
+        path, _ = QFileDialog.getSaveFileName(
+            dialog, "내 데이터 저장", default_name, "JSON 문서 (*.json)"
+        )
+        if not path:
+            return
+        try:
+            payload = {
+                "format": "mdlogger-account-data",
+                "exported_at": datetime.now().astimezone().isoformat(),
+                "profile": data.profile,
+                "games": list(data.games),
+                "devices": [
+                    {
+                        "id": device.id,
+                        "installation_id": device.installation_id,
+                        "display_name": device.display_name,
+                        "client_version": device.client_version,
+                        "created_at": device.created_at,
+                        "last_seen_at": device.last_seen_at,
+                        "last_acknowledged_version": device.last_acknowledged_version,
+                    }
+                    for device in data.devices
+                ],
+            }
+            Path(path).write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        except OSError as error:
+            QMessageBox.critical(
+                dialog, "데이터 내보내기 실패", f"파일을 저장하지 못했습니다.\n{error}"
+            )
+            return
+        QMessageBox.information(
+            dialog,
+            "데이터 내보내기 완료",
+            f"계정 개인 데이터를 저장했습니다.\n{path}",
+        )
+
+    def _sign_out_all_devices(self, dialog: AccountDialog) -> None:
+        """모든 장치에서 로그아웃한다(로드맵 단계 11)."""
+        sessions = self._sessions
+        if sessions is None:
+            return
+        answer = QMessageBox.question(
+            dialog,
+            "모든 기기에서 로그아웃",
+            "모든 기기에서 이 계정을 로그아웃합니다. 이 기기의 로컬 기록은 유지됩니다.\n"
+            "계속할까요?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            count = sessions.sign_out_all_devices()
+        except AuthError as error:
+            QMessageBox.warning(
+                dialog, "모든 기기 로그아웃 실패", self._auth_error_message(error)
+            )
+            return
+        QMessageBox.information(
+            dialog,
+            "모든 기기 로그아웃 완료",
+            f"{count}대의 기기에서 로그아웃했습니다.\n다른 기기는 다음 시작 시 다시 로그인해야 합니다.",
+        )
+
+    def _manage_devices(self, dialog: AccountDialog) -> None:
+        """등록된 장치를 나열하고 특정 장치를 해제한다(로드맵 단계 11)."""
+        sessions = self._sessions
+        if sessions is None:
+            return
+        try:
+            devices = sessions.list_devices()
+        except AuthError as error:
+            QMessageBox.warning(
+                dialog, "장치 조회 실패", self._auth_error_message(error)
+            )
+            return
+        device_dialog = DeviceManagementDialog(devices, dialog)
+        if device_dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        device_id = device_dialog.revoke_requested
+        if device_id is None:
+            return
+        try:
+            sessions.revoke_device(device_id)
+        except AuthError as error:
+            QMessageBox.warning(
+                dialog, "장치 해제 실패", self._auth_error_message(error)
+            )
+            return
+        QMessageBox.information(dialog, "장치 해제 완료", "장치가 해제되었습니다.")
+
+    def _delete_account(self, dialog: AccountDialog) -> None:
+        """계정 삭제를 서버에 요청한다(로드맵 단계 11, 결정 4)."""
+        sessions = self._sessions
+        if sessions is None:
+            return
+        answer = QMessageBox.warning(
+            dialog,
+            "계정 삭제",
+            "계정을 삭제하면 서버의 개인 기록(게임, 메모, 장치 정보)이 영구 삭제됩니다.\n"
+            "이 기기의 로컬 데이터는 서버와 별개로 남아 있습니다.\n"
+            "분석용 비식별 기록은 유지될 수 있습니다(로드맵 9.3).\n\n정말 삭제할까요?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            sessions.delete_account()
+        except AuthError as error:
+            QMessageBox.critical(
+                dialog, "계정 삭제 실패", self._auth_error_message(error)
+            )
+            return
+        dialog.accept()
+        QMessageBox.information(
+            dialog,
+            "계정 삭제 완료",
+            "서버 계정이 삭제되었습니다. 로컬 데이터는 그대로 유지됩니다.",
+        )
         self._open_profile(self._profiles.guest())
 
     def _show_auth_error(self, error: AuthError, email: str) -> None:

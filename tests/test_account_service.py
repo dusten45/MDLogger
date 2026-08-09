@@ -148,6 +148,124 @@ def test_request_password_reset_uses_recover_endpoint():
     assert request["body"] == {"email": "a@test.local"}
 
 
+def export_payload() -> dict:
+    return {
+        "user_id": USER_ID,
+        "exported_at": "2026-08-09T00:00:00Z",
+        "profile": {"display_name": "Alice"},
+        "games": [{"id": "g1", "result": "win"}],
+        "devices": [
+            {
+                "id": "d1",
+                "installation_id": "11111111-1111-4111-8111-111111111111",
+                "display_name": "PC A",
+                "client_version": "0.2.0",
+                "created_at": "2026-08-07T00:00:00Z",
+                "last_seen_at": "2026-08-09T00:00:00Z",
+                "last_acknowledged_version": 7,
+            }
+        ],
+    }
+
+
+def test_export_account_data_calls_rpc_and_parses_export():
+    service, transport = make_service(json_response(200, export_payload()))
+
+    data = service.export_account_data("access-1")
+
+    request = transport.requests[0]
+    assert request["url"].endswith("/rest/v1/rpc/export_account_data")
+    assert request["headers"]["Authorization"] == "Bearer access-1"
+    assert list(data.games) == [{"id": "g1", "result": "win"}]
+    assert data.profile == {"display_name": "Alice"}
+    assert len(data.devices) == 1
+    assert data.devices[0].display_name == "PC A"
+    assert data.devices[0].last_acknowledged_version == 7
+
+
+def test_list_devices_parses_rows():
+    service, transport = make_service(json_response(200, export_payload()["devices"]))
+
+    devices = service.list_devices("access-1")
+
+    assert len(devices) == 1
+    assert devices[0].installation_id == "11111111-1111-4111-8111-111111111111"
+    assert devices[0].client_version == "0.2.0"
+
+
+def test_revoke_device_posts_installation_id():
+    service, transport = make_service(json_response(200, {}))
+
+    service.revoke_device("access-1", "11111111-1111-4111-8111-111111111111")
+
+    request = transport.requests[0]
+    assert request["url"].endswith("/rest/v1/rpc/revoke_device")
+    assert request["body"] == {
+        "installation_id": "11111111-1111-4111-8111-111111111111"
+    }
+
+
+def test_sign_out_all_devices_returns_revoked_count():
+    service, transport = make_service(json_response(200, {"revoked_devices": 3}))
+
+    count = service.sign_out_all_devices("access-1")
+
+    assert count == 3
+    assert transport.requests[0]["url"].endswith("/rest/v1/rpc/revoke_all_devices")
+
+
+def test_delete_account_calls_edge_function():
+    service, transport = make_service(
+        json_response(
+            200,
+            {
+                "code": "account_deleted",
+                "user_id": USER_ID,
+                "deleted_games": 12,
+                "deleted_devices": 2,
+                "deleted_profiles": 1,
+                "deleted_auth_user": USER_ID,
+            },
+        )
+    )
+
+    result = service.delete_account("access-1")
+
+    request = transport.requests[0]
+    assert request["url"].endswith("/functions/v1/account-delete")
+    assert request["headers"]["Authorization"] == "Bearer access-1"
+    assert result.deleted_games == 12
+    assert result.deleted_devices == 2
+    assert result.deleted_auth_user is True
+
+
+def test_delete_account_forbids_target_mismatch():
+    service, transport = make_service(json_response(403, {"code": "target_mismatch"}))
+
+    with pytest.raises(AuthError) as exc_info:
+        service.delete_account("access-1")
+
+    assert exc_info.value.code == "target_mismatch"
+
+
+def test_delete_account_rejects_malformed_success():
+    service, transport = make_service(json_response(200, {"code": "other"}))
+
+    with pytest.raises(AuthError) as exc_info:
+        service.delete_account("access-1")
+
+    assert exc_info.value.kind is AuthErrorKind.SERVER_REJECTED
+
+
+def test_account_operations_require_missing_session_raises_token_expired():
+    service, transport = make_service(json_response(401, {}))
+
+    with pytest.raises(AuthError) as exc_info:
+        service.list_devices("access-1")
+
+    assert exc_info.value.kind is AuthErrorKind.TOKEN_EXPIRED
+
+
 @pytest.mark.parametrize(
     ("status", "error_code", "expected_kind"),
     [

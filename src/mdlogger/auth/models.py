@@ -73,3 +73,39 @@ class SignUpResult:
     @property
     def needs_email_verification(self) -> bool:
         return self.session is None and not self.account.email_verified
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceInfo:
+    """등록된 장치 한 대의 비민감 표시 정보(로드맵 단계 11)."""
+
+    id: str
+    installation_id: str
+    display_name: str | None
+    client_version: str | None
+    created_at: str | None
+    last_seen_at: str | None
+    last_acknowledged_version: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountExportData:
+    """사용자가 내보낼 수 있는 개인 데이터(로드맵 12.4).
+
+    분석용 비식별 데이터(duel_observations)는 포함하지 않는다.
+    사용자 ID를 제외한 서버가 반환한 개인 데이터를 담는다.
+    """
+
+    games: tuple[dict, ...]
+    devices: tuple[DeviceInfo, ...]
+    profile: dict | None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountDeletionResult:
+    """계정 삭제 서버 처리 요약(로드맵 단계 11)."""
+
+    deleted_games: int
+    deleted_devices: int
+    deleted_profiles: int
+    deleted_auth_user: bool

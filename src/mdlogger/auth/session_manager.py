@@ -19,7 +19,15 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from .credential_store import CredentialStore, CredentialStoreError
-from .models import AuthError, AuthErrorKind, AuthSession, SignUpResult
+from .models import (
+    AccountDeletionResult,
+    AccountExportData,
+    AuthError,
+    AuthErrorKind,
+    AuthSession,
+    DeviceInfo,
+    SignUpResult,
+)
 from .service import AccountService
 
 
@@ -166,6 +174,50 @@ class SessionManager:
         self._store.delete_refresh_token(account_id)
         self._snapshot = SessionSnapshot(state=SessionState.SIGNED_OUT)
         return self._snapshot
+
+    def export_account_data(self) -> AccountExportData:
+        """본인 개인 데이터를 내려받는다. 인증된 세션이 필요하다."""
+        session = self._require_session()
+        return self._service.export_account_data(session.tokens.access_token)
+
+    def list_devices(self) -> list[DeviceInfo]:
+        """등록된 장치 목록을 조회한다."""
+        session = self._require_session()
+        return self._service.list_devices(session.tokens.access_token)
+
+    def revoke_device(self, installation_id: str) -> None:
+        """특정 장치를 해제한다."""
+        session = self._require_session()
+        self._service.revoke_device(session.tokens.access_token, installation_id)
+
+    def sign_out_all_devices(self) -> int:
+        """모든 장치에서 로그아웃하고 해제된 장치 수를 돌려준다.
+
+        이 장치의 로컬 세션은 유지한다. 서버에서 다른 장치와 이 장치의
+        refresh token이 폐기되므로 다음 시작 시 재로그인이 필요하다.
+        """
+        session = self._require_session()
+        return self._service.sign_out_all_devices(session.tokens.access_token)
+
+    def delete_account(self) -> AccountDeletionResult:
+        """계정 삭제를 요청한다(클라이언트 secret 없이 서버에서 수행).
+
+        성공하면 저장된 refresh token을 제거하고 세션을 종료한다.
+        """
+        session = self._require_session()
+        result = self._service.delete_account(session.tokens.access_token)
+        self._store.delete_refresh_token(session.account.user_id)
+        self._snapshot = SessionSnapshot(state=SessionState.SIGNED_OUT)
+        return result
+
+    def _require_session(self) -> AuthSession:
+        session = self._snapshot.session
+        if session is None or session.tokens.access_token is None:
+            raise AuthError(
+                AuthErrorKind.TOKEN_EXPIRED,
+                "세션이 만료되었습니다. 다시 로그인해 주세요.",
+            )
+        return session
 
     def _remember_session(self, session: AuthSession) -> None:
         self._store.save_refresh_token(

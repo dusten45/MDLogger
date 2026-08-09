@@ -11,12 +11,27 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QLabel, QLineEdit
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QDialog,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTableWidget,
+)
 
+from mdlogger.auth.models import DeviceInfo
 from mdlogger.game_service import GameService
-from mdlogger.game_sync.models import SyncPhase, SyncStatus
+from mdlogger.game_sync.models import SyncConflict, SyncPhase, SyncStatus
 from mdlogger.profiles import ProfileManager
-from mdlogger.ui.account_views import AuthWindow, GuestNoticeDialog
+from mdlogger.ui.account_views import (
+    AccountDialog,
+    AuthWindow,
+    ConflictDialog,
+    DeviceManagementDialog,
+    GuestNoticeDialog,
+)
 from mdlogger.ui.main_window import MainWindow
 from mdlogger.ui.theme import DARK_COLORS, build_palette
 
@@ -106,6 +121,188 @@ def test_result_header_uses_dark_theme_palette_instead_of_fixed_light_text(
     window.close_profile_windows()
     games.close()
     qapp.setPalette(original_palette)
+
+
+def test_conflict_dialog_compares_both_versions_and_supports_field_selection(
+    qapp: QApplication,
+):
+    conflict = SyncConflict(
+        id=1,
+        game_sync_id="11111111-1111-4111-8111-111111111111",
+        local_payload={"note": "이 장치 메모", "turns": 4, "deleted_at": None},
+        remote_payload={
+            "note": "서버 메모",
+            "turns": 4,
+            "deleted_at": None,
+            "change_version": 7,
+        },
+        base_remote_version=6,
+    )
+    dialog = ConflictDialog(conflict)
+    dialog.show()
+    qapp.processEvents()
+
+    table = dialog.findChild(QTableWidget)
+    assert table is not None
+    assert table.columnCount() == 4
+    assert table.accessibleName() == "충돌 필드 비교"
+    choice = dialog.findChild(QComboBox)
+    assert choice is not None
+    choice.setCurrentIndex(1)
+    apply_button = next(
+        button
+        for button in dialog.findChildren(QPushButton)
+        if button.text() == "선택 내용 적용"
+    )
+    apply_button.click()
+
+    assert dialog.resolution == "merged"
+    assert dialog.merged_payload is not None
+    assert dialog.merged_payload["note"] == "서버 메모"
+    dialog.close()
+
+
+def test_conflict_dialog_does_not_collapse_none_and_literal_display_text(
+    qapp: QApplication,
+):
+    conflict = SyncConflict(
+        id=2,
+        game_sync_id="22222222-2222-4222-8222-222222222222",
+        local_payload={"note": None},
+        remote_payload={"note": "없음", "change_version": 8},
+        base_remote_version=7,
+    )
+    dialog = ConflictDialog(conflict)
+    table = dialog.findChild(QTableWidget)
+
+    assert table is not None
+    assert table.rowCount() == 1
+    local_item = table.item(0, 1)
+    remote_item = table.item(0, 2)
+    assert local_item is not None
+    assert remote_item is not None
+    assert local_item.text() == "없음"
+    assert remote_item.text() == "없음"
+    dialog.close()
+
+
+def test_account_dialog_exposes_color_independent_conflict_action(
+    qapp: QApplication,
+):
+    dialog = AccountDialog(
+        "user@example.com",
+        "충돌 2건 · 확인 필요",
+        registered=True,
+        conflict_count=2,
+    )
+    buttons = {button.text(): button for button in dialog.findChildren(QPushButton)}
+
+    assert "동기화 충돌 2건 해결" in buttons
+    assert "충돌 2건" in dialog.findChildren(QLabel)[1].text()
+    assert "2건" in buttons["동기화 충돌 2건 해결"].accessibleName()
+    dialog.close()
+
+
+def test_account_dialog_reserves_height_for_wrapped_text(qapp: QApplication):
+    dialog = AccountDialog(
+        "게스트",
+        "게스트 · 동기화됨",
+        registered=False,
+    )
+    layout = dialog.layout()
+
+    assert layout is not None
+    assert dialog.width() == 420
+    assert dialog.minimumHeight() >= layout.heightForWidth(dialog.minimumWidth())
+    dialog.close()
+
+
+def test_device_management_dialog_lists_devices_and_revokes_selected(
+    qapp: QApplication,
+):
+    device = DeviceInfo(
+        id="d1",
+        installation_id="11111111-1111-4111-8111-111111111111",
+        display_name="PC A",
+        client_version="0.2.0",
+        created_at="2026-08-07T00:00:00Z",
+        last_seen_at="2026-08-09T00:00:00Z",
+        last_acknowledged_version=7,
+    )
+    dialog = DeviceManagementDialog([device])
+    dialog.show()
+    qapp.processEvents()
+
+    revoke_button = next(
+        button for button in dialog.findChildren(QPushButton) if button.text() == "해제"
+    )
+    revoke_button.click()
+
+    assert dialog.revoke_requested == "d1"
+    assert dialog.result() == QDialog.DialogCode.Accepted
+    dialog.close()
+
+
+def test_device_management_dialog_shows_empty_state(qapp: QApplication):
+    dialog = DeviceManagementDialog([])
+    text = " ".join(label.text() for label in dialog.findChildren(QLabel))
+    assert "등록된 장치가 없습니다" in text
+    dialog.close()
+
+
+def test_account_dialog_exposes_operation_buttons_only_for_registered(
+    qapp: QApplication,
+):
+    registered = AccountDialog(
+        "user@example.com",
+        "로그인됨",
+        registered=True,
+    )
+    registered_buttons = {
+        button.text(): button for button in registered.findChildren(QPushButton)
+    }
+    assert "모든 기기에서 로그아웃" in registered_buttons
+    assert "내 데이터 내보내기" in registered_buttons
+    assert "계정 삭제" in registered_buttons
+    assert "장치 관리" in registered_buttons
+    assert registered_buttons["계정 삭제"].property("role") == "danger"
+    registered.close()
+
+    guest = AccountDialog(
+        "게스트",
+        "게스트 · 로컬 저장",
+        registered=False,
+    )
+    guest_buttons = {
+        button.text(): button for button in guest.findChildren(QPushButton)
+    }
+    assert "모든 기기에서 로그아웃" not in guest_buttons
+    assert "내 데이터 내보내기" not in guest_buttons
+    assert "계정 삭제" not in guest_buttons
+    assert "장치 관리" not in guest_buttons
+    guest.close()
+
+
+def test_account_dialog_emits_operation_signals(qapp: QApplication):
+    dialog = AccountDialog(
+        "user@example.com",
+        "로그인됨",
+        registered=True,
+    )
+    emitted: list[str] = []
+    dialog.export_requested.connect(lambda: emitted.append("export"))
+    dialog.sign_out_all_requested.connect(lambda: emitted.append("sign_out_all"))
+    dialog.delete_account_requested.connect(lambda: emitted.append("delete"))
+    dialog.manage_devices_requested.connect(lambda: emitted.append("devices"))
+    buttons = {button.text(): button for button in dialog.findChildren(QPushButton)}
+
+    buttons["내 데이터 내보내기"].click()
+    buttons["모든 기기에서 로그아웃"].click()
+    buttons["계정 삭제"].click()
+    buttons["장치 관리"].click()
+
+    assert emitted == ["export", "sign_out_all", "delete", "devices"]
+    dialog.close()
 
 
 def test_main_window_shows_profile_and_local_status_without_changing_result_flow(

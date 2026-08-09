@@ -13,11 +13,14 @@ from ..remote.client import HttpResponse, JsonHttpClient
 from ..remote.config import RemoteConfig
 from ..remote.errors import NetworkError, ResponseFormatError
 from .models import (
+    AccountDeletionResult,
+    AccountExportData,
     AccountInfo,
     AuthError,
     AuthErrorKind,
     AuthSession,
     AuthTokens,
+    DeviceInfo,
     SignUpResult,
 )
 from .service import AccountService
@@ -99,6 +102,177 @@ class SupabaseAccountService(AccountService):
 
     def request_password_reset(self, email: str) -> None:
         self._post(f"{self._config.auth_url}/recover", {"email": email})
+
+    def export_account_data(self, access_token: str) -> AccountExportData:
+        body = self._rpc("export_account_data", None, access_token)
+        return self._export_from_body(body)
+
+    def list_devices(self, access_token: str) -> list[DeviceInfo]:
+        body = self._rpc("list_user_devices", None, access_token)
+        if not isinstance(body, list):
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "장치 목록 응답 형식이 올바르지 않습니다.",
+            )
+        try:
+            return [self._device_from_row(row) for row in body]
+        except (KeyError, TypeError, ValueError) as error:
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "장치 목록 응답 형식이 올바르지 않습니다.",
+            ) from error
+
+    def revoke_device(self, access_token: str, installation_id: str) -> None:
+        self._rpc("revoke_device", {"installation_id": installation_id}, access_token)
+
+    def sign_out_all_devices(self, access_token: str) -> int:
+        body = self._rpc("revoke_all_devices", None, access_token)
+        if not isinstance(body, dict):
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "장치 해제 응답 형식이 올바르지 않습니다.",
+            )
+        try:
+            return int(body.get("revoked_devices", 0))
+        except (TypeError, ValueError) as error:
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "장치 해제 응답 형식이 올바르지 않습니다.",
+            ) from error
+
+    def delete_account(
+        self, access_token: str, user_id: str | None = None
+    ) -> AccountDeletionResult:
+        payload = {"user_id": user_id} if user_id is not None else None
+        response = self._client.post_json(
+            f"{self._config.functions_url}/account-delete",
+            payload,
+            {
+                "apikey": self._config.anon_key,
+                "Authorization": f"Bearer {access_token}",
+            },
+        )
+        if response.status == 401:
+            raise AuthError(
+                AuthErrorKind.TOKEN_EXPIRED,
+                "세션이 만료되었습니다. 다시 로그인해 주세요.",
+            )
+        if response.status == 403:
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "이 계정은 이 장치에서 삭제할 수 없습니다.",
+                code="target_mismatch",
+            )
+        if response.status >= 400:
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                f"계정 삭제 요청이 거부되었습니다. (HTTP {response.status})",
+            )
+        try:
+            body = response.json()
+        except ResponseFormatError as error:
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED, "계정 삭제 응답을 해석할 수 없습니다."
+            ) from error
+        if not isinstance(body, dict) or body.get("code") != "account_deleted":
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "계정 삭제 응답 형식이 올바르지 않습니다.",
+            )
+        try:
+            return AccountDeletionResult(
+                deleted_games=int(body.get("deleted_games", 0)),
+                deleted_devices=int(body.get("deleted_devices", 0)),
+                deleted_profiles=int(body.get("deleted_profiles", 0)),
+                deleted_auth_user=bool(body.get("deleted_auth_user")),
+            )
+        except (TypeError, ValueError) as error:
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "계정 삭제 응답 형식이 올바르지 않습니다.",
+            ) from error
+
+    def _rpc(
+        self,
+        function_name: str,
+        payload: dict[str, Any] | None,
+        access_token: str,
+    ) -> Any:
+        headers = {
+            "apikey": self._config.anon_key,
+            "Authorization": f"Bearer {access_token}",
+        }
+        try:
+            response = self._client.post_json(
+                f"{self._config.rest_url}/rpc/{function_name}", payload, headers
+            )
+        except NetworkError as error:
+            raise AuthError(
+                AuthErrorKind.NETWORK, "서버에 연결할 수 없습니다."
+            ) from error
+        if response.status == 401:
+            raise AuthError(
+                AuthErrorKind.TOKEN_EXPIRED,
+                "세션이 만료되었습니다. 다시 로그인해 주세요.",
+            )
+        if response.status >= 400:
+            raise self._classify_error(response)
+        try:
+            return response.json()
+        except ResponseFormatError as error:
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED, "서버 응답을 해석할 수 없습니다."
+            ) from error
+
+    @staticmethod
+    def _device_from_row(row: Any) -> DeviceInfo:
+        if not isinstance(row, dict):
+            raise TypeError
+        acknowledged = row.get("last_acknowledged_version")
+        return DeviceInfo(
+            id=str(row["id"]),
+            installation_id=str(row["installation_id"]),
+            display_name=row.get("display_name"),
+            client_version=row.get("client_version"),
+            created_at=row.get("created_at"),
+            last_seen_at=row.get("last_seen_at"),
+            last_acknowledged_version=int(acknowledged)
+            if acknowledged is not None
+            else None,
+        )
+
+    @staticmethod
+    def _export_from_body(body: Any) -> AccountExportData:
+        if not isinstance(body, dict):
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "데이터 내보내기 응답 형식이 올바르지 않습니다.",
+            )
+        try:
+            games = body.get("games")
+            devices = body.get("devices")
+            games = tuple(games) if isinstance(games, list) else ()
+            device_rows = devices if isinstance(devices, list) else []
+        except TypeError as error:
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "데이터 내보내기 응답 형식이 올바르지 않습니다.",
+            ) from error
+        try:
+            device_infos = tuple(
+                SupabaseAccountService._device_from_row(row) for row in device_rows
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                "데이터 내보내기 응답 형식이 올바르지 않습니다.",
+            ) from error
+        profile = body.get("profile")
+        return AccountExportData(
+            games=games,
+            devices=device_infos,
+            profile=profile if isinstance(profile, dict) else None,
+        )
 
     def _post(
         self,

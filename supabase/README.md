@@ -14,7 +14,9 @@
 | `migrations/0004_change_version.sql`       | 서버 부여 `change_version` sequence와 서버 관리 필드 강제 트리거              |
 | `migrations/0005_analytics_projection.sql` | `analytics` 스키마, 등록 games projection 트리거, 게스트용 제한된 ingest 함수 |
 | `migrations/0006_account_operations.sql`   | 계정 삭제용 서버 함수 인터페이스(`delete_account_data`)                       |
+| `migrations/0010_account_operations.sql`   | 단계 11: 계정 데이터 내보내기·장치 해제·guest ingest 진단 정리                |
 | `functions/guest-ingest/`                  | Guest Ingest Edge Function(남용 방어 확장 경계 포함)                          |
+| `functions/account-delete/`                | 계정 삭제 Edge Function(service_role, Auth Admin)                             |
 | `tests/database/`                          | pgTAP 기반 R4 공격 테스트                                                     |
 
 ## 보안 경계 요약
@@ -83,7 +85,8 @@ checkout이나 SELinux context 복원 후 함수 source가 다시 `user_home_t`�
    적용 대상으로 한다.
 2. 소유자 장비에서만 `supabase link --project-ref <production-ref>` 후
    `supabase db push`로 migration을 적용하고,
-   `supabase functions deploy guest-ingest`로 Edge Function을 배포한다.
+   `supabase functions deploy guest-ingest account-delete`로 Edge Function을
+   배포한다.
 3. CI/개발 장비에 production 자격 증명을 두지 않는다.
 4. hosted staging은 운영 규모와 위험이 커진 뒤 같은 절차로 추가한다.
 

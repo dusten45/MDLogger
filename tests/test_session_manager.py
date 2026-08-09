@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import pytest
+
 from mdlogger.auth.credential_store import InMemoryCredentialStore
 from mdlogger.auth.models import (
+    AccountDeletionResult,
+    AccountExportData,
     AccountInfo,
     AuthError,
     AuthErrorKind,
     AuthSession,
     AuthTokens,
+    DeviceInfo,
     SignUpResult,
 )
 from mdlogger.auth.service import AccountService
@@ -64,6 +69,23 @@ class FakeAccountService(AccountService):
         raise NotImplementedError
 
     def request_password_reset(self, email: str) -> None:
+        raise NotImplementedError
+
+    def export_account_data(self, access_token: str) -> AccountExportData:
+        raise NotImplementedError
+
+    def list_devices(self, access_token: str) -> list[DeviceInfo]:
+        raise NotImplementedError
+
+    def revoke_device(self, access_token: str, installation_id: str) -> None:
+        raise NotImplementedError
+
+    def sign_out_all_devices(self, access_token: str) -> int:
+        raise NotImplementedError
+
+    def delete_account(
+        self, access_token: str, user_id: str | None = None
+    ) -> AccountDeletionResult:
         raise NotImplementedError
 
 
@@ -200,3 +222,18 @@ def test_sign_out_removes_token_even_when_server_call_fails():
 
     assert snapshot.state is SessionState.SIGNED_OUT
     assert store.load_refresh_token(USER_ID) is None
+
+
+def test_account_operations_require_active_session():
+    manager, service, store = make_manager()
+
+    with pytest.raises(AuthError) as exc_info:
+        manager.export_account_data()
+    assert exc_info.value.kind is AuthErrorKind.TOKEN_EXPIRED
+
+    with pytest.raises(AuthError):
+        manager.list_devices()
+    with pytest.raises(AuthError):
+        manager.sign_out_all_devices()
+    with pytest.raises(AuthError):
+        manager.delete_account()

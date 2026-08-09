@@ -8,16 +8,23 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDialog,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
     QStackedWidget,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
+from ..auth.models import DeviceInfo
+from ..game_sync.models import SyncConflict
+from ..remote.games import PRIVATE_GAME_FIELDS
 from .theme import METRICS, set_style_property
 
 
@@ -27,6 +34,7 @@ class AuthMode(StrEnum):
 
 
 class GuestRecordChoice(StrEnum):
+    IMPORT = "import"
     KEEP = "keep"
     LATER = "later"
 
@@ -462,19 +470,18 @@ class GuestRecordChoiceDialog(QDialog):
         layout.addWidget(title)
 
         description = QLabel(
-            "이번 단계에서는 기록을 자동으로 합치지 않습니다. 게스트 원본은 그대로 "
-            "보존되며, 가져오기 기능이 제공될 때 현재 계정으로 안전하게 옮길 수 있습니다."
+            "게스트 기록을 현재 계정으로 가져오거나, 게스트에 그대로 보관한 채 전환할 "
+            "수 있습니다. 원본 게스트 기록은 어떤 경우에도 삭제되지 않습니다."
         )
         description.setWordWrap(True)
         layout.addWidget(description)
 
-        unavailable = QPushButton("현재 계정으로 가져오기 (준비 중)")
-        unavailable.setEnabled(False)
-        unavailable.setToolTip("비파괴 가져오기 기능이 준비된 뒤 사용할 수 있습니다.")
-        layout.addWidget(unavailable)
+        import_button = QPushButton("현재 계정으로 가져오기")
+        import_button.setProperty("role", "primary")
+        import_button.clicked.connect(lambda: self._finish(GuestRecordChoice.IMPORT))
+        layout.addWidget(import_button)
 
         keep = QPushButton("게스트에 보관하고 계정으로 전환")
-        keep.setProperty("role", "primary")
         keep.clicked.connect(lambda: self._finish(GuestRecordChoice.KEEP))
         layout.addWidget(keep)
 
@@ -487,12 +494,200 @@ class GuestRecordChoiceDialog(QDialog):
         self.accept()
 
 
+class ConflictDialog(QDialog):
+    """양쪽 값을 나란히 비교하고 충돌 해결 payload를 선택한다."""
+
+    _FIELD_LABELS = {
+        "played_at": "플레이 시각",
+        "result": "결과",
+        "turn_order": "선후공",
+        "my_deck": "내 덱",
+        "opp_deck": "상대 덱",
+        "turns": "턴 수",
+        "end_reason": "종료 방식",
+        "score_after": "경기 후 점수",
+        "note": "개인 메모",
+        "deleted_at": "삭제 상태",
+    }
+
+    def __init__(self, conflict: SyncConflict, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("동기화 충돌 해결")
+        self.setModal(True)
+        self.resize(760, 520)
+        self.setMinimumSize(620, 420)
+        self.resolution: str | None = None
+        self.merged_payload: dict | None = None
+        self._conflict = conflict
+        self._choices: dict[str, QComboBox] = {}
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(
+            METRICS.space_6, METRICS.space_6, METRICS.space_6, METRICS.space_6
+        )
+        layout.setSpacing(METRICS.space_3)
+        title = QLabel("다른 장치와 이 장치에서 같은 기록을 변경했습니다.")
+        title.setProperty("role", "title")
+        title.setWordWrap(True)
+        layout.addWidget(title)
+        help_text = QLabel(
+            "어느 값도 자동으로 버리지 않습니다. 전체 버전을 선택하거나, "
+            "필드별 선택 내용을 확인한 뒤 적용하세요."
+        )
+        help_text.setProperty("tone", "muted")
+        help_text.setWordWrap(True)
+        layout.addWidget(help_text)
+
+        fields = [*PRIVATE_GAME_FIELDS, "deleted_at"]
+        differing = [
+            field
+            for field in fields
+            if conflict.local_payload.get(field) != conflict.remote_payload.get(field)
+        ]
+        table = QTableWidget(len(differing), 4)
+        table.setHorizontalHeaderLabels(["필드", "이 장치", "서버", "적용할 값"])
+        table.setAccessibleName("충돌 필드 비교")
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.ResizeToContents
+        )
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        table.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.ResizeToContents
+        )
+        for row, field in enumerate(differing):
+            table.setItem(
+                row, 0, QTableWidgetItem(self._FIELD_LABELS.get(field, field))
+            )
+            table.setItem(
+                row,
+                1,
+                QTableWidgetItem(
+                    self._display_value(conflict.local_payload.get(field))
+                ),
+            )
+            table.setItem(
+                row,
+                2,
+                QTableWidgetItem(
+                    self._display_value(conflict.remote_payload.get(field))
+                ),
+            )
+            choice = QComboBox()
+            choice.addItem("이 장치", "local")
+            choice.addItem("서버", "remote")
+            choice.setAccessibleName(
+                f"{self._FIELD_LABELS.get(field, field)}에 적용할 값"
+            )
+            table.setCellWidget(row, 3, choice)
+            self._choices[field] = choice
+        layout.addWidget(table, 1)
+
+        buttons = QHBoxLayout()
+        remote = QPushButton("서버 버전 사용")
+        remote.clicked.connect(lambda: self._finish("remote"))
+        buttons.addWidget(remote)
+        local = QPushButton("이 장치 버전 사용")
+        local.clicked.connect(lambda: self._finish("local"))
+        buttons.addWidget(local)
+        merged = QPushButton("선택 내용 적용")
+        merged.setProperty("role", "primary")
+        merged.clicked.connect(lambda: self._finish("merged"))
+        buttons.addWidget(merged)
+        layout.addLayout(buttons)
+
+        cancel = QPushButton("나중에 해결")
+        cancel.clicked.connect(self.reject)
+        layout.addWidget(cancel)
+
+    @staticmethod
+    def _display_value(value: object) -> str:
+        if value is None:
+            return "없음"
+        if value == "":
+            return "빈 값"
+        return str(value)
+
+    def _finish(self, resolution: str) -> None:
+        self.resolution = resolution
+        if resolution == "merged":
+            payload = dict(self._conflict.remote_payload)
+            for field, choice in self._choices.items():
+                if choice.currentData() == "local":
+                    payload[field] = self._conflict.local_payload.get(field)
+            self.merged_payload = payload
+        self.accept()
+
+
+class DeviceManagementDialog(QDialog):
+    """등록된 장치 목록을 보여주고 특정 장치를 해제한다(로드맵 단계 11)."""
+
+    def __init__(
+        self,
+        devices: list[DeviceInfo],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("장치 관리")
+        self.setModal(True)
+        self.setMinimumWidth(420)
+        self.revoke_requested: str | None = None
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(
+            METRICS.space_6, METRICS.space_6, METRICS.space_6, METRICS.space_6
+        )
+        layout.setSpacing(METRICS.space_3)
+        title = QLabel("이 계정에 로그인한 장치")
+        title.setProperty("role", "title")
+        layout.addWidget(title)
+
+        if not devices:
+            empty = QLabel("등록된 장치가 없습니다.")
+            empty.setProperty("tone", "muted")
+            layout.addWidget(empty)
+        else:
+            for device in devices:
+                row = self._device_row(device)
+                layout.addLayout(row)
+
+        close = QPushButton("닫기")
+        close.clicked.connect(self.reject)
+        layout.addWidget(close)
+
+    def _device_row(self, device: DeviceInfo) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setSpacing(METRICS.space_3)
+        name = device.display_name or "이름 없는 장치"
+        version = f" · v{device.client_version}" if device.client_version else ""
+        label = QLabel(f"{name}{version}\n{device.installation_id}")
+        label.setWordWrap(True)
+        row.addWidget(label, 1)
+        revoke = QPushButton("해제")
+        revoke.setProperty("role", "danger")
+        revoke.clicked.connect(
+            lambda _checked=False, device_id=device.id: self._revoke(device.id)
+        )
+        row.addWidget(revoke)
+        return row
+
+    def _revoke(self, device_id: str) -> None:
+        self.revoke_requested = device_id
+        self.accept()
+
+
 class AccountDialog(QDialog):
-    """현재 프로필 상태와 로그인·로그아웃 동작을 제공한다."""
+    """현재 프로필 상태와 로그인·로그아웃·계정 운영 동작을 제공한다."""
 
     login_requested = Signal()
     logout_requested = Signal()
     sync_requested = Signal()
+    conflicts_requested = Signal()
+    export_requested = Signal()
+    sign_out_all_requested = Signal()
+    delete_account_requested = Signal()
+    manage_devices_requested = Signal()
 
     def __init__(
         self,
@@ -500,6 +695,7 @@ class AccountDialog(QDialog):
         status_text: str,
         *,
         registered: bool,
+        conflict_count: int = 0,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -533,6 +729,14 @@ class AccountDialog(QDialog):
         sync_now.clicked.connect(self.sync_requested)
         layout.addWidget(sync_now)
 
+        if registered and conflict_count:
+            conflicts = QPushButton(f"동기화 충돌 {conflict_count}건 해결")
+            conflicts.setAccessibleName(
+                f"보존된 동기화 충돌 {conflict_count}건 확인 및 해결"
+            )
+            conflicts.clicked.connect(self.conflicts_requested)
+            layout.addWidget(conflicts)
+
         login = QPushButton(
             "다른 계정으로 전환" if registered else "로그인 또는 회원가입"
         )
@@ -545,6 +749,30 @@ class AccountDialog(QDialog):
             logout.clicked.connect(self.logout_requested)
             layout.addWidget(logout)
 
+        if registered:
+            layout.addSpacing(METRICS.space_2)
+            manage_devices = QPushButton("장치 관리")
+            manage_devices.clicked.connect(self.manage_devices_requested)
+            layout.addWidget(manage_devices)
+
+            sign_out_all = QPushButton("모든 기기에서 로그아웃")
+            sign_out_all.setProperty("role", "danger")
+            sign_out_all.clicked.connect(self.sign_out_all_requested)
+            layout.addWidget(sign_out_all)
+
+            export_data = QPushButton("내 데이터 내보내기")
+            export_data.clicked.connect(self.export_requested)
+            layout.addWidget(export_data)
+
+            delete_account = QPushButton("계정 삭제")
+            delete_account.setProperty("role", "danger")
+            delete_account.clicked.connect(self.delete_account_requested)
+            layout.addWidget(delete_account)
+
         close = QPushButton("닫기")
         close.clicked.connect(self.reject)
         layout.addWidget(close)
+
+        preferred_width = 420
+        self.setMinimumHeight(layout.heightForWidth(self.minimumWidth()))
+        self.resize(preferred_width, layout.heightForWidth(preferred_width))

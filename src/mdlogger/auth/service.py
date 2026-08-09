@@ -8,7 +8,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from .models import AuthSession, SignUpResult
+from .models import (
+    AccountDeletionResult,
+    AccountExportData,
+    AuthSession,
+    DeviceInfo,
+    SignUpResult,
+)
 
 
 class AccountService(ABC):
@@ -37,3 +43,25 @@ class AccountService(ABC):
     @abstractmethod
     def request_password_reset(self, email: str) -> None:
         """비밀번호 재설정 메일 전송을 요청한다."""
+
+    @abstractmethod
+    def export_account_data(self, access_token: str) -> AccountExportData:
+        """본인 개인 데이터를 내려받는다(로드맵 12.4)."""
+
+    @abstractmethod
+    def list_devices(self, access_token: str) -> list[DeviceInfo]:
+        """등록된 장치 목록을 조회한다."""
+
+    @abstractmethod
+    def revoke_device(self, access_token: str, installation_id: str) -> None:
+        """특정 장치를 해제한다(모든 장치 로그아웃의 일부)."""
+
+    @abstractmethod
+    def sign_out_all_devices(self, access_token: str) -> int:
+        """모든 장치에서 로그아웃하고 해제된 장치 수를 돌려준다."""
+
+    @abstractmethod
+    def delete_account(
+        self, access_token: str, user_id: str | None = None
+    ) -> AccountDeletionResult:
+        """계정 삭제를 요청한다. 클라이언트 secret 없이 서버에서 수행된다."""

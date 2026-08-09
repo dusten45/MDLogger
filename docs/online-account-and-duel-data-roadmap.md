@@ -1,8 +1,8 @@
 # MDLogger 온라인 계정·게스트·듀얼 데이터 로드맵
 
-- 상태: 단계 7 구현 완료 (R7 통과), 단계 8 이후 미착수
+- 상태: 단계 0~~11 구현 완료 (R0~~R11 검토 반영), 단계 12 미착수
 - 작성일: 2026-08-07
-- 최근 개정: 2026-08-07 (단계 7 outbox 기반 push 동기화 및 R7 검토 결과 반영)
+- 최근 개정: 2026-08-09 (단계 11 계정 관리·운영 기능 및 R11 검토 결과 반영)
 - 대상 프로젝트: MDLogger (`mdlogger`)
 - 클라이언트: Python 3.13, PySide6, SQLite
 - 기준 백엔드: Supabase Auth + PostgreSQL + Row Level Security
@@ -1469,6 +1469,62 @@ R7 검토 결과:
 - 동시 수정과 수정/삭제 충돌이 재현되고 해결 가능함
 - 대량 initial sync와 중단 후 재개 테스트 통과
 
+#### 단계 8 구현 기록 (2026-08-08)
+
+상태: **구현 완료, local Supabase R8 통과**
+
+구현 내용:
+
+- 등록 계정 worker가 `change_version > last_pulled_version` 및 오름차순 제한 batch로 private games를 pull한다. 서버 행 반영, tombstone, 충돌 저장과 cursor 갱신은 하나의 SQLite transaction이며 batch 실패 시 모두 rollback된다. 빈/마지막 batch에서만 initial sync 완료를 기록한다.
+- local schema v4에 `games.base_remote_payload`를 추가했다. 기존 기록에는 알 수 없는 기준 payload를 추측하지 않고 `NULL`로 두며, 서버와 동기화된 뒤부터 마지막 remote payload를 보존해 3-way merge 기준으로 사용한다.
+- 서로 다른 필드의 로컬·원격 변경은 자동 병합하고 최신 remote version 위에 outbox를 다시 만든다. 같은 필드 변경과 수정/삭제 충돌은 로컬/원격 payload를 `sync_conflicts`에 모두 보존하며 conflict 상태에서는 자동 push하지 않는다.
+- 계정 대화상자에서 보존된 충돌 수와 해결 진입점을 제공한다. 충돌 화면은 양쪽 값을 필드별로 비교하고 서버 버전, 이 장치 버전, 필드별 선택 내용을 적용할 수 있다. 창이 열린 동안 remote version이 다시 바뀌면 오래된 선택을 적용하지 않고 최신 내용을 다시 확인하게 한다.
+- `RegisteredGamesClient`를 단계 8 RPC 계약으로 전환했다. create/update/delete/restore는 `expected_change_version` CAS를 사용하고, pull·장치 등록/heartbeat·마지막 확인 version을 같은 JWT 경계로 수행한다. HTTP 401은 기존 session refresh 후 한 번 재시도한다.
+- Supabase `0009_stage8_sync.sql`은 사용자별 transactional change-version clock, 동일 UUID advisory lock, versioned game mutation RPC, 장치 register/touch/monotonic ack RPC를 추가했다. 등록 클라이언트의 direct games/devices 쓰기를 회수하고 sync schema/payload v1만 허용한다.
+- 기존 sequence 발급 순서와 commit 순서 역전으로 cursor가 변경을 놓칠 수 있던 위험을 사용자별 clock 행 lock으로 제거했다. 중복 create 재전송은 실제 변경 없이 cursor를 증가시키지 않는다.
+- 게스트 ingest, 분석 projection, 로컬 빠른 기록 저장 조건과 `played_at` 형식은 변경하지 않았다. 단계 9의 legacy/guest import와 단계 10 이후 기능은 추가하지 않았다.
+
+실제 생성·변경 파일:
+
+- 생성: `supabase/migrations/0009_stage8_sync.sql`
+- 생성: `supabase/tests/database/05_cursor_and_cas.test.sql`, `06_devices.test.sql`
+- 생성: `tests/test_conflicts.py`
+- 변경: `src/mdlogger/game_sync/models.py`, `repository.py`, `engine.py`, `coordinator.py`
+- 변경: `src/mdlogger/remote/games.py`, `src/mdlogger/migrations.py`
+- 변경: `src/mdlogger/app_controller.py`, `src/mdlogger/profile_router.py`
+- 변경: `src/mdlogger/ui/account_views.py`
+- 변경: 기존 Supabase pgTAP 및 sync/migration/UI/controller 테스트
+- 변경: `docs/online-account-and-duel-data-roadmap.md`
+
+검증 결과:
+
+- `uv run ruff check .` — 통과
+- `uv run ruff format --check .` — 69 files already formatted
+- `uv run ty check` — 통과
+- 단계 8 관련 테스트 — 69 passed
+- 전체 `uv run pytest` — 163 passed, 4 skipped(환경 변수 없는 기존 local Supabase 통합 테스트)
+- `supabase db reset --local --no-seed` — migration `0001`~`0009` 적용 성공
+- `supabase test db` — 6 files, 102 tests, 모두 통과
+- Qt offscreen `QT_SCALE_FACTOR=1.5` 계정/충돌 UI 테스트 — 8 passed
+- `git diff --check` — 통과
+- Zed project diagnostics — 오류·경고 없음
+
+R8 검토 결과:
+
+- **같은 timestamp 변경 누락 방지: 통과.** pull cursor는 timestamp가 아니라 사용자별 transactional `change_version`을 사용한다. 같은 transaction timestamp의 여러 변경도 고유 version과 `(user_id, change_version)` unique index를 가지며 오름차순으로 조회된다.
+- **pull batch 실패 시 cursor 보존: 통과.** 행 적용 중 version 순서 오류를 주입해 새 행, tombstone/conflict 및 cursor가 모두 rollback되고 재시작 시 마지막 성공 cursor부터 재개됨을 검증했다.
+- **다른 장치 삭제 전파: 통과.** 두 PC mock에서 생성·수정·삭제가 양방향 반영되고 remote tombstone이 로컬 조회·통계에서 제외된다. 로컬 수정과 remote 삭제가 겹치면 자동 삭제하지 않고 충돌로 보존한다.
+- **충돌 양쪽 보존: 통과.** 동시 수정과 수정/삭제를 두 장치에서 재현했다. 같은 필드는 `sync_conflicts`에 양쪽 payload를 보존하며 서버/이 장치/필드별 선택으로 해결 후 CAS 재전송할 수 있다. 서로 다른 필드는 자동 병합한다.
+- **구버전/미래 schema 쓰기 차단: 통과.** 서버 RPC가 sync schema/payload v1만 허용하고 direct table mutation 권한을 회수한다. pgTAP에서 구버전과 미래 version, 서버 관리 필드 위조가 모두 거부된다.
+
+완료 조건 결과와 단계 9 진입 전 주의점:
+
+- 두 PC 생성·수정·삭제, 동시 수정, 수정/삭제 충돌과 해결, 205건 initial sync의 100건 제한 batch 및 worker 재생성 후 cursor 재개를 자동 테스트했다.
+- 장치 `last_acknowledged_version`은 로컬 batch commit 후에만 올리고 감소 또는 서버 current version 초과를 거부한다. 단계 8에서는 tombstone 물리 정리나 비활성 장치 제거를 구현하지 않았다.
+- 동일 게임 UUID가 다른 계정에 이미 존재하는 극단적 충돌은 타 사용자 payload를 노출하지 않고 미해결 conflict로 보존한다.
+- hosted production 적용과 실제 서로 다른 물리 PC/Windows 패키징 검증은 후속 통합 단계에 남아 있다.
+- 단계 9 이후는 **미착수**이며 이 구현에서 자동 진행하지 않았다.
+
 ### 단계 9 — 기존 DB 마이그레이션과 게스트 기록 import
 
 작업:
@@ -1496,6 +1552,92 @@ R7 검토 결과:
 - 레코드 개수와 핵심 필드 checksum 일치
 - 중간 종료 후 안전한 재개
 - merge 성공·실패 결과를 사용자가 확인 가능
+
+#### 단계 9 구현 기록 (2026-08-09)
+
+상태: **구현 완료, 비파괴 재실행·재시작 안전성 검증 통과**
+
+구현 내용:
+
+- 게스트 DB에서 등록 계정 DB로의 비파괴 import를 `src/mdlogger/guest_import.py` 로 추가했다. 원본 게스트 DB는 `PRAGMA query_only` 읽기 전용 연결로만 열어 절대 수정·삭제하지 않으며, 대상 계정 DB에 기존 기록 모두를 보존한 채 넣고 private games 동기화 outbox에 upsert를 등록한다.
+- 기존 단일 `games.db` 감지와 비파괴 이전은 기존 `ProfileManager._copy_legacy_guest_database` 가 유지한다(원본 보존, 대상 존재 시 재복사 안 함). 기존 행의 안정 UUID는 migration v2가 부여하며 `played_at` 네이티브 ISO 문자열과 값·순서를 그대로 보존한다.
+- import는 `import_batches` 완료 marker(`completed_at`)와 게스트 기록 핵심 필드의 안정 SHA-256 checksum으로 재실행을 감지한다. 같은 게스트 DB를 이미 완료했으면 다시 import하지 않고(재실행 중복 없음), `sync_id` 가 대상 DB에 이미 있으면 건너뛴다(분석 observation 중복 방지).
+- 모든 게스트 기록 insert와 outbox 등록을 하나의 SQLite transaction으로 처리해 중간 종료 시 전체 rollback되고 안전하게 재개된다. 부분 실패·restart 모두 이 디자인으로 흡수한다.
+- 게스트→등록 전환 UI를 활성화했다. `GuestRecordChoice` 에 `IMPORT` 를 추가하고 `GuestRecordChoiceDialog` 의 가져오기 버튼을 활성화했다. `ProfileRouter` 는 사용자 선택에 따라 가져오기(import 후 전환), 게스트에 보관(import 없이 전환), 나중에 결정(전환 취소, 게스트 유지)으로 분기한다. 결과 리포트는 `import_result_prompt` 콜백으로 주입 가능하게 해 UI가 아닌 테스트에서 블로킹 없이 검증한다.
+- import된 기록은 등록 계정 private games 동기화 엔진이 기존 worker로 자동 push하므로 별도 업로드 코드를 추가하지 않았다.
+
+실제 생성·변경 파일:
+
+- 생성: `src/mdlogger/guest_import.py`, `tests/test_guest_import.py`
+- 변경: `src/mdlogger/profile_router.py`, `src/mdlogger/ui/account_views.py`
+- 변경: `tests/test_profile_router.py`
+- 변경: `docs/online-account-and-duel-data-roadmap.md`
+
+검증 결과:
+
+- `uv run ruff check .` — 통과
+- `uv run ruff format --check .` — 71 files already formatted
+- `uv run ty check` — 통과
+- 단계 9 관련 테스트 — `tests/test_guest_import.py` 6 passed, `tests/test_profile_router.py` 11 passed
+- 전체 `uv run pytest` — 170 passed, 4 skipped(환경 변수 없는 Supabase 통합 테스트)
+- `git diff --check` — 통과
+
+R9 검토 결과:
+
+- **원본 DB 비파괴: 통과.** import 전후 원본 게스트 DB 행 전체가 동일함을 테스트로 검증했다. 읽기 전용 연결로만 접근한다.
+- **재실행 중복 없음: 통과.** 같은 게스트 DB를 두 번 import하면 두 번째는 `already_imported` 로 판정되어 아무것도 추가되지 않고 outbox도 증가하지 않는다.
+- **동일 `sync_id` 중복 방지: 통과.** 대상 DB에 일부 sync_id가 이미 있으면 해당 건만 건너뛰고 나머지만 import한다.
+- **값·순서·`played_at` 보존: 통과.** import된 행의 sync_id 순서, played_at 문자열, note, score_after가 원본과 일치한다.
+- **잘못된 계정 귀속 방지: 통과.** import는 인증된 등록 프로필 DB에만 기록하며 게스트는 별도 소유권을 갖지 않는다.
+
+완료 조건 결과와 단계 10 진입 전 주의점:
+
+- 구버전 fixture와 실제 복사본 기반 rehearsal을 migration/import 테스트로 실행했고, 레코드 개수와 핵심 필드 checksum 일치를 `import_batches` 기록으로 확인한다.
+- 중간 종료 후 안전한 재개는 단일 transaction rollback으로 보장한다. 수천 건 데이터는 단일 transaction으로 처리하므로 규모가 커지면 재개 가능한 batch 분할을 고려한다.
+- merge 성공·실패 결과는 `import_result_prompt` 를 통해 사용자에게 표시되며, 실패 시 원본 게스트 DB는 그대로 보존된다.
+- 단계 10(휴대용 내보내기·가져오기) 이후는 **미착수**이며 이 구현에서 자동 진행하지 않았다.
+
+#### 단계 10 구현 기록 (2026-08-09)
+
+상태: **구현 완료, 검증·중복 방지·round-trip 테스트 통과**
+
+구현 내용:
+
+- versioned 휴대용 아카이브를 `src/mdlogger/portable.py` 로 추가했다. 아카이브는 디렉터리(`.mdlogger-export`)로 `manifest.json` + `records.ndjson` + `checksums.sha256` 세 파일로 구성된다(§10.1). `format_version`(1), `archive_id`, `created_at`, `source_app_version`(`__version__`), `source_profile_kind`, `record_count`, `payload_version`, `included_sections` 를 manifest에 기록한다.
+- writer `export_portable_archive(...)` 는 records 를 NDJSON 한 줄 한 객체로 쓰고, manifest 를 쓴 뒤 두 파일의 SHA-256 을 sha256sum 형식 checksums 에 기록한다. CSV/XLSX 내보내기(`export.py`)는 기존 동작을 그대로 유지한다.
+- reader `import_portable_archive(...)` 는 경로(파일 목록)·크기·행 수·문자열 길이·필드 수·checksum·format version 을 검증한다(§10.2). 손상·변조·과대·지원하지 않는 버전은 `PortableArchiveError` 로 거부하고 대상 DB 를 건드리지 않는다. 알 수 없는 format version 은 추측해 가져오지 않는다.
+- 중복 방지(§10.3): `import_batches` 에 `archive_id` 와 archive checksum(records.ndjson 의 SHA-256)을 기록하고, 같은 아카이브를 이미 완료했으면 재가져오기를 건너뛴다. 대상 DB에 이미 있는 `sync_id` 는 건너뛰어 분석 observation 중복을 막는다.
+- cross-profile provenance: manifest 의 `source_profile_kind` 를 `import_batches.source_profile_kind` 로 기록한다. 소유권은 대상(현재 인증 계정)에만 속하며 아카이브에서 소유권을 신뢰하지 않는다. 가져온 기록은 sync_outbox 에 upsert 로 등록해 기존 동기화 엔진이 서버에 업로드한다(§10.4).
+- 전체 import 는 단일 SQLite transaction 으로 처리해 중간 실패 시 rollback 되고 대상 DB 를 부분 손상시키지 않는다.
+
+실제 생성·변경 파일:
+
+- 생성: `src/mdlogger/portable.py`, `tests/test_portable.py`
+- 변경: `src/mdlogger/game_service.py`(휴대용 내보내기 진입점 추가, 기존 CSV/XLSX 동작 유지)
+- 변경: `docs/online-account-and-duel-data-roadmap.md`
+
+검증 결과:
+
+- `uv run ruff check .` — 통과
+- `uv run ruff format --check .` — 73 files already formatted
+- `uv run ty check` — 통과
+- 단계 10 관련 테스트 — `tests/test_portable.py` 12 passed, `tests/test_export.py`, `tests/test_guest_import.py` 포함 27 passed
+- 전체 `uv run pytest` — 180 passed, 4 skipped(환경 변수 없는 Supabase 통합 테스트)
+
+R10 검토 결과:
+
+- **credential/secret 미포함: 통과.** 아카이브에는 개인 `note` 를 포함하되 token/password/publishable key 는 포함하지 않는다. 소유권은 대상 인증 계정에만 설정한다.
+- **손상·변조·과대 안전 거부: 통과.** checksum 불일치, 손상 JSON 줄, 지원하지 않는 format version, 예상 외 추가 파일, 파일 누락을 모두 거부하고 대상 DB 를 변경하지 않는다.
+- **재가져오기 중복 없음: 통과.** 같은 아카이브를 두 번 가져오면 두 번째는 `already_imported` 로 판정되어 outbox 가 증가하지 않는다.
+- **오프라인 PC → 온라인 PC: 통과.** export → 새 DB import round-trip 의 sync_id·played_at·note·score_after 가 일치하고 outbox 에 등록된다.
+- **부분 손상 없음: 통과.** 전체 import 를 단일 transaction 으로 처리해 중간 실패 시 rollback 된다.
+
+완료 조건 결과와 단계 11 전 진입 주의점:
+
+- 게스트/등록 프로필의 `source_profile_kind` 기반 허용 import 시나리오와 export→새 DB import round-trip 필드 일치, outbox 등록까지 테스트로 검증했다.
+- 아카이브 암호화는 초기 범위 제외(§17.E)로, 첫 구현은 명확한 평문 경고가 있는 portable archive 를 제공한다.
+- UI 배선(휴대용 내보내기 버튼/import 대화상자)은 아직 하지 않았다. 단계 10 핵심은 writer·reader·검증·중복 방지·provenance·outbox 이며, UI 연결은 이후 통합에서 수행한다.
+- 단계 11(계정 관리와 운영 기능) 이후는 **미착수**이며 이 구현에서 자동 진행하지 않았다.
 
 ### 단계 10 — 휴대용 내보내기·가져오기
 
@@ -1548,6 +1690,80 @@ R7 검토 결과:
 - 계정 생성부터 삭제까지 staging end-to-end 통과
 - 운영 runbook과 장애 대응 절차 작성
 - key/token 유출 대응 절차 작성
+
+#### 단계 11 구현 기록 (2026-08-09)
+
+상태: **구현 완료(코드·문서), staging end-to-end·백업/복구 rehearsal는 소유자 환경에서 수행 필요**
+
+구현 내용:
+
+- 계정 데이터 내보내기(§12.4): 서버 `export_account_data()` RPC가 인증 사용자 본인의
+  profile·games·devices만 반환하고 분석용 `duel_observations`는 제외한다. 클라이언트
+  `AccountService.export_account_data` → `SessionManager.export_account_data` →
+  계정 다이얼로그의 "내 데이터 내보내기"가 JSON 파일로 저장한다.
+- 계정 삭제(검토 게이트 R11-1): `functions/account-delete/index.ts` Edge Function을
+  추가했다. 클라이언트는 본인 access token만 보내고, 함수는 JWT를 검증해
+  `public.delete_account_data`(0006)를 호출한 뒤 Auth Admin API로 auth 사용자와
+  모든 세션/refresh token을 폐기한다. 클라이언트 secret은 없다.
+- 모든 장치 로그아웃과 특정 장치 해제: 서버 `revoke_all_devices`/`revoke_device`/
+  `list_user_devices` RPC를 추가하고, 클라이언트에 `DeviceManagementDialog`와
+  "모든 기기에서 로그아웃" 버튼을 연결했다. `auth.uid()` 문맥으로 본인 장치만 접근한다.
+- private tombstone/분석 withdrawal 무기한 보존(§9.3, R11-2): 정리 정책이
+  `games.deleted_at` tombstone과 `duel_observations.withdrawn_at` 마커를 건드리지
+  않도록 명문화하고, 이들을 건드리는 정리 함수를 만들지 않았다.
+- guest ingest 진단 정리(§12.4, R11-3): `prune_guest_ingest_diagnostics(정수)`가
+  `analytics.ingestion_batches`와 `analytics.rejected_observations`만 정리하고
+  `analytics.duel_observations`에는 절대 접근하지 않는다. 기본 보존 90일(서비스_role
+  전용, 운영 값 결정 17.2).
+- 운영 문서: `docs/operations/runbook.md`에 local/production 설정, 계정 삭제·장치
+  해제 절차, 백업/복구 rehearsal 체크리스트, key rotation(anon/service-role/
+  contributor_salt), key/token 유출 대응 절차를 작성했다. 이메일 템플릿·auth rate
+  limit은 Supabase Dashboard 구성 사항으로 문서화했다.
+
+실제 생성·변경 파일:
+
+- 생성: `supabase/migrations/0010_account_operations.sql`,
+  `supabase/functions/account-delete/index.ts`,
+  `supabase/tests/database/07_account_operations.test.sql`(pgTAP),
+  `docs/operations/runbook.md`
+- 변경: `src/mdlogger/auth/models.py`(AccountExportData/DeviceInfo/AccountDeletionResult),
+  `src/mdlogger/auth/service.py`(AccountService 신규 추상 메서드),
+  `src/mdlogger/auth/supabase_auth.py`(구현),
+  `src/mdlogger/auth/session_manager.py`(SessionManager 래퍼),
+  `src/mdlogger/ui/account_views.py`(AccountDialog 확장, DeviceManagementDialog),
+  `src/mdlogger/profile_router.py`(배선),
+  `supabase/README.md`
+- 테스트: `tests/test_account_service.py`, `tests/test_session_manager.py`,
+  `tests/test_account_views.py`, `tests/test_profile_router.py`
+
+검증 결과:
+
+- `uv run ruff check .` — 통과
+- `uv run ruff format --check .` — 75 files already formatted
+- `uv run ty check` — 통과
+- 관련 테스트 — `tests/test_account_service.py` 24 passed,
+  `tests/test_session_manager.py` 11 passed, `tests/test_account_views.py` 13 passed,
+  `tests/test_profile_router.py` 11 passed
+- 전체 `uv run pytest` — 193 passed, 4 skipped(환경 변수 없는 Supabase 통합 테스트)
+- pgTAP(`supabase/tests/database/07_account_operations.test.sql`)과 Edge Function은
+  Docker 기반 local Supabase가 없는 이 sandbox에서 실행할 수 없어 소유자 환경에서
+  `supabase db reset` + `supabase test db` + `supabase functions serve`로 검증한다.
+
+R11 검토 결과(코드 수준):
+
+- **클라이언트 secret 없이 계정 삭제: 통과.** 서비스_role 전용 함수와 Edge Function이
+  클라이언트 access token만으로 동작하며 요청자와 대상 사용자 일치를 강제한다.
+- **개인/분석 데이터 삭제 정책이 고지와 일치: 통과.** 계정 삭제는 개인 데이터만
+  삭제하고 분석 observation을 보존/철회하지 않는다(§9.3).
+- **진단 정리가 분석 observation에 영향 없음: 통과.** 정리 함수는
+  `ingestion_batches`/`rejected_observations`만 건드린다.
+
+완료 조건 결과와 단계 12 전 주의점:
+
+- 계정 생성→삭제 staging end-to-end, 백업/복구 rehearsal, 이메일 템플릿·rate
+  limit 운영 반영은 hosted/staging과 소유자 환경에서 수행해야 한다(이 sandbox에서
+  불가).
+- 단계 12 이후는 **미착수**이며 이 구현에서 자동 진행하지 않았다.
 
 ### 단계 12 — 최종 통합·위험 검토·점진 배포
 
