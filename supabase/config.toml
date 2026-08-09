@@ -8,3 +8,8 @@ project_id = "mdlogger"
 # 게스트 클라이언트는 publishable(anon) key를 Bearer로 보낸다.
 # 사용자 로그인 JWT는 요구하지 않는다(로드맵 8.3).
 verify_jwt = true
+
+[functions.account-delete]
+# 파괴적 엔드포인트이므로 게이트웨이 JWT 검증을 명시적으로 켠다(하드닝 H-9).
+# 기본값(true)과 일치하지만 CLI 기본값 의존을 제거한다.
+verify_jwt = true
