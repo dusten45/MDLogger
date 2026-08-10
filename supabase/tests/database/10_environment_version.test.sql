@@ -47,7 +47,7 @@ select is(
     (public.ingest_guest_batch(
         '99999999-9999-4999-8999-999999999999',
         '77777777-7777-4777-8777-777777777777',
-        '0.1.5', 1,
+        '0.1.6', 1,
         '[{"sync_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
            "played_at_local":"2026-08-07T10:00:00",
            "result":"win","turn_order":"first",
@@ -70,7 +70,7 @@ select is(
     (public.ingest_guest_batch(
         '88888888-8888-4888-8888-888888888888',
         '77777777-7777-4777-8777-777777777777',
-        '0.1.5', 1,
+        '0.1.6', 1,
         '[{"sync_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc",
            "played_at_local":"2026-08-07T10:00:00",
            "result":"win","turn_order":"first",
@@ -92,7 +92,7 @@ select is(
     (public.apply_game_changes(
         1, 1,
         '[{"op":"create","id":"dddddddd-dddd-4ddd-8ddd-dddddddddddd",
-           "client_version":"0.1.5",
+           "client_version":"0.1.6",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
                       "turn_order":"first",
                       "environment_version_id":"md-2026-08"}}]'::jsonb
@@ -106,7 +106,7 @@ select results_eq(
     $$ select environment_version_id, client_version, source_kind
        from analytics.duel_observations
        where source_game_id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' $$,
-    $$ values ('md-2026-08', '0.1.5', 'registered') $$,
+    $$ values ('md-2026-08', '0.1.6', 'registered') $$,
     '등록 계정 관측치에 환경 버전과 클라이언트 버전이 채워진다'
 );
 

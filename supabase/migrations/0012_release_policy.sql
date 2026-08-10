@@ -9,7 +9,7 @@
 create table public.release_policies (
     platform text primary key
         check (platform in ('windows', 'macos', 'linux')),
-    -- 사용자에게 표시할 최신 버전과 최소 지원 버전(신규: v0.1.5).
+    -- 사용자에게 표시할 최신 버전과 최소 지원 버전(신규: v0.1.6).
     latest_version text not null,
     minimum_supported_version text not null,
     -- 업데이트 안내 문구. null이면 기본 안내를 사용한다.
@@ -46,8 +46,8 @@ create policy release_policies_select_public
     to anon, authenticated
     using (true);
 
--- 정책 시드(결정 D-7 확정): 프로젝트가 이전 버전과 크게 달라져 0.1.5가
--- 유일한 버전이다. 따라서 **최소 지원 = 최신 = 0.1.5**이며, 0.1.5 미만은 온라인에서
+-- 정책 시드(결정 D-7 확정): 프로젝트가 이전 버전과 크게 달라져 0.1.6이
+-- 유일한 버전이다. 따라서 **최소 지원 = 최신 = 0.1.6**이며, 0.1.6 미만은 온라인에서
 -- 차단된다. 당장 마이그레이션할 업데이트가 없으므로 update_url은 비워 둔다.
 -- 이후 업데이트가 생기면 이 행의 latest/minimum/update_url을 갱신한다.
 insert into public.release_policies (
@@ -58,7 +58,7 @@ insert into public.release_policies (
     block_online, block_local_writes, allow_export
 )
 values (
-    'windows', '0.1.5', '0.1.5',
+    'windows', '0.1.6', '0.1.6',
     null, '',
     now(),
     1, 1, 1, 1,

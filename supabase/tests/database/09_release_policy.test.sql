@@ -27,8 +27,8 @@ set local role anon;
 select results_eq(
     $$ select latest_version, minimum_supported_version
        from public.release_policies where platform = 'windows' $$,
-    $$ values ('0.1.5', '0.1.5') $$,
-    'anon은 정책(최소=최신=0.1.5)을 읽을 수 있다'
+    $$ values ('0.1.6', '0.1.6') $$,
+    'anon은 정책(최소=최신=0.1.6)을 읽을 수 있다'
 );
 reset role;
 
@@ -38,8 +38,8 @@ set local request.jwt.claims to
 select results_eq(
     $$ select latest_version, minimum_supported_version
        from public.release_policies where platform = 'windows' $$,
-    $$ values ('0.1.5', '0.1.5') $$,
-    'authenticated도 정책(최소=최신=0.1.5)을 읽을 수 있다'
+    $$ values ('0.1.6', '0.1.6') $$,
+    'authenticated도 정책(최소=최신=0.1.6)을 읽을 수 있다'
 );
 reset role;
 

@@ -59,10 +59,10 @@ uv run python -m mdlogger.checksum dist/MDLogger.exe
 version)에서 오며 게스트 ingest·장치 등록·아카이브 manifest로 전송된다.
 릴리스는 이 값을 실제 tag로 올린 뒤 배포한다.
 
-- 초기 정책(결정 D-7 확정): `latest_version = minimum_supported_version = 0.1.5`
-  (0.1.5가 유일한 버전이라 최소=최신), `update_url`은 비워 둔다(당장 마이그레이션할
+- 초기 정책(결정 D-7 확정): `latest_version = minimum_supported_version = 0.1.6`
+  (0.1.6가 유일한 버전이라 최소=최신), `update_url`은 비워 둔다(당장 마이그레이션할
   업데이트 없음). 이후 업데이트가 생기면 이 행의 latest/minimum/update_url을
-  갱신하고 배포한다. 0.1.5 미만 클라이언트는 온라인에서 차단된다.
+  갱신하고 배포한다. 0.1.6 미만 클라이언트는 온라인에서 차단된다.
 - 정책은 RLS로 읽기 전용이며 anon/authenticated가 조회할 수 있다. 클라이언트는
   최소 지원 미만이면 온라인(로그인·업로드·pull)을 차단하되 로컬 기록·내보내기는
   항상 허용한다(로드맵 17.3.J).
@@ -313,7 +313,7 @@ where requested_at < now() - interval '1 day';`).
   migration으로 대응한다(README rollback 절 참고).
 - **대응 원칙·최소 지원 버전 재확인(2026-08-10, 소유자 ①-3 확정)**: 일반 결함은
   forward-fix migration으로 대응하고, 백업 복원은 데이터 파괴 사고 시에만 쓴다.
-  최소 지원 앱 버전 = `0.1.5`(D-7, 유일 버전이라 최소=최신).
+  최소 지원 앱 버전 = `0.1.6`(D-7, 유일 버전이라 최소=최신).
 
 ## 9. key rotation
 

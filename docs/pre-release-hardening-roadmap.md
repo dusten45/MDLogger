@@ -798,7 +798,7 @@ flowchart TD
 원본 단계 12는 다음이 **모두** 충족된 뒤에 시작한다.
 
 - [x] 단계 H1~~H6의 검토 게이트 RH1~~RH6이 전부 통과했다. (2026-08-10: 소유자가 근거 수치를 인정하고 통과로 판단 — ①-2)
-- [x] `## 8. 결정 필요 항목`의 D-1~D-8이 전부 확정되었다. (2026-08-09: D-1 게스트 유지, D-4 1분/10회, D-7 최소=최신=0.1.5, 나머지 기본값 채택)
+- [x] `## 8. 결정 필요 항목`의 D-1~D-8이 전부 확정되었다. (2026-08-09: D-1 게스트 유지, D-4 1분/10회, D-7 최소=최신=0.1.5, 나머지 기본값 채택 — v0.1.6으로 갱신됨)
 - [x] 소유자 환경에서 `supabase db reset` + `supabase test db`가 전체 통과했다. (2026-08-10: migration 0001~0016, pgTAP 173 tests 전체 통과. 최초 실기동에서 드러난 5개 원인은 `docs/final_bugs.md` §6에 해소 기록)
 - [x] 소유자 환경에서 Edge Function(`guest-ingest`, `account-delete`)이 검증되었다. (2026-08-10: `guest-ingest` 정상 200 / disallowed 422 / rate-limit 429, `account-delete` 200 · auth 종속 게임 삭제 · 분석 observation 보존)
 - [ ] 패키징된 Windows 빌드에서 로그인·게스트 ingest가 실제로 동작한다.
@@ -844,7 +844,7 @@ flowchart TD
 | ---- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | H1   | B1                 | `remote/config.py`(환경 > 번들 > None), `scripts/generate_build_config.py`, `secret_scan.py`, `.gitignore`, runbook §1.1                         | `tests/test_build_config.py` 17개 통과, 시크릿 검사 자동화         | 실제 Windows PyInstaller 빌드·시크릿 스캔                                                                                                                |
 | H2   | B2, M3, H-1, H-2   | `0011_permission_forward_fix.sql`, `08_hardening.test.sql`, supabase README                                                                      | pgTAP 08(24 assertion) 작성; 클라이언트 회귀 없음(전체 pytest)     | `supabase db reset`/`supabase test db`(Docker)                                                                                                           |
-| H3   | B3, N-1            | `0012_release_policy.sql`, `release_policy.py`, `_version.py`(단일 출처 0.1.5), `app.py` 정책 차단, runbook §1.2                                 | `tests/test_release_policy.py` 20개 통과                           | D-7 확정(최소=최신=0.1.5)                                                                                                                                |
+| H3   | B3, N-1            | `0012_release_policy.sql`, `release_policy.py`, `_version.py`(단일 출처 0.1.6), `app.py` 정책 차단, runbook §1.2                                 | `tests/test_release_policy.py` 20개 통과                           | D-7 확정(최소=최신=0.1.6)                                                                                                                                |
 | H4   | M2(환경)           | `0013_environment_version.sql`, `environment.py`, 로컬 schema v5, `db.py` stamping, allowlist 배선                                               | `tests/test_environment.py`·`test_migrations.py` 통과, 전체 pytest | `supabase db reset`/`test db`(Docker)                                                                                                                    |
 | H5   | H-3~H-9            | `0014_guest_abuse.sql`, guest-ingest Edge(rate limit+allowlist), account-delete 재구성, `config.toml`, runbook                                   | pgTAP 09/10/11 작성; 클라이언트 회귀 없음                          | Edge Function 로컬 검증, salt 백업 rehearsal                                                                                                             |
 | H6   | N-2~N-9, M1 문서화 | `profile_router.py` 안내, decks 번들(`data/decks.json`), `pyproject` 상한·pyinstaller 고정, 라벨 통일, `test_sync_engine` 1,000건, 문서 3종 정합 | `uv run ruff/format/ty/pytest` 전부 통과(261 passed, 4 skipped)    | 통계 창·편집/삭제·구버전 마이그레이션·계정 다이얼로그 클릭 테스트 추가(2026-08-10 정리 세션). 실제 hosted/네트워크 연동 확인은 단계 12에서 소유자가 수행 |
@@ -859,7 +859,7 @@ flowchart TD
 | D-4 | **확정**: installation·IP 각각 1분 창 최대 10회. 초과 시 429 + retry_after                                                                              | 운영 값 조정 가능(Edge/0014 상수) |
 | D-5 | (b): 패키지 리소스(`mdlogger/data/decks.json`)를 `importlib.resources`로 읽어 첫 실행 시드                                                              |                                   |
 | D-6 | 현재 릴리스는 세션 실폐기 미구현, 한계를 UI·runbook에 명시. 실제 Auth Admin 폐기는 다음 릴리스                                                          |                                   |
-| D-7 | **확정**: 최소 = 최신 = `0.1.5`(유일 버전), update_url 비움(당장 업데이트 없음). 업데이트 발생 시 재결정                                                |                                   |
+| D-7 | **확정**: 최소 = 최신 = `0.1.6`(유일 버전, 2026-08-10 갱신), update_url 비움(당장 업데이트 없음). 업데이트 발생 시 재결정                               |                                   |
 | D-8 | `md-YYYY-MM`(시드: `md-2026-08`)                                                                                                                        | 이후 불변                         |
 | D-9 | **확정(2026-08-10)**: rate limit 운영값 1분/10회 유지. Turnstile은 rate-limit(429) 반복 관측 또는 미지 installation 대량 거부 남용이 이어지면 도입 검토 | 운영 값 조정 가능(Edge/0014 상수) |
 
