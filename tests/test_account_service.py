@@ -303,6 +303,42 @@ def test_unrecognized_client_error_is_not_credentials(status):
     assert exc_info.value.code == "some_unknown_code"
 
 
+def test_refresh_error_full_gotrue_shape_is_token_expired():
+    """B-5-2: GoTrue 공식 오류 응답 형태(code=HTTP 상태 + error_code)에서 만료된
+    refresh token이 REAUTH_REQUIRED로 분류되는 TOKEN_EXPIRED를 낸다."""
+    service, _ = make_service(
+        json_response(
+            400,
+            {
+                "code": 400,
+                "error_code": "refresh_token_not_found",
+                "msg": "Invalid Refresh Token: Refresh Token Not Found",
+                "error_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+            },
+        )
+    )
+
+    with pytest.raises(AuthError) as exc_info:
+        service.refresh_session("dead-refresh-token")
+
+    assert exc_info.value.kind is AuthErrorKind.TOKEN_EXPIRED
+    assert exc_info.value.code == "refresh_token_not_found"
+
+
+def test_invalid_grant_refresh_error_is_token_expired():
+    """B-5-2: OAuth 스타일 invalid_grant(만료·폐기된 refresh token)도 REAUTH_REQUIRED로
+    분류해 죽은 토큰을 오프라인으로 계속 보존하지 않는다."""
+    service, _ = make_service(
+        json_response(400, {"error_code": "invalid_grant", "msg": "token expired"})
+    )
+
+    with pytest.raises(AuthError) as exc_info:
+        service.refresh_session("dead-refresh-token")
+
+    assert exc_info.value.kind is AuthErrorKind.TOKEN_EXPIRED
+    assert exc_info.value.code == "invalid_grant"
+
+
 def test_network_failure_is_classified_as_network():
     service, _ = make_service(NetworkError("연결 실패"))
 

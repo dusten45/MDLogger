@@ -48,6 +48,11 @@ _TOKEN_EXPIRED_CODES = frozenset(
         "session_not_found",
         "session_expired",
         "bad_jwt",
+        # GoTrue 공식 error code 레지스트리는 위 코드를 쓰며 invalid_grant를
+        # 만들지 않는다. 다만 OAuth 스타일 프록시/게이트웨이가 만료·폐기된
+        # refresh token에 invalid_grant를 돌려줄 수 있어 방어적으로 TOKEN_EXPIRED로
+        # 분류한다(B-5-2).
+        "invalid_grant",
     }
 )
 
@@ -306,7 +311,11 @@ class SupabaseAccountService(AccountService):
         except ResponseFormatError:
             body = None
         body = body if isinstance(body, dict) else {}
-        code = body.get("error_code") or body.get("code")
+        # GoTrue는 항상 ``error_code`` 문자열을 포함한다(공식 문서 확인, B-5-2).
+        # ``code``는 HTTP 상태 코드(정수)라 문자열 set 비교에 쓰면 안 되므로
+        # error_code만 읽는다. OAuth 스타일 응답도 ``error`` 필드 대신 여기서
+        # 다룬다.
+        code = body.get("error_code")
         code = str(code) if code is not None else None
 
         if code in _EMAIL_UNVERIFIED_CODES:
