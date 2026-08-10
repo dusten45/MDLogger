@@ -15,10 +15,9 @@ class SyncCoordinator(QObject):
     """UI 연결을 공유하지 않는 단일 profile 양방향 sync coordinator.
 
     네트워크 동기화(`run_once`)만 worker thread에서 실행한다. 충돌 조회·해결과
-    outbox 재시도는 로컬 SQLite 연산이라 네트워크와 무관하므로, 느린 네트워크에
-    발이 묶이는 worker 명령 큐를 거치지 않고 호출자(UI) thread에서 짧은 수명의
-    연결로 직접 실행한다(WAL + busy_timeout으로 동시성 안전). UI thread는
-    네트워크 I/O에 블로킹되지 않는다.
+    outbox 재시도는 로컬 SQLite 연산이라 네트워크와 무관하므로, worker 명령 큐를
+    거치지 않고 호출자(UI) thread에서 짧은 수명의 연결로 직접 실행한다(WAL +
+    busy_timeout으로 동시성 안전). UI thread는 네트워크 I/O에 블로킹되지 않는다.
     """
 
     status_changed = Signal(object)
