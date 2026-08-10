@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import os
 import shutil
+import sqlite3
 import sys
+import uuid
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -70,6 +72,55 @@ def secure_data_file(path: Path) -> None:
         path.chmod(_PRIVATE_FILE_MODE)
 
 
+def secure_sidecars(db_path: Path) -> None:
+    """POSIX에서 WAL 모드 DB의 사이드카 파일에도 0600을 적용한다.
+
+    WAL 모드에서는 최신 기록이 ``-wal`` 사이드카에 먼저 쓰이므로 메인 DB만
+    0600으로 두면 사이드카가 기본 권한(umask)으로 남아 다른 사용자에게 노출될
+    수 있다. ``-wal``/``-shm``/``-journal``을 메인 DB와 같은 소유자 전용 권한으로
+    맞춘다.
+    """
+    if os.name == "nt":
+        return
+    for suffix in ("-wal", "-shm", "-journal"):
+        sidecar = db_path.with_name(f"{db_path.name}{suffix}")
+        if sidecar.exists():
+            sidecar.chmod(_PRIVATE_FILE_MODE)
+
+
+def copy_database_via_backup(source: Path, destination: Path) -> None:
+    """SQLite DB를 WAL 포함 일관 스냅숏으로 안전하게 복사한다.
+
+    WAL 모드 DB를 체크포인트 없이 ``shutil.copy2``로 복사하면 ``-wal``에 남은
+    페이지가 복사본에서 유실되어 전체 데이터가 사라질 수 있다(P0-5).
+    ``sqlite3.Connection.backup()``은 원본을 읽기 잠금으로 잠그고 메인 DB+WAL을
+    포함한 일관 스냅숏을 임시 파일에 만든 뒤 원자적으로 ``destination``으로 옮긴다.
+    """
+    temporary_path = destination.with_name(
+        f".{destination.name}.{uuid.uuid4().hex}.copy.tmp"
+    )
+    source_conn = sqlite3.connect(source)
+    try:
+        try:
+            backup_conn = sqlite3.connect(temporary_path)
+            try:
+                source_conn.backup(backup_conn)
+            finally:
+                backup_conn.close()
+            if os.name != "nt":
+                temporary_path.chmod(_PRIVATE_FILE_MODE)
+            os.replace(temporary_path, destination)
+        except sqlite3.DatabaseError:
+            # 유효한 SQLite DB가 아닌(빈/손상) legacy 파일은 바이트 단위로 복사해
+            # 기존 동작을 유지한다. 유효한 DB의 WAL 유실 문제는 위 backup 경로가 해결한다.
+            temporary_path.unlink(missing_ok=True)
+            shutil.copy2(source, destination)
+        finally:
+            temporary_path.unlink(missing_ok=True)
+    finally:
+        source_conn.close()
+
+
 def _secure_data_permissions() -> None:
     """기존 데이터에도 현재 사용자 전용 권한을 적용한다."""
     if os.name == "nt":
@@ -77,6 +128,7 @@ def _secure_data_permissions() -> None:
     DATA_DIR.chmod(_PRIVATE_DIR_MODE)
     for path in (DB_PATH, DECKS_PATH, DECKS_SYNC_STATE_PATH):
         secure_data_file(path)
+    secure_sidecars(DB_PATH)
 
 
 def _migrate_legacy_data() -> None:
@@ -93,7 +145,12 @@ def _migrate_legacy_data() -> None:
     }
     for source, destination in legacy_files.items():
         if source != destination and source.is_file() and not destination.exists():
-            shutil.copy2(source, destination)
+            if destination == DB_PATH:
+                # WAL 모드에서 종료된 legacy DB의 -wal을 체크포인트 없이는
+                # shutil.copy2로 살릴 수 없다. 안전한 스냅숏 복사를 사용한다(P0-5).
+                copy_database_via_backup(source, destination)
+            else:
+                shutil.copy2(source, destination)
     marker.touch(mode=_PRIVATE_FILE_MODE)
 
 

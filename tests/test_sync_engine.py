@@ -54,6 +54,7 @@ class RegisteredTransport:
         self.version = 0
         self.drop_apply_response_once = False
         self.reject_first_request = False
+        self.rate_limit_first_request = None
         self.on_apply = None
 
     def request(self, method, url, headers, body, timeout):
@@ -63,6 +64,15 @@ class RegisteredTransport:
         if self.reject_first_request:
             self.reject_first_request = False
             return HttpResponse(status=401, body=b'{"code":"jwt_expired"}')
+        if self.rate_limit_first_request is not None:
+            retry_after, self.rate_limit_first_request = (
+                self.rate_limit_first_request,
+                None,
+            )
+            body_text = json.dumps(
+                {"retry_after_seconds": retry_after} if retry_after is not None else {}
+            )
+            return HttpResponse(status=429, body=body_text.encode())
         if url.endswith("/rpc/register_or_touch_device"):
             return HttpResponse(status=200, body=b"{}")
         if url.endswith("/rpc/apply_game_changes"):
@@ -102,6 +112,12 @@ class RegisteredTransport:
         operation = change["op"]
         if operation == "create" and current is None:
             row = {"id": game_id, **change["payload"], "deleted_at": None}
+        elif operation == "delete" and expected is None:
+            # delete-if-exists(P0-1): 대상이 없으면 멱등 무조작, 있으면 soft delete.
+            if current is None:
+                return {"id": game_id, "status": "applied", "change_version": None}
+            row = dict(current)
+            row["deleted_at"] = "2026-08-07T01:00:00+00:00"
         elif (
             current is not None
             and expected == current["change_version"]
@@ -405,6 +421,111 @@ def test_large_initial_sync_resumes_from_committed_cursor_after_restart(tmp_path
     games.close()
 
 
+def test_deleted_never_synced_registered_game_is_not_created_live(
+    tmp_path: Path,
+):
+    """P0-1-A: 첫 동기화 전 생성→삭제는 서버에 살아있는 신규 기록으로 만들어지지 않는다.
+
+    remote_version이 없는(서버에 한 번도 기록되지 않은) 삭제는 delete-if-exists
+    envelope로 전송되어 서버에서 멱등 무조작 처리된다. create로 변환되어 살아있는
+    신규 기록이 생기지 않는다.
+    """
+    profile, games = prepare_registered(tmp_path)
+    game_id = games.insert_game(sample("삭제될 기록"))
+    games.delete_game(game_id)
+    transport = RegisteredTransport()
+    engine = SyncEngine(
+        profile,
+        registered_client=RegisteredGamesClient(
+            CONFIG, client=JsonHttpClient(transport)
+        ),
+        token_provider=lambda: "token",
+    )
+
+    status = engine.run_once()
+
+    assert status.phase is SyncPhase.SYNCED
+    # 서버에 살아있는 신규 기록이 생기지 않는다(delete-if-exists 멱등 무조작).
+    assert transport.remote_games == {}
+    apply_request = next(
+        request
+        for request in transport.requests
+        if request["url"].endswith("/rpc/apply_game_changes")
+    )
+    changes = apply_request["body"]["changes"]
+    assert len(changes) == 1
+    assert changes[0]["op"] == "delete"
+    assert changes[0]["payload"] == {}
+    assert changes[0]["expected_change_version"] is None
+    assert outbox_rows(profile) == []
+
+    connection = db.connect(profile.database_path)
+    try:
+        deleted = int(
+            connection.execute(
+                "SELECT count(*) FROM games WHERE deleted_at IS NOT NULL"
+            ).fetchone()[0]
+        )
+        live = int(
+            connection.execute(
+                "SELECT count(*) FROM games WHERE deleted_at IS NULL"
+            ).fetchone()[0]
+        )
+    finally:
+        connection.close()
+    assert deleted == 1
+    assert live == 0
+    games.close()
+
+
+def test_response_lost_create_then_delete_does_not_resurrect(tmp_path: Path):
+    """P0-1-B: create 응답 유실 뒤 삭제해도 pull이 서버 기록을 되살리지 않는다.
+
+    create가 서버에 적용됐지만 응답이 유실되어 로컬 remote_version은 여전히 None인
+    상태에서 삭제하면, delete-if-exists가 서버에도 soft delete를 적용한다. 그 결과
+    pull이 살아있는 기록을 가져오지 못해 국소 삭제 상태가 유지된다.
+    """
+    profile, games = prepare_registered(tmp_path)
+    game_id = games.insert_game(sample("응답 유실 후 삭제"))
+    transport = RegisteredTransport()
+    transport.drop_apply_response_once = True
+    engine = SyncEngine(
+        profile,
+        registered_client=RegisteredGamesClient(
+            CONFIG, client=JsonHttpClient(transport)
+        ),
+        token_provider=lambda: "token",
+    )
+
+    # create 전송(서버 적용) → 응답 유실 → 이어서 로컬 삭제·다시 동기화.
+    engine.run_once()
+    assert len(transport.remote_games) == 1
+    games.delete_game(game_id)
+    engine.run_once()
+
+    # 서버에는 살아있는 기록이 없다(delete-if-exists로 soft delete됨).
+    assert [g for g in transport.remote_games.values() if g["deleted_at"] is None] == []
+    assert outbox_rows(profile) == []
+
+    connection = db.connect(profile.database_path)
+    try:
+        deleted = int(
+            connection.execute(
+                "SELECT count(*) FROM games WHERE deleted_at IS NOT NULL"
+            ).fetchone()[0]
+        )
+        live = int(
+            connection.execute(
+                "SELECT count(*) FROM games WHERE deleted_at IS NULL"
+            ).fetchone()[0]
+        )
+    finally:
+        connection.close()
+    assert deleted == 1
+    assert live == 0
+    games.close()
+
+
 def test_two_device_create_update_delete_round_trip(tmp_path: Path):
     transport = RegisteredTransport()
     client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
@@ -544,4 +665,106 @@ def test_missing_remote_config_keeps_local_record_pending(tmp_path: Path):
     assert status.phase is SyncPhase.OFFLINE
     assert status.pending_count == 1
     assert games.count_games() == 1
+    games.close()
+
+
+def test_registered_429_is_retryable_and_honors_retry_after(tmp_path: Path):
+    """P1-1: 등록 계정 429는 영구 실패가 아니라 rate-limited backoff로 재시도된다."""
+    profile, games = prepare_registered(tmp_path)
+    games.insert_game(sample())
+    clock = Clock()
+    transport = RegisteredTransport()
+    transport.rate_limit_first_request = 60
+    engine = SyncEngine(
+        profile,
+        registered_client=RegisteredGamesClient(
+            CONFIG, client=JsonHttpClient(transport)
+        ),
+        token_provider=lambda: "token",
+        now=clock,
+    )
+
+    first = engine.run_once()
+    assert first.phase is SyncPhase.OFFLINE
+    assert first.pending_count == 1
+
+    connection = db.connect(profile.database_path)
+    try:
+        row = connection.execute(
+            "SELECT next_retry_at, last_error_code FROM sync_outbox WHERE id="
+            "(SELECT MAX(id) FROM sync_outbox)"
+        ).fetchone()
+        assert row["next_retry_at"] != "9999-12-31T23:59:59"
+        assert row["last_error_code"] == "rate_limited"
+    finally:
+        connection.close()
+
+    # retry_after(60초)가 지나면 다시 전송된다.
+    clock.advance(120)
+    second = engine.run_once()
+    assert second.phase is SyncPhase.SYNCED
+    assert outbox_rows(profile) == []
+    games.close()
+
+
+def test_initial_sync_completed_not_downgraded_by_exact_batch(tmp_path: Path):
+    """P1-4: 이미 완료된 initial sync가 정확히 100건 batch에서 0으로 되돌아가지 않는다."""
+    transport = RegisteredTransport()
+    for index in range(5):
+        transport._apply(
+            {
+                "op": "create",
+                "id": f"00000000-0000-4000-8000-{index:012d}",
+                "payload": {
+                    "played_at": "2026-08-07T10:00:00",
+                    "result": "win",
+                    "turn_order": "first",
+                    "my_deck": "테스트 덱",
+                    "opp_deck": "상대 덱",
+                    "turns": 4,
+                    "end_reason": "regular",
+                    "score_after": 1500,
+                    "note": str(index),
+                    "timezone_offset_minutes": 540,
+                },
+            }
+        )
+    profile, games = prepare_registered(tmp_path)
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+    engine = SyncEngine(
+        profile, registered_client=client, token_provider=lambda: "token"
+    )
+
+    first = engine.run_once()
+    assert first.initial_sync_completed is True
+
+    # initial sync 완료 후 정확히 BATCH_SIZE(100)건짜리 pull batch가 오면
+    # initial_sync_completed가 0으로 되돌려지면 안 된다(P1-4).
+    connection = db.connect(profile.database_path)
+    try:
+        connection.execute("UPDATE sync_state SET initial_sync_completed=1 WHERE id=1")
+    finally:
+        connection.close()
+    for index in range(5, 105):
+        transport._apply(
+            {
+                "op": "create",
+                "id": f"00000000-0000-4000-8000-{index:012d}",
+                "payload": {
+                    "played_at": "2026-08-07T10:00:00",
+                    "result": "win",
+                    "turn_order": "first",
+                    "my_deck": "테스트 덱",
+                    "opp_deck": "상대 덱",
+                    "turns": 4,
+                    "end_reason": "regular",
+                    "score_after": 1500,
+                    "note": str(index),
+                    "timezone_offset_minutes": 540,
+                },
+            }
+        )
+    second = engine.run_once()
+    assert second.initial_sync_completed is True
+    assert second.last_pulled_version == 105
     games.close()

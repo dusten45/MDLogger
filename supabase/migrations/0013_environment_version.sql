@@ -718,9 +718,9 @@ begin
                     environment_version_id = excluded.environment_version_id,
                     deck_catalog_version_id = excluded.deck_catalog_version_id,
                     client_version = excluded.client_version,
-                    payload_version = excluded.payload_version,
-                    withdrawn_at = null,
-                    withdrawal_source = null
+                    payload_version = excluded.payload_version
+                    -- M3 가드(D-1(a)): `withdrawn_at`/`withdrawal_source`는 어떤
+                    -- upsert로도 지우지 않는다. 철회된 관측치가 조용히 되살아나지 않게 한다.
                 where analytics.duel_observations.source_kind = 'guest'
                   and op = 'upsert'
                 returning source_game_id into inserted_game;

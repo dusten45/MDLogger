@@ -140,11 +140,17 @@ class MainWindow(QMainWindow):
         self._stats.activateWindow()
 
     def close_profile_windows(self) -> None:
-        """프로필 전환 전에 이 범위의 보조 창과 메인 창을 닫는다."""
+        """프로필 전환 전에 이 범위의 보조 창과 메인 창을 닫고 삭제를 예약한다.
+
+        deleteLater로 예약해 프로필 전환마다 닫힌 창이 GameService 참조를 들고
+        누적되지 않게 한다(P1-10).
+        """
         if self._stats is not None:
             self._stats.close()
+            self._stats.deleteLater()
             self._stats = None
         self.close()
+        self.deleteLater()
 
     # ----- 헤더/통계 갱신 -----
     def refresh_header(self) -> None:

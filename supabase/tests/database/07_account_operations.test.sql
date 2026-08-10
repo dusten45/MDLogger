@@ -174,13 +174,18 @@ select throws_ok(
     'authenticated는 진단 정리를 직접 실행할 수 없다'
 );
 
-set local role postgres;
+-- 양성 경로는 실제 호출자(service_role) 자격으로 실행해 권한 충실도를 검증한다.
+-- fixture 삽입과 SELECT 검증은 postgres(소유자)로, 실제 prune 함수 호출만
+-- service_role로 수행한다. service_role의 커스텀(analytics) 스키마 직접 INSERT
+-- 권한에 의존하지 않도록 분리한다.
+set local role service_role;
 select is(
     (public.prune_guest_ingest_diagnostics(90) ->> 'pruned_batches')::int,
     1,
     '90일보다 오래된 진단 batch만 정리된다'
 );
 
+set local role postgres;
 select results_eq(
     $$ select count(*)::int from analytics.ingestion_batches $$,
     $$ values (1) $$,
@@ -196,12 +201,14 @@ insert into analytics.rejected_observations (
     'ffffffff-ffff-4fff-8fff-ffffffffffff',
     'invalid_value', now() - interval '120 days'
 );
+set local role service_role;
 select is(
     (public.prune_guest_ingest_diagnostics(90) ->> 'pruned_rejected')::int,
     1,
     '오래된 거부 기록도 정리된다'
 );
 
+set local role postgres;
 select is(
     (select count(*)::int from analytics.duel_observations
      where source_game_id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'),

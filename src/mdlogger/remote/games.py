@@ -55,6 +55,7 @@ class RegisteredGamesErrorKind(StrEnum):
     NETWORK = "network"
     AUTH_REQUIRED = "auth_required"
     REJECTED = "rejected"
+    RATE_LIMITED = "rate_limited"
     SERVER = "server"
 
 
@@ -65,10 +66,12 @@ class RegisteredGamesError(RemoteError):
         message: str,
         *,
         code: str | None = None,
+        retry_after_seconds: int | None = None,
     ) -> None:
         super().__init__(message)
         self.kind = kind
         self.code = code
+        self.retry_after_seconds = retry_after_seconds
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,10 +117,12 @@ def build_game_change(
     remote_version: int | None,
 ) -> dict[str, Any]:
     """로컬 outbox를 서버 CAS mutation envelope로 변환한다."""
-    if remote_version is None:
-        remote_operation = "create"
-    elif operation == "delete":
+    if operation == "delete":
+        # remote_version이 없어도 delete-if-exists로 삭제를 보낸다. create로
+        # 잘못 변환해 서버에 살아있는 신규 기록이 생기지 않게 한다(P0-1).
         remote_operation = "delete"
+    elif remote_version is None:
+        remote_operation = "create"
     elif operation == "restore":
         remote_operation = "restore"
     else:
@@ -125,6 +130,8 @@ def build_game_change(
 
     change: dict[str, Any] = {"op": remote_operation, "id": sync_id}
     if remote_operation != "create":
+        # delete-if-exists(remote_version None)는 expected_change_version이 null로
+        # 전송되어 서버가 CAS 없이 soft delete를 적용한다(P0-1).
         change["expected_change_version"] = remote_version
     # 게스트를 포함한 단일 출처 버전을 등록 게임에도 기록한다(하드닝 H4/N-1).
     change["client_version"] = __version__
@@ -175,6 +182,9 @@ class RegisteredGamesClient:
         batch = [dict(change) for change in changes]
         if not batch:
             raise ValueError("등록 games batch는 비어 있을 수 없습니다.")
+        delete_ops = {
+            str(change["id"]) for change in batch if change.get("op") == "delete"
+        }
         response = self._request(
             "POST",
             f"{self._config.rest_url}/rpc/apply_game_changes",
@@ -208,7 +218,9 @@ class RegisteredGamesClient:
                 )
                 version = int(version_value) if version_value is not None else None
                 if status == "applied" and (version is None or version < 1):
-                    raise ValueError
+                    # delete-if-exists는 대상이 없으면 applied+버전 null로 온다(P0-1).
+                    if not (version is None and str(row["id"]) in delete_ops):
+                        raise ValueError
                 remote = row.get("remote")
                 results.append(
                     MutationResult(
@@ -344,6 +356,16 @@ class RegisteredGamesClient:
             return response
         body = self._json(response, required=False)
         code = body.get("code") if isinstance(body, dict) else None
+        if response.status == 429:
+            retry_after = body.get("retry_after_seconds")
+            raise RegisteredGamesError(
+                RegisteredGamesErrorKind.RATE_LIMITED,
+                f"요청이 많아 등록 games {action}이 잠시 제한됐습니다. (HTTP 429)",
+                code=str(code) if code else None,
+                retry_after_seconds=int(retry_after)
+                if isinstance(retry_after, int)
+                else None,
+            )
         if response.status in (401, 403):
             kind = (
                 RegisteredGamesErrorKind.AUTH_REQUIRED

@@ -252,6 +252,7 @@ class SyncEngine:
     ) -> SyncStatus:
         retryable = error.kind in (
             RegisteredGamesErrorKind.NETWORK,
+            RegisteredGamesErrorKind.RATE_LIMITED,
             RegisteredGamesErrorKind.SERVER,
         )
         if entries:
@@ -261,6 +262,7 @@ class SyncEngine:
                 detail=str(error),
                 retryable=retryable,
                 failed_at=self._now(),
+                retry_after_seconds=error.retry_after_seconds,
             )
         if error.kind is RegisteredGamesErrorKind.AUTH_REQUIRED:
             phase = SyncPhase.REAUTH_REQUIRED

@@ -167,9 +167,15 @@ class AppController:
         self._games = None
         self._current_profile = None
 
-        if sync is not None:
-            sync.stop()
-        if window is not None:
-            window.close_profile_windows()
-        if games is not None:
-            games.close()
+        try:
+            if sync is not None:
+                sync.stop()
+        finally:
+            try:
+                if window is not None:
+                    window.close_profile_windows()
+            finally:
+                # 정리 중 예외가 나도 연결은 반드시 해제해 Windows 파일 락을
+                # 남기지 않는다(P1-9).
+                if games is not None:
+                    games.close()

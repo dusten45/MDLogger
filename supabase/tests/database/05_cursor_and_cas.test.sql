@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(29);
+select plan(37);
 
 insert into auth.users (id, email)
 values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'user-a@test.local');
@@ -328,6 +328,78 @@ select throws_ok(
     '42501',
     'permission denied for table game_change_cursors',
     'authenticated는 change-version clock을 직접 읽을 수 없다'
+);
+
+-- P0-1: delete-if-exists(0018). expected_change_version 없이도 삭제를 표현한다.
+select is(
+    public.apply_game_changes(
+        1, 1,
+        '[{"op":"create","id":"b0000000-0000-4000-8000-000000000001",
+           "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
+                      "turn_order":"first"}}]'::jsonb
+    ) -> 'results' -> 0 ->> 'status',
+    'applied',
+    'delete-if-exists 준비용 create가 적용된다'
+);
+
+select is(
+    public.apply_game_changes(
+        1, 1,
+        '[{"op":"delete","id":"b0000000-0000-4000-8000-000000000001"}]'::jsonb
+    ) -> 'results' -> 0 ->> 'status',
+    'applied',
+    'CAS 없는 delete-if-exists가 존재하는 기록을 soft delete한다'
+);
+
+select ok(
+    (select deleted_at is not null from public.games
+     where id = 'b0000000-0000-4000-8000-000000000001'),
+    'delete-if-exists 결과가 서버에 반영된다'
+);
+
+select ok(
+    (public.apply_game_changes(
+        1, 1,
+        '[{"op":"delete","id":"b0000000-0000-4000-8000-000000000001"}]'::jsonb
+    ) -> 'results' -> 0 -> 'change_version') is null,
+    '이미 삭제된 기록의 delete-if-exists는 멱등 성공(버전 null)이다'
+);
+
+select ok(
+    (public.apply_game_changes(
+        1, 1,
+        '[{"op":"delete","id":"b0000000-0000-4000-8000-000000000002"}]'::jsonb
+    ) -> 'results' -> 0 -> 'change_version') is null,
+    '존재하지 않는 기록의 delete-if-exists는 멱등 성공(버전 null)이다'
+);
+
+select throws_ok(
+    $$ select public.apply_game_changes(
+           1, 1,
+           '[{"op":"delete","id":"b0000000-0000-4000-8000-000000000002",
+              "payload":{"note":"x"}}]'::jsonb
+       ) $$,
+    '22023',
+    'delete payload must be empty',
+    'delete-if-exists도 빈 payload만 허용한다'
+);
+
+-- P2-7: 위조된 과거 deleted_at은 서버가 now()로 덮어쓴다(0004/0009 tombstone 강제).
+-- 클라이언트가 임의의 과거 시각을 tombstone으로 위조하지 못하도록, 새 tombstone은
+-- 테이블 소유자 자격의 직접 UPDATE여도 서버 시각으로만 기록된다.
+reset role;
+update public.games
+set deleted_at = '2020-01-01T00:00:00'
+where id = '11111111-1111-4111-8111-111111111111';
+select ok(
+    (select deleted_at > '2020-01-01T00:00:00' from public.games
+     where id = '11111111-1111-4111-8111-111111111111'),
+    '위조된 과거 deleted_at은 서버가 now()로 덮어쓴다'
+);
+select ok(
+    (select deleted_at is not null from public.games
+     where id = '11111111-1111-4111-8111-111111111111'),
+    '서버가 부여한 tombstone 시각이 기록된다'
 );
 
 select * from finish();

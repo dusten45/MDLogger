@@ -108,18 +108,19 @@ def _create_verified_backup(
 def _retain_backups(db_path: Path, keep: int = BACKUP_RETENTION) -> None:
     """백업 보존 정책 적용: 이 DB의 마이그레이션 사전 백업을 최근 keep개만 남긴다.
 
-    백업 이름은 버전 키(`<db>.pre-migration-v<version>.bak`)이므로 migration이
-    단조 증가한다는 점을 이용해 가장 높은 버전(가장 최근 migration)을 최신으로 본다.
-    다른 DB 파일이나 실제 DB(`-wal`/`-shm`)는 건드리지 않는다.
+    백업 이름은 버전 키(`<db>.pre-migration-v<version>.bak`)지만 보존 우선순위는
+    버전 번호가 아니라 **파일 생성 시각**으로 판단한다. 버전 번호순 정렬은 어떤
+    경우에 방금 만든 백업을 지워 `MigrationResult.backup_path`를 죽은 경로로
+    만들 수 있어, 최신(가장 방금 생성된) 백업을 항상 보존한다. 다른 DB 파일이나
+    실제 DB(`-wal`/`-shm`)는 건드리지 않는다.
     """
     pattern = re.compile(rf"^{re.escape(db_path.name)}\.pre-migration-v(\d+)\.bak$")
-    versions: list[tuple[int, Path]] = []
+    backups: list[Path] = []
     for path in db_path.parent.glob("*.bak"):
-        match = pattern.match(path.name)
-        if match:
-            versions.append((int(match.group(1)), path))
-    versions.sort(reverse=True, key=lambda item: item[0])
-    for _, path in versions[keep:]:
+        if pattern.match(path.name):
+            backups.append(path)
+    backups.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    for path in backups[keep:]:
         path.unlink(missing_ok=True)
 
 
@@ -384,12 +385,22 @@ def migrate(conn: sqlite3.Connection) -> MigrationResult:
 
 
 def restore_backup(db_path: Path, backup_path: Path) -> None:
-    """검증된 백업을 닫힌 DB 경로에 원자적으로 복원한다."""
-    backup_conn = sqlite3.connect(f"file:{backup_path}?mode=ro", uri=True)
+    """검증된 백업을 닫힌 DB 경로에 원자적으로 복원한다.
+
+    손상·누락된 백업은 raw ``sqlite3.DatabaseError`` 대신 ``MigrationError``로
+    감싼다(호출자가 복구 안내를 일관되게 처리). 파일 URI는 ``Path.as_uri()``로
+    조립해 특수 문자(``#``, ``?`` 등)가 있는 경로도 안전하게 열린다.
+    """
     try:
-        _verify_integrity(backup_conn)
-    finally:
-        backup_conn.close()
+        backup_conn = sqlite3.connect(f"{backup_path.as_uri()}?mode=ro", uri=True)
+        try:
+            _verify_integrity(backup_conn)
+        finally:
+            backup_conn.close()
+    except sqlite3.Error as error:
+        raise MigrationError(
+            "백업이 손상되었거나 열 수 없습니다.", backup_path=backup_path
+        ) from error
 
     temporary_path = db_path.with_name(f".{db_path.name}.{uuid.uuid4().hex}.restore")
     try:

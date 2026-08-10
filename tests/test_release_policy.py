@@ -184,6 +184,15 @@ def test_cache_round_trip(tmp_path):
     assert loaded.to_dict() == policy.to_dict()
 
 
+def test_save_cached_policy_swallows_os_error(tmp_path):
+    """P1-12: 읽기 전용/가득 찬 데이터 디렉터리에서도 캐시 저장 실패가 앱 시작을 막지 않는다."""
+    cache = tmp_path / "release_policy_cache.json"
+    # 경로가 디렉터리면 write_text가 OSError를 일으킨다.
+    cache.mkdir()
+
+    save_cached_policy(_policy(), cache)
+
+
 def test_cache_corrupted_returns_none(tmp_path):
     cache = tmp_path / "release_policy_cache.json"
     cache.write_text("not json", encoding="utf-8")

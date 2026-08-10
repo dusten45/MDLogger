@@ -163,6 +163,7 @@ class AuthWindow(QWidget):
         layout.addWidget(self._guest)
         layout.addStretch(1)
 
+        self._email.returnPressed.connect(self._submit_form)
         self._password.returnPressed.connect(self._submit_form)
         self._password_confirm.returnPressed.connect(self._submit_form)
         QWidget.setTabOrder(self._email, self._password)

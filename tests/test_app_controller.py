@@ -217,3 +217,64 @@ def test_profile_switch_stops_sync_before_closing_window(tmp_path: Path):
     assert syncs[0].stopped
     assert windows[0].sync_was_stopped_when_closed
     controller.close()
+
+
+def test_close_releases_all_resources_even_when_stop_raises(tmp_path: Path):
+    """P1-9: sync.stop 예외가 나도 창과 DB 연결을 반드시 해제한다."""
+    manager = ProfileManager(tmp_path)
+    services: list[GameService] = []
+    windows: list[TrackingWindow] = []
+
+    class ExplodingSync(FakeSync):
+        def stop(self, *, timeout_seconds: float = 5.0) -> None:
+            raise RuntimeError("stop 실패")
+
+    def sync_factory(_profile: ProfileContext) -> ExplodingSync:
+        return ExplodingSync()
+
+    controller = make_controller(manager, services, windows)
+    controller._sync_factory = sync_factory
+    controller.start_guest()
+    first_service = services[0]
+    first_window = windows[0]
+
+    with pytest.raises(RuntimeError, match="stop 실패"):
+        controller.close()
+
+    # stop()이 실패해도 창과 DB 연결은 반드시 닫힌다(P1-9).
+    assert first_window.closed
+    with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+        first_service.count_games()
+
+
+def test_profile_switch_schedules_window_deletion(qapp: QApplication, tmp_path: Path):
+    """P1-10: 프로필 전환 시 닫힌 MainWindow가 deleteLater로 삭제 예약된다."""
+    manager = ProfileManager(tmp_path)
+    services: list[GameService] = []
+    windows: list[MainWindow] = []
+
+    def service_factory(profile: ProfileContext) -> GameService:
+        games = GameService.open(profile.database_path)
+        services.append(games)
+        return games
+
+    def window_factory(games: GameService, profile: ProfileContext) -> MainWindow:
+        window = MainWindow(games, ["테스트 덱"], profile)
+        windows.append(window)
+        return window
+
+    controller = AppController(manager, service_factory, window_factory)
+    controller.start_guest()
+    guest_window = windows[0]
+    guest_window.open_stats()
+
+    controller.login_registered(ACCOUNT_A, "계정 A")
+
+    # switch_profile이 이전 창에 deleteLater를 예약해, 이벤트 루프가 처리하면
+    # C++ 객체가 소멸된다(P1-10).
+    from PySide6.QtCore import QEvent
+    from shiboken6 import isValid
+
+    qapp.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    assert not isValid(guest_window)
+    controller.close()

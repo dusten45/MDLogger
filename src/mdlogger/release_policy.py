@@ -231,11 +231,19 @@ def load_cached_policy(path: Path) -> ReleasePolicy | None:
 
 
 def save_cached_policy(policy: ReleasePolicy, path: Path) -> None:
-    """정책을 원자적으로 로컬 캐시에 기록한다."""
-    text = json.dumps(policy.to_dict(), ensure_ascii=False, indent=2) + "\n"
-    tmp = path.with_suffix(path.suffix + _CACHE_SUFFIX)
-    tmp.write_text(text, encoding="utf-8")
-    tmp.replace(path)
+    """정책을 원자적으로 로컬 캐시에 기록한다(최선 노력).
+
+    데이터 디렉터리가 읽기 전용이거나 가득 찼을 때(cache 기록 실패)는
+    앱 시작을 막지 않도록 조용히 무시한다(P1-12).
+    """
+    try:
+        text = json.dumps(policy.to_dict(), ensure_ascii=False, indent=2) + "\n"
+        tmp = path.with_suffix(path.suffix + _CACHE_SUFFIX)
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(path)
+    except OSError:
+        # 캐시는 최적화일 뿐이다(모듈 약속: 정책 조회 실패는 앱 시작을 막지 않는다).
+        pass
 
 
 def _gate_allows(policy: ReleasePolicy) -> bool:

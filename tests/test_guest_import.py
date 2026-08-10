@@ -5,8 +5,14 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 from mdlogger import db
-from mdlogger.guest_import import GuestImportResult, import_guest_records
+from mdlogger.guest_import import (
+    GuestImportError,
+    GuestImportResult,
+    import_guest_records,
+)
 from mdlogger.profiles import ProfileKind
 
 PLAYED_AT = "2026-06-19T10:00:00"
@@ -190,3 +196,103 @@ def test_import_target_paths_source_profile_kind(tmp_path: Path):
         assert row["source_profile_kind"] == ProfileKind.GUEST.value
     finally:
         conn.close()
+
+
+def test_import_opens_source_read_only_without_sidecars(tmp_path: Path):
+    """P1-7: 원본을 절대 열지 않아 journal mode(WAL) 변경이나 사이드카를 만들지 않는다."""
+    guest = tmp_path / "guest.db"
+    target = tmp_path / "registered.db"
+    _make_guest_db(guest, count=2)
+
+    # 원본 journal mode를 DELETE로 강제해두고 import 후에도 유지되는지 본다.
+    conn = sqlite3.connect(guest)
+    conn.execute("PRAGMA journal_mode = DELETE")
+    conn.close()
+
+    import_guest_records(guest, target)
+
+    # db.connect는 WAL을 다시 켜므로 raw read-only 연결로 journal mode를 확인한다.
+    conn = sqlite3.connect(f"file:{guest}?mode=ro", uri=True)
+    try:
+        mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
+    finally:
+        conn.close()
+    assert mode == "delete"
+    assert not (guest.with_name(guest.name + "-wal")).exists()
+    assert not (guest.with_name(guest.name + "-shm")).exists()
+
+
+def test_import_wal_source_creates_no_sidecars(tmp_path: Path):
+    """P1-7: WAL 모드 소스도 원본 옆에 -wal/-shm 사이드카를 만들지 않는다."""
+    guest = tmp_path / "guest.db"
+    target = tmp_path / "registered.db"
+    _make_guest_db(guest, count=2)
+    # 체크포인트해 -wal/-shm을 정리한 순수 WAL 모드 소스로 만든다.
+    conn = sqlite3.connect(guest)
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+    assert not (guest.with_name(guest.name + "-wal")).exists()
+
+    result = import_guest_records(guest, target)
+
+    assert result.imported_count == 2
+    # read-only로 열어도 원본 옆에 사이드카가 생기지 않아야 한다(P1-7).
+    assert not (guest.with_name(guest.name + "-wal")).exists()
+    assert not (guest.with_name(guest.name + "-shm")).exists()
+
+
+def test_import_active_wal_source_preserves_uncommitted_data(tmp_path: Path):
+    """P1-7: 활성 -wal(미커밋)도 복사본으로 읽어 보존하고 원본은 건드리지 않는다."""
+    guest = tmp_path / "guest.db"
+    target = tmp_path / "registered.db"
+    _make_guest_db(guest, count=2)
+    # -wal에 미커밋 데이터를 남긴다.
+    conn = db.connect(guest)
+    db.insert_game(
+        conn,
+        {
+            "played_at": "2026-08-07T11:00:00",
+            "result": "lose",
+            "turn_order": "second",
+            "my_deck": "미커밋덱",
+            "opp_deck": "미커밋상대",
+            "turns": 3,
+            "end_reason": "regular",
+            "score_after": 1400,
+            "note": "uncommitted",
+        },
+    )
+    # 커밋하지 않고 연결을 유지한다.
+    try:
+        result = import_guest_records(guest, target)
+    finally:
+        conn.close()
+
+    assert result.imported_count == 3
+    rows = _target_rows(target)
+    assert any(row["note"] == "uncommitted" for row in rows)
+    # 원본 옆에 새 사이드카가 생기지 않는다(기존 -wal 유지).
+    assert not (guest.with_name(guest.name + "-shm")).exists()
+    games = db.connect(guest)
+    try:
+        count = int(
+            games.execute(
+                "SELECT COUNT(*) FROM games WHERE deleted_at IS NULL"
+            ).fetchone()[0]
+        )
+    finally:
+        games.close()
+    assert count == 3
+
+
+def test_import_pre_v2_source_raises_guest_import_error(tmp_path: Path):
+    """P1-8: 구버전(pre-v2) 게스트 DB는 raw sqlite 오류가 아닌 GuestImportError로 감싼다."""
+    guest = tmp_path / "pre_v2.db"
+    target = tmp_path / "registered.db"
+    conn = sqlite3.connect(guest)
+    conn.execute("CREATE TABLE meta (k TEXT PRIMARY KEY, v TEXT)")
+    conn.commit()
+    conn.close()
+
+    with pytest.raises(GuestImportError):
+        import_guest_records(guest, target)

@@ -88,6 +88,18 @@ class GuestIngestResult:
     replayed: bool
 
 
+def _header_retry_after(headers: Mapping[str, str]) -> int | None:
+    """HTTP ``Retry-After`` 헤더에서 초 단위 지연을 읽는다.
+
+    헤더 키는 대소문자를 구분하지 않고, 초 단위 숫자일 때만 반환한다.
+    (RFC 7231은 HTTP-date도 허용하지만 이 클라이언트는 초 단위만 사용한다.)
+    """
+    for name, value in headers.items():
+        if name.lower() == "retry-after" and value.strip().isdigit():
+            return int(value.strip())
+    return None
+
+
 def current_timezone_offset_minutes() -> int:
     """기록 시점 장치의 UTC offset(분). 신규 기록의 자동 수집용."""
     offset = datetime.now().astimezone().utcoffset()
@@ -220,13 +232,13 @@ class GuestIngestClient:
             )
         if response.status == 429:
             retry_after = body.get("retry_after_seconds")
+            if not isinstance(retry_after, int):
+                retry_after = _header_retry_after(response.headers)
             raise GuestIngestError(
                 GuestIngestErrorKind.RATE_LIMITED,
                 "요청이 많아 게스트 업로드가 잠시 제한됐습니다.",
                 code=code,
-                retry_after_seconds=int(retry_after)
-                if isinstance(retry_after, int)
-                else None,
+                retry_after_seconds=retry_after,
             )
         if 400 <= response.status < 500:
             raise GuestIngestError(

@@ -122,6 +122,10 @@ class ProfileRouter:
 
     def show_auth(self, message: str = "") -> None:
         self._auth_generation += 1
+        # 이전 진행 중(요청 중) 창을 닫았다 다시 열면 set_busy(True)가 비활성화한
+        # 게스트/비밀번호 표시를 재활성화한다. 이후 set_online_available이 온라인 전용
+        # 필드를 다시 적절히 조정한다(P0-6).
+        self._auth.set_busy(False)
         self._auth.show_login(message)
         self._auth.set_online_available(self._sessions is not None)
         self._auth.show()

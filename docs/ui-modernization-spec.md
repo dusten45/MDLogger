@@ -2,7 +2,7 @@
 
 - 상태: 단계 1 핵심 기반 구현 완료, 계정 기능 구현 전까지 화면별 현대화 일시 보류
 - 작성일: 2026-08-07
-- 최근 개정: 2026-08-07 (테마 기반 구현 현황 및 계정 기능 이후 재개 조건 반영)
+- 최근 개정: 2026-08-10 (2단계 P1 UI 관련 변경: 스레딩 경계·창 수명주기·휴대용 아카이브 배선 상태)
 - 대상 프로젝트: MDLogger (`mdlogger`)
 - 주요 플랫폼: Windows, macOS, Linux
 - UI 기술: PySide6 Qt Widgets 유지
@@ -35,6 +35,14 @@
 - 기존 화면에 남아 있는 인라인 QSS와 하드코딩 색상의 역할 기반 스타일 전환
 
 현재 테마 기반은 이후 계정, 인증 또는 원격 데이터 기능이 추가되더라도 공통 UI 기반으로 유지한다. 다만 해당 기능이 화면 구조와 상태 모델을 바꿀 수 있으므로 단계 2 이후의 화면별 현대화는 계정 기능 구현이 끝날 때까지 보류한다.
+
+### 2단계(P1) UI 관련 변경 (2026-08-10)
+
+단계 0~11 외부 검토의 P1 항목 중 UI 수명주기·스레딩과 직접 관련된 변경을 반영했다.
+
+- **UI 스레드 블로킹 I/O 제거 (P1-5)**: `SyncCoordinator`가 UI 스레드에서 engine의 SQLite 연산(`status`·`retry_failed`·`list_conflicts`·`resolve_conflict`)을 직접 실행하지 않도록, worker thread가 전담하는 명령 큐로 재구성했다(R7 스레딩 경계). 초기 상태는 I/O 없이 기본값으로 시작하고 첫 tick에서 worker가 실제 상태로 갱신한다.
+- **창 수명주기 `deleteLater` (P1-10)**: 프로필 전환 시 닫히는 `MainWindow`/`StatsWindow`가 닫힌 `GameService` 참조를 들고 누적되지 않도록 `close_profile_windows`에서 `deleteLater()`를 예약한다. `tests/test_app_controller.py::test_profile_switch_schedules_window_deletion`으로 검증.
+- **휴대용 아카이브 UI 배선 (P1-13)**: 아직 미배선. 휴대용 내보내기 버튼/import 대화상자는 하드닝 H-3로 **연기 확정**이며, 현재는 CSV/XLSX 내보내기를 대체 경로로 제공한다. 나중에 배선할 때는 `docs/open-items.md` #8의 구현 포인트(호출 함수·대상 DB 경로·참고 테스트)를 참고한다.
 
 ## 1. 목적
 

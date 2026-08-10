@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import sqlite3
+import tempfile
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -111,6 +113,24 @@ def _completed_batch_matches(
     return int(row["imported_count"]) + int(row["skipped_count"]) == expected_count
 
 
+def _open_source_copy(source_path: Path, temp_dir: Path) -> sqlite3.Connection:
+    """원본을 절대 열지 않고 임시 복사본(main + wal)을 read-only로 연다.
+
+    SQLite는 WAL 모드 DB를 열 때 -wal/-shm 사이드카를 만들 수 있어 read-only로
+    열어도 원본 옆에 부수 파일이 생길 수 있다(P1-7). 원본 파일을 건드리지 않도록
+    main과 wal(-wal)을 temp 디렉터리로 복사한 뒤 그 복사본을 읽는다. 활성
+    -wal이 있으면 함께 복사해 미커밋 데이터도 보존된다.
+    """
+    temp_db = temp_dir / source_path.name
+    shutil.copy2(source_path, temp_db)
+    wal = source_path.with_name(source_path.name + "-wal")
+    if wal.exists():
+        shutil.copy2(wal, temp_dir / (source_path.name + "-wal"))
+    conn = sqlite3.connect(f"file:{temp_db}?mode=ro", uri=True, timeout=5.0)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 def import_guest_records(
     source_path: Path,
     target_path: Path,
@@ -118,15 +138,21 @@ def import_guest_records(
     source_profile_kind: ProfileKind = ProfileKind.GUEST,
 ) -> GuestImportResult:
     """게스트 DB 기록을 대상 계정 DB로 원자적으로 import한다."""
-    source_conn = db.connect(source_path)
-    try:
-        source_conn.execute("PRAGMA query_only = ON")
-        checksum = _core_fields_signature(source_conn)
-        rows = source_conn.execute(
-            "SELECT * FROM games WHERE deleted_at IS NULL ORDER BY id"
-        ).fetchall()
-    finally:
-        source_conn.close()
+    with tempfile.TemporaryDirectory(prefix="mdlogger-import-") as temp_dir:
+        source_conn = _open_source_copy(source_path, Path(temp_dir))
+        try:
+            checksum = _core_fields_signature(source_conn)
+            rows = source_conn.execute(
+                "SELECT * FROM games WHERE deleted_at IS NULL ORDER BY id"
+            ).fetchall()
+        except sqlite3.DatabaseError as error:
+            # 구버전(pre-v2) 게스트 DB는 games 테이블이 없어 raw sqlite 오류가
+            # 나므로 import 전용 예외로 감싸 호출자가 안전하게 처리하게 한다(P1-8).
+            raise GuestImportError(
+                f"게스트 DB를 읽을 수 없습니다: {source_path}"
+            ) from error
+        finally:
+            source_conn.close()
 
     target_conn = db.connect(target_path)
     try:

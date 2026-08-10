@@ -71,23 +71,6 @@ def test_today_record():
     assert db.get_today_record(conn) == (1, 1)
 
 
-def test_delete_last():
-    conn = make_conn()
-    db.insert_game(conn, sample(played_at="2026-06-19T10:00:00"))
-    db.insert_game(conn, sample(played_at="2026-06-19T10:05:00", opp_deck="엑조디아"))
-    removed = db.delete_last(conn)
-    assert removed is not None
-    assert removed["opp_deck"] == "엑조디아"
-    assert len(db.get_all_games(conn)) == 1
-    # 마지막 점수도 직전 레코드 기준으로 복원
-    assert db.get_last_score(conn) == 2600
-
-
-def test_delete_last_on_empty():
-    conn = make_conn()
-    assert db.delete_last(conn) is None
-
-
 def test_update_game():
     conn = make_conn()
     gid = db.insert_game(conn, sample())

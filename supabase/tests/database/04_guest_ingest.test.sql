@@ -5,7 +5,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(14);
+select plan(16);
 
 -- Edge Function과 같은 자격(service_role)으로 실행한다.
 set local role service_role;
@@ -142,6 +142,33 @@ select ok(
      from analytics.duel_observations
      where source_game_id = '33333333-3333-4333-8333-333333333333'),
     '철회된 게스트 observation에 withdrawn_at이 기록된다'
+);
+
+-- P0-2 하드닝 D-1(a): 철회된 게스트 observation을 upsert로 되살리지 않는다.
+set local role service_role;
+select is(
+    (public.ingest_guest_batch(
+        '23232323-2323-4232-8232-232323232323',
+        '77777777-7777-4777-8777-777777777777',
+        '0.1.0',
+        1,
+        '[{"op":"upsert",
+           "sync_id":"33333333-3333-4333-8333-333333333333",
+           "played_at_local":"2026-08-07T14:00:00",
+           "timezone_offset_minutes":540,
+           "result":"win","turn_order":"second","turns":9}]'::jsonb
+    )) ->> 'accepted',
+    '1',
+    '철회된 observation에 대한 upsert는 수락된다'
+);
+reset role;
+
+select is(
+    (select withdrawn_at is not null and withdrawal_source = 'guest'
+     from analytics.duel_observations
+     where source_game_id = '33333333-3333-4333-8333-333333333333'),
+    true,
+    '철회 후 upsert로도 철회 마커(withdrawn_at)가 유지된다'
 );
 
 -- 잘못된 payload 계약: 빈 배열은 함수 수준에서 거부된다.

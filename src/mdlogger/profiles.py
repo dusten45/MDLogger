@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -15,7 +14,13 @@ from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
 from . import db
-from .paths import DATA_DIR, ensure_data_dir, secure_data_file
+from .paths import (
+    DATA_DIR,
+    copy_database_via_backup,
+    ensure_data_dir,
+    secure_data_file,
+    secure_sidecars,
+)
 
 _PROFILE_STATE_VERSION = 1
 _PRIVATE_DIR_MODE = 0o700
@@ -164,6 +169,9 @@ class ProfileManager:
         finally:
             connection.close()
         secure_data_file(profile.database_path)
+        # 프로필 DB도 WAL 모드이므로 -wal/-shm 사이드카에 최신 기록이 쓰일 수 있다.
+        # 기본 DB_PATH 외 프로필 DB의 사이드카도 소유자 전용 권한으로 맞춘다(P2-4).
+        secure_sidecars(profile.database_path)
 
     def _ensure_directories(self) -> None:
         self._ensure_private_directory(self.data_dir)
@@ -258,13 +266,11 @@ class ProfileManager:
         if destination.exists() or not self._legacy_db_path.is_file():
             return
         self._ensure_private_directory(destination.parent)
-        temporary_path = destination.with_suffix(".legacy-copy.tmp")
         try:
-            shutil.copy2(self._legacy_db_path, temporary_path)
-            temporary_path.replace(destination)
+            # WAL 체크포인트되지 않은 legacy DB의 -wal까지 포함해 복사한다(P0-5).
+            copy_database_via_backup(self._legacy_db_path, destination)
             secure_data_file(destination)
-        except OSError as error:
-            temporary_path.unlink(missing_ok=True)
+        except (OSError, sqlite3.Error) as error:
             raise ProfileError(
                 "기존 게임 DB를 게스트 프로필로 복사하지 못했습니다."
             ) from error

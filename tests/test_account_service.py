@@ -289,6 +289,20 @@ def test_error_classification(status, error_code, expected_kind):
     assert exc_info.value.code == error_code
 
 
+@pytest.mark.parametrize("status", [400, 401, 422])
+def test_unrecognized_client_error_is_not_credentials(status):
+    """P2-5: 인식되지 않는 400/401/422는 '이메일/비밀번호 오류'로 오분류하지 않는다."""
+    service, _ = make_service(
+        json_response(status, {"error_code": "some_unknown_code", "msg": "err"})
+    )
+
+    with pytest.raises(AuthError) as exc_info:
+        service.sign_in("a@test.local", "pw")
+
+    assert exc_info.value.kind is AuthErrorKind.SERVER_REJECTED
+    assert exc_info.value.code == "some_unknown_code"
+
+
 def test_network_failure_is_classified_as_network():
     service, _ = make_service(NetworkError("연결 실패"))
 

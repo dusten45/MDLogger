@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import stat
 import time
 from pathlib import Path
 from threading import Event
@@ -352,6 +353,33 @@ def test_revoked_saved_session_shows_login_but_keeps_local_profile_available(
     controller.close()
 
 
+def test_reopening_auth_window_reenables_guest_and_password_toggle(
+    qapp: QApplication, tmp_path: Path
+):
+    """P0-6: 요청 중 비활성화된 게스트/비밀번호 표시가 창을 다시 열면 되살아난다.
+
+    set_busy(True)는 _guest/_show_password까지 비활성화하지만 set_online_available은
+    이 둘을 재활성화하지 않는다. show_auth가 set_busy(False)로 먼저 되돌려야 한다.
+    """
+    auth_window = AuthWindow()
+    values = make_router(tmp_path, auth_window)
+    router, controller = values[0], values[2]
+
+    router.show_auth()
+    router._auth.set_busy(True)
+    assert router._auth._guest.isEnabled() is False
+    assert router._auth._show_password.isEnabled() is False
+
+    # 요청 중 창을 닫았다(취소) 다시 열어도 재활성화되어야 한다.
+    router._cancel_auth_flow()
+    router.show_auth()
+
+    assert router._auth._guest.isEnabled() is True
+    assert router._auth._show_password.isEnabled() is True
+    router.close()
+    controller.close()
+
+
 def test_auth_window_signal_runs_network_request_without_blocking_gui_thread(
     qapp: QApplication, tmp_path: Path
 ):
@@ -469,3 +497,28 @@ def test_credentials_and_network_errors_have_distinct_recovery_messages(
     assert "가입에 사용할 수 없습니다" in auth_window._email_error.text()
     router.close()
     controller.close()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX 파일 권한 테스트")
+def test_prepare_database_secures_profile_db_sidecars(tmp_path: Path):
+    """P2-4: 프로필 DB(기본 DB_PATH 외)의 -wal/-shm 사이드카도 0600으로 보호된다."""
+    profiles = ProfileManager(tmp_path)
+
+    guest = profiles.guest()
+    profiles.prepare_database(guest)
+    assert guest.database_path.exists()
+    for suffix in ("-wal", "-shm", "-journal"):
+        sidecar = guest.database_path.with_name(guest.database_path.name + suffix)
+        if sidecar.exists():
+            assert stat.S_IMODE(sidecar.stat().st_mode) == 0o600
+
+    registered = profiles.registered(
+        USER_ID, "account@example.com", session_state="offline"
+    )
+    profiles.prepare_database(registered)
+    for suffix in ("-wal", "-shm", "-journal"):
+        sidecar = registered.database_path.with_name(
+            registered.database_path.name + suffix
+        )
+        if sidecar.exists():
+            assert stat.S_IMODE(sidecar.stat().st_mode) == 0o600

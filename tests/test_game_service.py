@@ -132,3 +132,12 @@ def test_service_owns_injected_repository_lifecycle():
 
     with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
         connection.execute("SELECT * FROM marker")
+
+
+def test_open_closes_connection_when_init_db_fails(tmp_path):
+    """P1-11: init_db 실패 시 연결 누수 없이 예외를 전파한다."""
+    bad = tmp_path / "bad.db"
+    bad.write_bytes(b"this is not a sqlite database" * 10)
+
+    with pytest.raises(sqlite3.DatabaseError):
+        SqliteGameRepository.open(bad)

@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .environment import current_environment_id
 from .migrations import MigrationResult, migrate
-from .paths import DB_PATH, ensure_data_dir, secure_data_file
+from .paths import DB_PATH, ensure_data_dir, secure_data_file, secure_sidecars
 
 # 내보내기/표시 공용 컬럼 순서 (스키마와 동일)
 COLUMNS = [
@@ -46,6 +46,7 @@ def connect(db_path: Path | str = DB_PATH) -> sqlite3.Connection:
         conn.execute("PRAGMA journal_mode = WAL")
     if is_default_path:
         secure_data_file(DB_PATH)
+        secure_sidecars(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -190,15 +191,6 @@ def get_last_game(conn: sqlite3.Connection) -> sqlite3.Row | None:
         "SELECT * FROM games WHERE deleted_at IS NULL"
         " ORDER BY played_at DESC, id DESC LIMIT 1"
     ).fetchone()
-
-
-def delete_last(conn: sqlite3.Connection) -> sqlite3.Row | None:
-    """가장 최근 레코드 1건을 삭제하고 그 행을 반환(없으면 None)."""
-    row = get_last_game(conn)
-    if row is None:
-        return None
-    delete_game(conn, row["id"])
-    return row
 
 
 def get_last_score(conn: sqlite3.Connection) -> int:

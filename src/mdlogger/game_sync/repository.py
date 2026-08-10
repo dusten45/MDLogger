@@ -134,6 +134,12 @@ class SyncRepository:
                     )
                 self._reconcile_remote(remote)
                 previous = version
+            # initial sync는 한 번 완료되면 batch가 정확히 BATCH_SIZE에 걸려도
+            # 다시 0으로 되돌리지 않는다(P1-4). 이미 완료됐으면 유지한다.
+            state_row = self._connection.execute(
+                "SELECT initial_sync_completed FROM sync_state WHERE id=1"
+            ).fetchone()
+            already_completed = bool(state_row["initial_sync_completed"])
             self._connection.execute(
                 """
                 UPDATE sync_state
@@ -143,7 +149,7 @@ class SyncRepository:
                 """,
                 (
                     previous,
-                    int(initial_sync_completed),
+                    int(already_completed or initial_sync_completed),
                     completed_at.isoformat(timespec="seconds"),
                 ),
             )

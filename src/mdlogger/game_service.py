@@ -52,7 +52,11 @@ class SqliteGameRepository:
     @classmethod
     def open(cls, db_path: Path | str = DB_PATH) -> SqliteGameRepository:
         connection = db.connect(db_path)
-        db.init_db(connection)
+        try:
+            db.init_db(connection)
+        except Exception:
+            connection.close()
+            raise
         return cls(connection)
 
     def close(self) -> None:

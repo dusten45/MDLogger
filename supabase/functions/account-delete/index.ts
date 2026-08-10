@@ -25,15 +25,6 @@ function jsonResponse(status: number, body: Record<string, unknown>): Response {
     });
 }
 
-// JWT 페이로드 중 sub(사용자 UUID)를 추출한다. 서명 검증은 Supabase 게이트웨이가
-// Authorization 헤더의 유효한 사용자 JWT로 이미 수행한다.
-function subjectFromCtx(ctx: unknown): string | null {
-    if (typeof ctx !== "object" || ctx === null) return null;
-    const record = ctx as Record<string, unknown>;
-    const sub = record.sub;
-    return typeof sub === "string" && sub.length > 0 ? sub : null;
-}
-
 interface DeleteCounts {
     games: number;
     devices: number;
@@ -95,32 +86,26 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (!token) {
         return jsonResponse(401, { code: "unauthorized" });
     }
-    const payload = token.split(".")[1];
-    if (!payload) {
-        return jsonResponse(401, { code: "unauthorized" });
-    }
-    let decoded: unknown;
-    try {
-        decoded = JSON.parse(
-            atob(payload.replace(/-/g, "+").replace(/_/g, "/")),
-        );
-    } catch {
-        return jsonResponse(401, { code: "unauthorized" });
-    }
-    const subject = subjectFromCtx(decoded);
-    if (subject === null) {
-        return jsonResponse(401, { code: "unauthorized" });
-    }
-
-    if (requestedUserId !== null && requestedUserId !== subject) {
-        return jsonResponse(403, { code: "target_mismatch" });
-    }
 
     const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
         { auth: { persistSession: false } },
     );
+
+    // 서명·exp·aud를 GoTrue가 검증한 사용자로 요청자를 확정한다(방어심도, R11-1).
+    // base64 디코딩만으로 sub를 신뢰하면 --no-verify-jwt 로컬 서브나 직접 호출에서
+    // 임의의 sub로 남의 계정을 삭제할 수 있다(P0-4).
+    const { data: userData, error: userError } =
+        await supabase.auth.getUser(token);
+    if (userError || !userData?.user) {
+        return jsonResponse(401, { code: "unauthorized" });
+    }
+    const subject = userData.user.id;
+
+    if (requestedUserId !== null && requestedUserId !== subject) {
+        return jsonResponse(403, { code: "target_mismatch" });
+    }
 
     const counts = await captureCounts(supabase, subject);
 

@@ -321,7 +321,10 @@ class SupabaseAccountService(AccountService):
                 "세션이 만료되었거나 폐기되었습니다.",
                 code=code,
             )
-        if code in _CREDENTIAL_CODES or response.status in (400, 401, 422):
+        # 자격 증명 오류는 error_code로만 판단한다. 인식되지 않는 400/401/422를
+        # 전부 "이메일 또는 비밀번호 오류"로 오분류하지 않도록 상태 코드 폴백은
+        # 제거한다. (GoTrue는 로그인 실패를 invalid_credentials 등 code로 반환)
+        if code in _CREDENTIAL_CODES:
             return AuthError(
                 AuthErrorKind.CREDENTIALS,
                 "이메일 또는 비밀번호를 확인해 주세요.",

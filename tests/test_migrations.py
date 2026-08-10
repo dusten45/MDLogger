@@ -230,7 +230,7 @@ def test_restore_rejects_corrupt_backup(tmp_path: Path):
     backup_path = tmp_path / "corrupt.bak"
     backup_path.write_bytes(b"not sqlite")
 
-    with pytest.raises(sqlite3.DatabaseError):
+    with pytest.raises(migrations.MigrationError):
         migrations.restore_backup(db_path, backup_path)
 
     assert db_path.read_bytes() == b"original"
@@ -239,10 +239,16 @@ def test_restore_rejects_corrupt_backup(tmp_path: Path):
 def test_retain_backups_keeps_only_latest(tmp_path: Path):
     """운영 결정: 마이그레이션 사전 백업은 최근 1개만 남기고 정리한다."""
     db_path = tmp_path / "games.db"
-    (tmp_path / "games.db.pre-migration-v1.bak").write_bytes(b"old1")
-    (tmp_path / "games.db.pre-migration-v2.bak").write_bytes(b"old2")
+    oldest = tmp_path / "games.db.pre-migration-v1.bak"
+    middle = tmp_path / "games.db.pre-migration-v2.bak"
     latest = tmp_path / "games.db.pre-migration-v3.bak"
+    oldest.write_bytes(b"old1")
+    middle.write_bytes(b"old2")
     latest.write_bytes(b"new")
+    # 생성 시각으로 최근을 판단하도록 mtime을 명시적으로 다르게 설정한다.
+    os.utime(oldest, (1_000, 1_000))
+    os.utime(middle, (2_000, 2_000))
+    os.utime(latest, (3_000, 3_000))
     # 다른 DB의 백업과 임시 파일은 절대 건드리지 않아야 한다.
     (tmp_path / "accounts.db.pre-migration-v7.bak").write_bytes(b"other-db")
     (tmp_path / "games.db.pre-migration-v9.bak.tmp").write_bytes(b"tmp")
@@ -251,7 +257,29 @@ def test_retain_backups_keeps_only_latest(tmp_path: Path):
 
     assert latest.exists()
     assert latest.read_bytes() == b"new"
-    assert not (tmp_path / "games.db.pre-migration-v1.bak").exists()
-    assert not (tmp_path / "games.db.pre-migration-v2.bak").exists()
+    assert not oldest.exists()
+    assert not middle.exists()
     assert (tmp_path / "accounts.db.pre-migration-v7.bak").exists()
     assert (tmp_path / "games.db.pre-migration-v9.bak.tmp").exists()
+
+
+def test_retain_backups_keeps_most_recently_created_not_highest_version(tmp_path: Path):
+    """P2-2: 버전 번호가 아니라 생성 시각 기준으로 최근 백업을 보존한다.
+
+    방금 만든 백업이 과거의 더 높은 버전 번호 백업보다 오래된 권한·시각으로
+    정렬되지 않도록, 가장 최근에 생성된 백업을 항상 남긴다. 이로써
+    ``MigrationResult.backup_path``가 죽은 경로가 되는 경우를 막는다.
+    """
+    db_path = tmp_path / "games.db"
+    stale_higher = tmp_path / "games.db.pre-migration-v9.bak"
+    fresh = tmp_path / "games.db.pre-migration-v3.bak"
+    stale_higher.write_bytes(b"stale-higher")
+    fresh.write_bytes(b"fresh")
+    # fresh가 stale_higher보다 나중에 생성되도록 mtime을 조정한다.
+    os.utime(stale_higher, (1_000, 1_000))
+    os.utime(fresh, (2_000, 2_000))
+
+    migrations._retain_backups(db_path)
+
+    assert fresh.exists()
+    assert not stale_higher.exists()

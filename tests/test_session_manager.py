@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+
 import pytest
 
 from mdlogger.auth.credential_store import InMemoryCredentialStore
@@ -237,3 +239,42 @@ def test_account_operations_require_active_session():
         manager.sign_out_all_devices()
     with pytest.raises(AuthError):
         manager.delete_account()
+
+
+def test_concurrent_access_keeps_state_consistent():
+    """P1-6: UI thread와 sync worker가 동시에 접근해도 상태가 일관되게 유지된다."""
+    manager, service, store = make_manager()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    errors: list[Exception] = []
+
+    def reader():
+        for _ in range(200):
+            try:
+                manager.state
+                manager.session
+                manager.snapshot
+            except Exception as error:  # noqa: BLE001
+                errors.append(error)
+
+    def writer():
+        for _ in range(200):
+            try:
+                manager.restore(USER_ID)
+            except Exception as error:  # noqa: BLE001
+                errors.append(error)
+
+    threads = [threading.Thread(target=reader) for _ in range(4)]
+    threads += [threading.Thread(target=writer) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert errors == []
+    # writer가 마지막으로 restore한 상태는 항상 유효한 스냅샷이다.
+    state = manager.state
+    assert state in (
+        SessionState.AUTHENTICATED,
+        SessionState.OFFLINE,
+        SessionState.REAUTH_REQUIRED,
+    )

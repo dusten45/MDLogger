@@ -189,6 +189,40 @@ def test_upload_batch_rate_limit_classification():
     assert exc_info.value.retry_after_seconds == 60
 
 
+def test_upload_batch_rate_limit_honors_retry_after_header():
+    """P2-6: body에 retry_after_seconds가 없어도 HTTP Retry-After 헤더를 존중한다."""
+    client, _ = make_client(
+        HttpResponse(
+            status=429,
+            body=b'{"code":"rate_limited"}',
+            headers={"Retry-After": "120"},
+        )
+    )
+
+    with pytest.raises(GuestIngestError) as exc_info:
+        client.upload_batch([build_observation(game_row())])
+
+    assert exc_info.value.kind is GuestIngestErrorKind.RATE_LIMITED
+    assert exc_info.value.retry_after_seconds == 120
+
+
+def test_upload_batch_rate_limit_ignores_non_numeric_retry_after_header():
+    """숫자가 아닌 Retry-After 헤더는 무시해 retry_after_seconds를 None으로 둔다."""
+    client, _ = make_client(
+        HttpResponse(
+            status=429,
+            body=b'{"code":"rate_limited"}',
+            headers={"Retry-After": "Thu, 01 Jan 2030 00:00:00 GMT"},
+        )
+    )
+
+    with pytest.raises(GuestIngestError) as exc_info:
+        client.upload_batch([build_observation(game_row())])
+
+    assert exc_info.value.kind is GuestIngestErrorKind.RATE_LIMITED
+    assert exc_info.value.retry_after_seconds is None
+
+
 @pytest.mark.parametrize(
     ("status", "expected_kind"),
     [

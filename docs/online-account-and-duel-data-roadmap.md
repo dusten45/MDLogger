@@ -1,8 +1,8 @@
 # MDLogger 온라인 계정·게스트·듀얼 데이터 로드맵
 
-- 상태: 단계 0~~11 + 하드닝 H1~~H6 구현 완료. 단계 12 미착수(진입 조건은 `docs/pre-release-hardening-roadmap.md` §10 참조)
+- 상태: 단계 0~~11 코어 구현 완료(단, 단계 10 휴대용 아카이브 **UI 배선은 미배선 → 미완료로 취급**, 하드닝 결정 H-3) + 하드닝 H1~~H6 구현 완료. 단계 12 미착수(진입 조건은 `docs/pre-release-hardening-roadmap.md` §10 참조)
 - 작성일: 2026-08-07
-- 최근 개정: 2026-08-09 (단계 11 + 하드닝 H1~H6 배포 전 하드닝 반영)
+- 최근 개정: 2026-08-10 (단계 10 구현 기록 위치·상태 문구 정리, 버전 0.1.6 반영)
 - 대상 프로젝트: MDLogger (`mdlogger`)
 - 클라이언트: Python 3.13, PySide6, SQLite
 - 기준 백엔드: Supabase Auth + PostgreSQL + Row Level Security
@@ -1597,6 +1597,32 @@ R9 검토 결과:
 - merge 성공·실패 결과는 `import_result_prompt` 를 통해 사용자에게 표시되며, 실패 시 원본 게스트 DB는 그대로 보존된다.
 - 단계 10(휴대용 내보내기·가져오기) 이후는 **미착수**이며 이 구현에서 자동 진행하지 않았다.
 
+### 단계 10 — 휴대용 내보내기·가져오기
+
+작업:
+
+- versioned portable archive writer와 reader를 구현한다.
+- manifest, NDJSON, checksum을 구현한다.
+- 크기·행 수·문자열 길이·경로 검증을 구현한다.
+- import batch와 중복 방지를 구현한다.
+- 다른 프로필로 가져올 때 소유권과 provenance 규칙을 적용한다.
+- 가져온 레코드를 outbox에 등록한다.
+- 기존 CSV/XLSX 내보내기 동작을 유지한다.
+
+검토 게이트 R10:
+
+- archive에 credential이나 secret이 포함되지 않는가
+- 손상·변조·과대 파일이 안전하게 거부되는가
+- 동일 archive 재가져오기가 중복을 만들지 않는가
+- 오프라인 PC → 온라인 PC 흐름이 실제로 동작하는가
+- 가져오기 실패가 대상 DB를 부분 손상시키지 않는가
+
+완료 조건:
+
+- 게스트/등록 계정 간 허용된 import 시나리오 통과
+- export → 새 DB import round-trip의 필드 일치
+- 업로드까지 이어지는 end-to-end 테스트 통과
+
 #### 단계 10 구현 기록 (2026-08-09)
 
 상태: **코어 구현 완료. UI 배선(휴대용 내보내기 버튼/import 대화상자)은 미배선 → 미완료로 취급**(하드닝 결정 H-3).
@@ -1639,32 +1665,6 @@ R10 검토 결과:
 - UI 배선(휴대용 내보내기 버튼/import 대화상자)은 아직 하지 않았다. 단계 10 핵심은 writer·reader·검증·중복 방지·provenance·outbox 이며, UI 연결은 이후 통합에서 수행한다.
 - 단계 11(계정 관리와 운영 기능) 이후는 **미착수**이며 이 구현에서 자동 진행하지 않았다.
 
-### 단계 10 — 휴대용 내보내기·가져오기
-
-작업:
-
-- versioned portable archive writer와 reader를 구현한다.
-- manifest, NDJSON, checksum을 구현한다.
-- 크기·행 수·문자열 길이·경로 검증을 구현한다.
-- import batch와 중복 방지를 구현한다.
-- 다른 프로필로 가져올 때 소유권과 provenance 규칙을 적용한다.
-- 가져온 레코드를 outbox에 등록한다.
-- 기존 CSV/XLSX 내보내기 동작을 유지한다.
-
-검토 게이트 R10:
-
-- archive에 credential이나 secret이 포함되지 않는가
-- 손상·변조·과대 파일이 안전하게 거부되는가
-- 동일 archive 재가져오기가 중복을 만들지 않는가
-- 오프라인 PC → 온라인 PC 흐름이 실제로 동작하는가
-- 가져오기 실패가 대상 DB를 부분 손상시키지 않는가
-
-완료 조건:
-
-- 게스트/등록 계정 간 허용된 import 시나리오 통과
-- export → 새 DB import round-trip의 필드 일치
-- 업로드까지 이어지는 end-to-end 테스트 통과
-
 ### 단계 11 — 계정 관리와 운영 기능
 
 작업:
@@ -1702,9 +1702,11 @@ R10 검토 결과:
   `AccountService.export_account_data` → `SessionManager.export_account_data` →
   계정 다이얼로그의 "내 데이터 내보내기"가 JSON 파일로 저장한다.
 - 계정 삭제(검토 게이트 R11-1): `functions/account-delete/index.ts` Edge Function을
-  추가했다. 클라이언트는 본인 access token만 보내고, 함수는 JWT를 검증해
-  `public.delete_account_data`(0006)를 호출한 뒤 Auth Admin API로 auth 사용자와
-  모든 세션/refresh token을 폐기한다. 클라이언트 secret은 없다.
+  추가했다. 클라이언트는 본인 access token만 보내고, 함수는 `supabase.auth.getUser`로
+  JWT 서명·exp·aud를 검증한 뒤, **Auth Admin API로 auth 사용자와 모든 세션/refresh
+  token을 먼저 폐기**하고(원자성, H-4) 남은 개인 데이터를 멱등 정리
+  `public.delete_account_data`(0006)로 보존 없는 best-effort 정리한다. 클라이언트
+  secret은 없다.
 - 모든 장치 로그아웃과 특정 장치 해제: 서버 `revoke_all_devices`/`revoke_device`/
   `list_user_devices` RPC를 추가하고, 클라이언트에 `DeviceManagementDialog`와
   "모든 기기에서 로그아웃" 버튼을 연결했다. `auth.uid()` 문맥으로 본인 장치만 접근한다.
