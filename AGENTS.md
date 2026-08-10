@@ -17,6 +17,13 @@
 - Preserve the existing local naive ISO timestamp format used by `played_at` unless a data migration is explicitly requested.
 - User data belongs in the OS-standard data directory resolved by `src/mdlogger/paths.py`. Preserve `MDLOGGER_DATA_DIR` support and the non-destructive legacy-data migration behavior.
 
+## Commit message conventions
+
+- Write commit messages in English only.
+- Use the [Conventional Commits](https://www.conventionalcommits.org/) format: start with a type tag such as `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `build:`, `perf:`, or `style:`.
+- Keep the subject (head) short, imperative, and lowercase after the tag, e.g. `feat: add score export`, `fix: handle empty deck list`, `docs: simplify README`.
+- Use a head only; a body is not required and should be omitted unless the change genuinely needs extra context.
+
 ## Required validation
 
 After changing Python code, run all of the following:
