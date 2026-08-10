@@ -116,15 +116,18 @@ class SessionManager:
         - 네트워크/일시적 서버 오류 → ``OFFLINE`` (token 보존, 로컬 사용 계속)
         - 서버가 token 폐기·만료 확인 → token 제거 후 ``REAUTH_REQUIRED``
         """
+        # 네트워크 refresh 동안 로그아웃/삭제가 끼어들 수 있으므로 현재 세대를
+        # 기록하고, 결과 저장 직전에 세대가 바뀐 경우 저장을 포기한다(B-1).
+        # token을 읽기 **전에** 세대를 기록해야 한다. 순서가 반대면 load와
+        # 세대 기록 사이에 끼어든 로그아웃이 이미 증가한 세대를 읽게 되어
+        # 비교를 통과하고, 방금 지운 token을 다시 저장한다.
+        generation = self._logout_generation
+
         refresh_token = self._store.load_refresh_token(account_id)
         if refresh_token is None:
             with self._lock:
                 self._snapshot = SessionSnapshot(state=SessionState.SIGNED_OUT)
             return self._snapshot
-
-        # 네트워크 refresh 동안 로그아웃/삭제가 끼어들 수 있으므로 현재 세대를
-        # 기록하고, 결과 저장 직전에 세대가 바뀐 경우 저장을 포기한다(B-1).
-        generation = self._logout_generation
 
         try:
             session = self._service.refresh_session(refresh_token)

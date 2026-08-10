@@ -300,6 +300,45 @@ def test_logout_during_refresh_discards_rotated_token():
     assert store.load_refresh_token(USER_ID) is None
 
 
+def test_logout_between_token_load_and_generation_read_is_respected():
+    """B-1(b): 세대 표식을 token 읽기 전에 기록하므로, load 지점에
+    정확히 끼어든 로그아웃도 뒤널리지 않는다.
+
+    load_refresh_token 훈에 sign_out이 실행되는 상황을 재현해, 세대를
+    load 다엄에 읽던 이전 구현에서만 발생하는 token 부활을 막는지
+    검증한다.
+    """
+
+    class SignOutOnLoadStore(InMemoryCredentialStore):
+        """load_refresh_token 지점에서 정확히 한 번 로그아웃을 끼운다."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.manager: SessionManager | None = None
+            self.triggered = False
+
+        def load_refresh_token(self, account_id: str) -> str | None:
+            token = super().load_refresh_token(account_id)
+            if not self.triggered and self.manager is not None:
+                self.triggered = True
+                # load와 세대 기록 사이에 로그아웃이 끼어든 상황.
+                self.manager.sign_out(account_id)
+            return token
+
+    service = FakeAccountService()
+    store = SignOutOnLoadStore()
+    manager = SessionManager(service, store)
+    store.manager = manager
+    store.save_refresh_token(USER_ID, "refresh-1")
+
+    snapshot = manager.restore(USER_ID)
+
+    assert store.triggered, "테스트가 load 지점을 가로막지 못했다."
+    assert snapshot.state is SessionState.SIGNED_OUT
+    # 로그아웃이 지운 token이 회전 token으로 되살아나지 않아야 한다.
+    assert store.load_refresh_token(USER_ID) is None
+
+
 def test_account_operations_require_active_session():
     manager, service, store = make_manager()
 

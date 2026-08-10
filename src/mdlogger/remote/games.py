@@ -368,7 +368,11 @@ class RegisteredGamesClient:
         body = self._json(response, required=False)
         code = body.get("code") if isinstance(body, dict) else None
         if response.status == 429:
-            retry_after = body.get("retry_after_seconds")
+            # 본문이 JSON object가 아닐 수 있다(게이트웨이의 평문/HTML 429).
+            # ``_json(required=False)``은 이때 None을 돌려주므로 반드시 가드한다.
+            retry_after = (
+                body.get("retry_after_seconds") if isinstance(body, dict) else None
+            )
             if not isinstance(retry_after, int):
                 # 본문에 없거나 숫자가 아니면 HTTP Retry-After 헤더로 대체한다(B-4).
                 retry_after = _header_retry_after(response.headers)

@@ -183,6 +183,48 @@ def test_rate_limited_prefers_body_value_over_header():
     assert exc_info.value.retry_after_seconds == 5
 
 
+def test_rate_limited_with_non_json_body_uses_header():
+    """B-4: 게이트웨이가 평문 429 바디를 주면 AttributeError 없이
+    Retry-After 헤더로 rate limit을 분류해야 한다."""
+    transport = FakeTransport(
+        [
+            HttpResponse(
+                status=429,
+                body=b"Too Many Requests",
+                headers={"Retry-After": "42"},
+            )
+        ]
+    )
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+    changes = [
+        build_game_change(
+            private_payload(),
+            sync_id=SYNC_ID,
+            operation="upsert",
+            remote_version=None,
+        )
+    ]
+
+    with pytest.raises(RegisteredGamesError) as exc_info:
+        client.apply_changes(changes, access_token="access-token")
+
+    assert exc_info.value.kind is RegisteredGamesErrorKind.RATE_LIMITED
+    assert exc_info.value.retry_after_seconds == 42
+
+
+def test_non_json_error_body_is_classified_without_crashing():
+    """B-4: 429 이외 상태도 평문 바디에서 정상 분류되어야 한다."""
+    transport = FakeTransport(
+        [HttpResponse(status=500, body=b"<html>Bad Gateway</html>")]
+    )
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+
+    with pytest.raises(RegisteredGamesError) as exc_info:
+        client.pull_changes(after_version=0, limit=10, access_token="access-token")
+
+    assert exc_info.value.kind is RegisteredGamesErrorKind.SERVER
+
+
 def test_pull_and_device_calls_use_cursor_and_version_contract():
     transport = FakeTransport(
         [
