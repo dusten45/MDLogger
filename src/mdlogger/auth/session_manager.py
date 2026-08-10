@@ -195,7 +195,7 @@ class SessionManager:
             if session is not None:
                 try:
                     self._service.sign_out(session.tokens.access_token)
-                except AuthError:
+                except Exception:  # noqa: BLE001 - 어떤 원인이든 로컬 토큰 제거는 보장
                     # 오프라인 로그아웃도 허용한다. 서버 세션은 이후 만료된다.
                     pass
             self._store.delete_refresh_token(account_id)

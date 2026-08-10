@@ -230,6 +230,25 @@ def test_sign_out_removes_token_even_when_server_call_fails():
     assert store.load_refresh_token(USER_ID) is None
 
 
+def test_sign_out_removes_token_even_on_non_auth_error():
+    """B-5-1: AuthError가 아닌 예외(예: 보안 저장소 오류)가 나도 로컬 토큰은
+    지워진다. 로그아웃의 로컬 토큰 제거는 원인과 무관하게 보장돼야 한다."""
+
+    class ExplodingSignOutService(FakeAccountService):
+        def sign_out(self, access_token: str) -> None:
+            raise RuntimeError("예상치 못한 로그아웃 오류")
+
+    service = ExplodingSignOutService()
+    store = InMemoryCredentialStore()
+    manager = SessionManager(service, store)
+    manager.sign_in("a@test.local", "pw")
+
+    snapshot = manager.sign_out(USER_ID)
+
+    assert snapshot.state is SessionState.SIGNED_OUT
+    assert store.load_refresh_token(USER_ID) is None
+
+
 def test_logout_during_refresh_discards_rotated_token():
     """B-1(a): refresh가 진행 중인 동안 로그아웃이 끼어들면, refresh가 늦게
     끝나도 회전된 토큰을 다시 저장하지 않고 SIGNED_OUT을 유지한다."""
