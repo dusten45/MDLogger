@@ -198,3 +198,108 @@ def test_commands_are_offloaded_to_worker_thread():
     coordinator.stop()
 
     assert worker_thread.ident == engine.thread_id
+
+
+def test_list_conflicts_returns_engine_result():
+    """list_conflicts는 worker를 거치지 않고 engine의 충돌 목록을 직접 반환한다."""
+
+    class EngineWithConflicts:
+        def status(self) -> SyncStatus:
+            return SyncStatus(SyncPhase.SYNCED, pending_count=0, failed_count=0)
+
+        def run_once(self) -> SyncStatus:
+            return self.status()
+
+        def list_conflicts(self) -> list:
+            return ["CONFLICT-1", "CONFLICT-2"]
+
+    coordinator = SyncCoordinator(
+        cast(SyncEngine, EngineWithConflicts()), interval_seconds=0.05
+    )
+    coordinator.start()
+    time.sleep(0.1)
+    try:
+        result = coordinator.list_conflicts()
+    finally:
+        coordinator.stop()
+
+    assert result == ["CONFLICT-1", "CONFLICT-2"]
+
+
+def test_conflict_ops_do_not_block_on_slow_network_worker():
+    """근본 수정: 충돌 조회·해결은 로컬 SQLite 연산이라 worker의 느린 네트워크
+    사이클에 블로킹되지 않고 즉시 동작한다(P1-5 회귀 근본 해결)."""
+
+    class SlowNetworkEngine:
+        def status(self) -> SyncStatus:
+            return SyncStatus(
+                SyncPhase.SYNCED, pending_count=0, failed_count=0, conflict_count=1
+            )
+
+        def run_once(self) -> SyncStatus:
+            time.sleep(5)  # 느린 네트워크 사이클을 흉내
+            return self.status()
+
+        def list_conflicts(self) -> list:
+            return ["CONFLICT-A"]
+
+        def resolve_conflict(
+            self,
+            conflict_id: int,
+            resolution: str,
+            merged_payload=None,
+            *,
+            expected_remote_version=None,
+        ) -> None:
+            return None
+
+    coordinator = SyncCoordinator(
+        cast(SyncEngine, SlowNetworkEngine()), interval_seconds=0.05
+    )
+    coordinator.start()
+    time.sleep(0.2)  # worker가 느린 run_once 안에 들어가게 한다
+    started = time.monotonic()
+    try:
+        result = coordinator.list_conflicts()
+        elapsed = time.monotonic() - started
+        assert result == ["CONFLICT-A"]
+        assert elapsed < 1.0, f"list_conflicts가 {elapsed:.1f}s 블로킹됨"
+    finally:
+        coordinator.stop(timeout_seconds=7)
+
+
+def test_resolve_conflict_propagates_stale_version_error():
+    """resolve_conflict가 repository의 stale-version 가드(ValueError)를 호출자에게
+    전파해 UI가 "충돌 정보 갱신 필요"를 표시할 수 있게 한다."""
+
+    class EngineWithStaleGuard:
+        def status(self) -> SyncStatus:
+            return SyncStatus(SyncPhase.SYNCED, pending_count=0, failed_count=0)
+
+        def run_once(self) -> SyncStatus:
+            return self.status()
+
+        def resolve_conflict(
+            self,
+            conflict_id: int,
+            resolution: str,
+            merged_payload=None,
+            *,
+            expected_remote_version=None,
+        ) -> None:
+            raise ValueError("충돌을 확인하는 동안 서버 기록이 다시 변경되었습니다.")
+
+    coordinator = SyncCoordinator(
+        cast(SyncEngine, EngineWithStaleGuard()), interval_seconds=0.05
+    )
+    coordinator.start()
+    time.sleep(0.1)
+    try:
+        coordinator.resolve_conflict(1, "local", None, expected_remote_version=5)
+        raised = False
+    except ValueError:
+        raised = True
+    finally:
+        coordinator.stop()
+
+    assert raised, "resolve_conflict는 stale-version 오류를 전파해야 한다."

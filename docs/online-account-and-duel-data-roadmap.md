@@ -1,6 +1,6 @@
 # MDLogger 온라인 계정·게스트·듀얼 데이터 로드맵
 
-- 상태: 단계 0~~11 코어 구현 완료(단, 단계 10 휴대용 아카이브 **UI 배선은 미배선 → 미완료로 취급**, 하드닝 결정 H-3) + 하드닝 H1~~H6 구현 완료. 단계 12 미착수(진입 조건은 `docs/pre-release-hardening-roadmap.md` §10 참조)
+- 상태: 단계 0~~11 코어 구현 완료(단, 단계 10 휴대용 아카이브 **UI 배선은 미배선 → 미완료로 취급**, 하드닝 결정 H-3) + 하드닝 H1~~H6 구현 완료. 단계 12 미착수(진입 조건은 아래 §13 단계 12의 "단계 12 진입 조건"을 참조)
 - 작성일: 2026-08-07
 - 최근 개정: 2026-08-10 (단계 10 구현 기록 위치·상태 문구 정리, 버전 0.1.6 반영)
 - 대상 프로젝트: MDLogger (`mdlogger`)
@@ -1771,7 +1771,35 @@ R11 검토 결과(코드 수준):
 
 이 단계는 앞선 검토를 대신하지 않는다. 전체 시스템 경계가 연결된 상태에서 교차 위험을 다시 검증한다.
 
-**진입 조건은 `docs/pre-release-hardening-roadmap.md` §10을 참조한다.** 하드닝 RH1~RH6과 소유자 환경 검증(`supabase db reset`/`supabase test db`, Edge Function, Windows 빌드)이 선행돼야 한다.
+#### 단계 12 진입 조건
+
+다음이 **모두** 충족된 뒤에 단계 12를 시작한다. (배포 전 하드닝 내용을 이 절로 흡수)
+
+- [x] 하드닝 단계 H1~~H6의 검토 게이트 RH1~~RH6이 전부 통과했다. (2026-08-10: 소유자가 근거 수치를 인정하고 통과로 판단 — ①-2)
+- [x] 하드닝 결정 필요 항목 D-1~D-8이 전부 확정되었다. (2026-08-09: D-1 게스트 유지, D-4 1분/10회, D-7 최소=최신=0.1.6, 나머지 기본값 채택)
+- [x] 소유자 환경에서 `supabase db reset` + `supabase test db`가 전체 통과했다. (2026-08-10: migration 0001~0016, pgTAP 173 tests 전체 통과. 최초 실기동에서 드러난 5개 원인 해소 기록은 `docs/critical-fixes.md` 참조)
+- [x] 소유자 환경에서 Edge Function(`guest-ingest`, `account-delete`)이 검증되었다. (2026-08-10: `guest-ingest` 정상 200 / disallowed 422 / rate-limit 429, `account-delete` 200 · auth 종속 게임 삭제 · 분석 observation 보존)
+- [ ] 패키징된 Windows 빌드에서 로그인·게스트 ingest가 실제로 동작한다. (`docs/windows-check.md` 참조)
+- [ ] 빌드 산출물 시크릿 스캔이 통과했다. (`docs/windows-check.md` 참조)
+- [x] `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check`, `uv run pytest`가 전부 실제 통과했다.
+- [x] 로드맵, `docs/critical-fixes.md`, `docs/operations/runbook.md`, `docs/windows-check.md`가 상호 모순 없이 실제 구현 상태를 기술한다.
+- [x] 이번 릴리스에서 미루기로 확정한 항목이 문서에 명시되어 있고, 사용자에게 미치는 영향이 파악되었다. (아래 "이번 릴리스 미루기 확정 항목" 참조)
+
+**소유자 최종 서명 (2026-08-10, ①-1):** 단계 12 진입 조건을 승인한다.
+
+- RH1~RH6 검토 게이트 통과 서명(①-2). 근거 수치: 클라이언트 `pytest` 261 passed·4 skipped, 서버 pgTAP 173 tests, offline 1,000건 → 서버 `duel_observations` obs=1000(`ingestion_batches` 10배치·accepted 1000/0/0).
+- 개인정보·자동 업로드 고지 승인(①-4). `src/mdlogger/ui/account_views.py`의 등록·게스트 고지 문구 전송/제외 항목이 구현과 일치함을 확인.
+- 미루기 확정(사용자 지시 유지): 위의 Windows 빌드 실동작·빌드 산출물 시크릿 스캔 2개는 이번 릴리스에서 별도 처리로 미룬다.
+
+#### 이번 릴리스 미루기 확정 항목
+
+단계 12 진입 전에 해소하지 않고 이번 릴리스에서 미루기로 확정한 항목이다. 미루지 않고 은폐하지 않으며, 영향과 대체 경로를 함께 명시한다.
+
+- **휴대용 아카이브 UI 배선 (P1-13)**: writer/reader/검증/중복 방지/outbox는 구현·테스트 완료, UI(내보내기 버튼·import 대화상자)만 미배선. 영향: 오프라인 PC → 온라인 PC 이동은 CSV/XLSX 내보내기로 대체. 나중에 배선할 때는 `GameService.export_portable_archive`와 `portable.import_portable_archive`(대상 DB 경로·참고 테스트는 `tests/test_portable.py`)를 연결한다.
+- **실제 세션 폐기(Auth Admin 로그아웃)**: `revoke_all_devices`/`revoke_device`는 장치 행만 제거하고 활성 세션·refresh token 폐기는 하지 않음. 한계를 UI·runbook에 명시(D-6).
+- **Turnstile/CAPTCHA**: rate limit(1분/10회)만 운영. 429 반복 또는 미지 installation 대량 거부 남용이 관찰되면 도입 검토(D-9).
+- **tombstone 물리 정리·비활성 장치 제거**: 데이터 규모 문제 발생 후 도입. `games.deleted_at` tombstone과 `duel_observations.withdrawn_at` 마커는 무기한 보존한다.
+- **도메인 DTO 도입**: 반환 행 타입은 현재 `sqlite3.Row` 유지. 제품 결정 시점에 재검토.
 
 작업:
 

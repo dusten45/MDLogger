@@ -14,14 +14,15 @@ from .models import SyncConflict, SyncPhase, SyncStatus
 class SyncCoordinator(QObject):
     """UI 연결을 공유하지 않는 단일 profile 양방향 sync coordinator.
 
-    engine이 소유하는 SQLite 연결은 worker thread에서만 접근한다(R7 스레딩
-    경계). UI thread가 요청하는 연산은 command queue를 통해 worker로 넘겨
-    UI thread를 블로킹 I/O에서 분리한다(P1-5).
+    네트워크 동기화(`run_once`)만 worker thread에서 실행한다. 충돌 조회·해결과
+    outbox 재시도는 로컬 SQLite 연산이라 네트워크와 무관하므로, 느린 네트워크에
+    발이 묶이는 worker 명령 큐를 거치지 않고 호출자(UI) thread에서 짧은 수명의
+    연결로 직접 실행한다(WAL + busy_timeout으로 동시성 안전). UI thread는
+    네트워크 I/O에 블로킹되지 않는다.
     """
 
     status_changed = Signal(object)
 
-    _COMMAND_TIMEOUT_SECONDS = 10.0
     _DEFAULT_STATUS = SyncStatus(
         phase=SyncPhase.PENDING,
         pending_count=0,
@@ -63,13 +64,9 @@ class SyncCoordinator(QObject):
         self._wake.set()
 
     def list_conflicts(self) -> list[SyncConflict]:
-        command = _Command("list_conflicts")
-        self._post(command)
-        if not command.wait(self._COMMAND_TIMEOUT_SECONDS):
-            raise TimeoutError("동기화 worker가 충돌 목록 조회에 응답하지 않았습니다.")
-        if command.error is not None:
-            raise command.error
-        return command.result
+        # 로컬 SQLite 읽기(ms 수준)라 worker를 거치지 않는다. worker가 느린
+        # 네트워크 사이클에 묶여도 즉시 반환한다(P1-5 회귀 근본 해결).
+        return self._engine.list_conflicts()
 
     def resolve_conflict(
         self,
@@ -79,15 +76,14 @@ class SyncCoordinator(QObject):
         *,
         expected_remote_version: int | None = None,
     ) -> None:
-        self._post(
-            _Command(
-                "resolve_conflict",
-                (conflict_id, resolution),
-                {
-                    "merged_payload": merged_payload,
-                    "expected_remote_version": expected_remote_version,
-                },
-            )
+        # 로컬 SQLite 쓰기라 worker를 거치지 않는다. repository의 stale-version
+        # 가드가 던지는 ValueError가 그대로 호출자에게 전파되어 UI가 "충돌 정보
+        # 갱신 필요"를 표시할 수 있다.
+        self._engine.resolve_conflict(
+            conflict_id,
+            resolution,
+            merged_payload,
+            expected_remote_version=expected_remote_version,
         )
 
     def stop(self, *, timeout_seconds: float = 5.0) -> None:
@@ -122,16 +118,6 @@ class SyncCoordinator(QObject):
         method = command.method
         if method == "retry_failed":
             self._engine.retry_failed()
-        elif method == "list_conflicts":
-            command.result = self._engine.list_conflicts()
-        elif method == "resolve_conflict":
-            kwargs = command.kwargs
-            self._engine.resolve_conflict(
-                command.args[0],
-                command.args[1],
-                kwargs.get("merged_payload"),
-                expected_remote_version=kwargs.get("expected_remote_version"),
-            )
         else:  # pragma: no cover - 알 수 없는 명령은 프로그래밍 오류
             raise ValueError(f"알 수 없는 sync 명령: {method}")
 
@@ -204,5 +190,6 @@ class _Command:
         self.error: Exception | None = None
         self.done = Event()
 
-    def wait(self, timeout: float | None = None) -> None:
-        self.done.wait(timeout)
+    def wait(self, timeout: float | None = None) -> bool:
+        """완료 Event를 기다린다. 제한 시간 안에 완료되면 True를 반환한다."""
+        return self.done.wait(timeout)
