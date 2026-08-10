@@ -19,7 +19,11 @@ from mdlogger.auth.models import (
     SignUpResult,
 )
 from mdlogger.auth.service import AccountService
-from mdlogger.auth.session_manager import SessionManager, SessionState
+from mdlogger.auth.session_manager import (
+    SessionManager,
+    SessionSnapshot,
+    SessionState,
+)
 
 USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 
@@ -223,6 +227,57 @@ def test_sign_out_removes_token_even_when_server_call_fails():
     snapshot = manager.sign_out(USER_ID)
 
     assert snapshot.state is SessionState.SIGNED_OUT
+    assert store.load_refresh_token(USER_ID) is None
+
+
+def test_logout_during_refresh_discards_rotated_token():
+    """B-1(a): refresh가 진행 중인 동안 로그아웃이 끼어들면, refresh가 늦게
+    끝나도 회전된 토큰을 다시 저장하지 않고 SIGNED_OUT을 유지한다."""
+
+    class DelayedRefreshService(FakeAccountService):
+        def __init__(self) -> None:
+            super().__init__()
+            self._entered: threading.Event | None = None
+            self._release: threading.Event | None = None
+
+        def set_delay(self, entered: threading.Event, release: threading.Event):
+            self._entered = entered
+            self._release = release
+
+        def refresh_session(self, refresh_token: str) -> AuthSession:
+            entered = self._entered
+            release = self._release
+            if entered is not None and release is not None:
+                entered.set()
+                release.wait()
+            return super().refresh_session(refresh_token)
+
+    service = DelayedRefreshService()
+    store = InMemoryCredentialStore()
+    manager = SessionManager(service, store)
+    store.save_refresh_token(USER_ID, "refresh-1")
+
+    entered = threading.Event()
+    release = threading.Event()
+    service.set_delay(entered, release)
+
+    result: list[SessionSnapshot] = []
+
+    def run_refresh():
+        result.append(manager.restore(USER_ID))
+
+    refresh_thread = threading.Thread(target=run_refresh)
+    refresh_thread.start()
+    assert entered.wait(2.0)
+
+    # refresh가 in-flight인 동안 로그아웃한다.
+    manager.sign_out(USER_ID)
+    release.set()
+    refresh_thread.join()
+
+    snapshot = result[0]
+    assert snapshot.state is SessionState.SIGNED_OUT
+    # 회전된 토큰(refresh-2)이 다시 저장되지 않아야 한다.
     assert store.load_refresh_token(USER_ID) is None
 
 

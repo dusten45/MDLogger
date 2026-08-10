@@ -58,6 +58,10 @@ class SessionManager:
         # UI thread와 sync worker가 세션/저장소를 동시에 읽고 쓰므로
         # 상태 전이와 keyring 쓰기를 직렬화한다(P1-6).
         self._lock = RLock()
+        # 로그아웃/계정 삭제가 in-flight refresh보다 늦게 끝나 그 결과가 되살아나는
+        # 경쟁을 막기 위한 세대 표식(B-1). restore()는 네트워크 호출 전 값을 읽고
+        # 결과 저장 직전에 값이 바뀌었으면 폐기한다.
+        self._logout_generation = 0
 
     @property
     def snapshot(self) -> SessionSnapshot:
@@ -118,10 +122,16 @@ class SessionManager:
                 self._snapshot = SessionSnapshot(state=SessionState.SIGNED_OUT)
             return self._snapshot
 
+        # 네트워크 refresh 동안 로그아웃/삭제가 끼어들 수 있으므로 현재 세대를
+        # 기록하고, 결과 저장 직전에 세대가 바뀐 경우 저장을 포기한다(B-1).
+        generation = self._logout_generation
+
         try:
             session = self._service.refresh_session(refresh_token)
         except AuthError as error:
             with self._lock:
+                if self._logout_generation != generation:
+                    return self._snapshot
                 if error.kind is AuthErrorKind.NETWORK:
                     self._snapshot = SessionSnapshot(
                         state=SessionState.OFFLINE, error=error
@@ -145,6 +155,8 @@ class SessionManager:
 
         if session.account.user_id != account_id:
             with self._lock:
+                if self._logout_generation != generation:
+                    return self._snapshot
                 self._store.delete_refresh_token(account_id)
                 error = AuthError(
                     AuthErrorKind.SERVER_REJECTED,
@@ -158,6 +170,8 @@ class SessionManager:
 
         # Supabase는 refresh token을 회전하므로 같은 계정 키에 다시 저장한다.
         with self._lock:
+            if self._logout_generation != generation:
+                return self._snapshot
             self._store.save_refresh_token(account_id, session.tokens.refresh_token)
             self._snapshot = SessionSnapshot(
                 state=SessionState.AUTHENTICATED, session=session
@@ -186,6 +200,7 @@ class SessionManager:
                     pass
             self._store.delete_refresh_token(account_id)
             self._snapshot = SessionSnapshot(state=SessionState.SIGNED_OUT)
+            self._logout_generation += 1
             return self._snapshot
 
     def export_account_data(self) -> AccountExportData:
@@ -222,6 +237,7 @@ class SessionManager:
         with self._lock:
             self._store.delete_refresh_token(session.account.user_id)
             self._snapshot = SessionSnapshot(state=SessionState.SIGNED_OUT)
+            self._logout_generation += 1
         return result
 
     def _require_session(self) -> AuthSession:
