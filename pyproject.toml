@@ -1,7 +1,7 @@
 [project]
 name = "mdlogger"
 dynamic = ["version"]
-description = "Master Duel WCQ 전적 로거 — 듀얼 한 판마다 결과를 빠르게 기록하는 데스크톱 앱"
+description = "마스터듀얼 전적 로거 — 듀얼 한 판마다 결과를 빠르게 기록하는 데스크톱 앱"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
