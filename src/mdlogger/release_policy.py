@@ -209,7 +209,11 @@ class ReleasePolicyClient:
             return None
         if response.status != 200:
             return None
-        body = response.json()
+        try:
+            body = response.json()
+        except ResponseFormatError:
+            # 깨진 200 응답도 비차단으로 처리한다(P1-12).
+            return None
         if isinstance(body, list) and body:
             item = body[0]
             return item if isinstance(item, dict) else None

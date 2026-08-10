@@ -246,3 +246,13 @@ def test_fetch_malformed_row_via_startup_is_safe(tmp_path):
     # 잘못된 행: from_row가 실패해 fetch가 None → 캐시도 없음 → 최신 동작 보존.
     policy, allowed = resolve_policy_for_startup(CONFIG, cache, client=client)
     assert policy is None and allowed is True
+
+
+def test_fetch_malformed_json_body_is_safe(tmp_path):
+    """B-3: 200 응답이 깨진 JSON이어도 response.json() 예외에 비차단으로
+    처리되어 앱 시작을 막지 않는다."""
+    cache = tmp_path / "release_policy_cache.json"
+    _, client = _fake_client(body=b"not-json{")
+
+    policy, allowed = resolve_policy_for_startup(CONFIG, cache, client=client)
+    assert policy is None and allowed is True

@@ -40,9 +40,13 @@ def main() -> None:
     # 릴리스 정책: 최소 지원 미만이면 온라인(로그인·업로드·pull)을 차단한다.
     # 로컬 기록과 내보내기는 영향받지 않는다(로드맵 17.3.J). 조회 실패는
     # 마지막 캐시를 사용하고, 정책이 없으면 최신 동작을 보존한다.
-    _release_policy, _online_allowed = resolve_policy_for_startup(
-        remote_config, DATA_DIR / "release_policy_cache.json"
-    )
+    # 어떤 예외도 앱 시작을 막지 않는다(모듈 약속, P1-12).
+    try:
+        _release_policy, _online_allowed = resolve_policy_for_startup(
+            remote_config, DATA_DIR / "release_policy_cache.json"
+        )
+    except Exception:  # noqa: BLE001
+        _release_policy, _online_allowed = None, True
     if not _online_allowed:
         remote_config = None
 
