@@ -797,7 +797,7 @@ flowchart TD
 
 원본 단계 12는 다음이 **모두** 충족된 뒤에 시작한다.
 
-- [ ] 단계 H1~~H6의 검토 게이트 RH1~~RH6이 전부 통과했다.
+- [x] 단계 H1~~H6의 검토 게이트 RH1~~RH6이 전부 통과했다. (2026-08-10: 소유자가 근거 수치를 인정하고 통과로 판단 — ①-2)
 - [x] `## 8. 결정 필요 항목`의 D-1~D-8이 전부 확정되었다. (2026-08-09: D-1 게스트 유지, D-4 1분/10회, D-7 최소=최신=0.1.5, 나머지 기본값 채택)
 - [x] 소유자 환경에서 `supabase db reset` + `supabase test db`가 전체 통과했다. (2026-08-10: migration 0001~0016, pgTAP 173 tests 전체 통과. 최초 실기동에서 드러난 5개 원인은 `docs/final_bugs.md` §6에 해소 기록)
 - [x] 소유자 환경에서 Edge Function(`guest-ingest`, `account-delete`)이 검증되었다. (2026-08-10: `guest-ingest` 정상 200 / disallowed 422 / rate-limit 429, `account-delete` 200 · auth 종속 게임 삭제 · 분석 observation 보존)
@@ -806,6 +806,12 @@ flowchart TD
 - [x] `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check`, `uv run pytest`가 전부 실제 통과했다. (2026-08-10: ruff/format/ty 통과, pytest 261 passed, 4 skipped — Qt UI 클릭 테스트 보강 반영)
 - [x] 원본 로드맵, `docs/open-items.md`, `docs/operations/runbook.md`, 이 문서가 상호 모순 없이 실제 구현 상태를 기술한다. (2026-08-10: `final_bugs`·`open-items`·`hardening` 간 pytest 수치 261·Qt UI 클릭 테스트 추가 반영 등 정합 갱신. 로드맵 단계별 수치와 final_bugs 검증 현황은 해당 시점의 스냅샷으로 유지)
 - [x] 이번 릴리스에서 미루기로 확정한 항목(§5)이 문서에 명시되어 있고, 사용자에게 미치는 영향이 파악되었다. (2026-08-10: §5 비목표·`open-items` #2·4·7·8·9·runbook §3.1에 휴대용 아카이브 미배선·세션 폐기 지연·Turnstile/tombstone·DTO 범위 제외와 CSV/XLSX 대체 경로 명시)
+
+**소유자 최종 서명 (2026-08-10, ①-1):** 단계 12 진입 조건을 승인한다.
+
+- RH1~RH6 검토 게이트 통과 서명(①-2). 근거 수치: 클라이언트 `pytest` 261 passed·4 skipped, 서버 pgTAP 173 tests, offline 1,000건 → 서버 `duel_observations` obs=1000(`ingestion_batches` 10배치·accepted 1000/0/0).
+- 개인정보·자동 업로드 고지 승인(①-4). `src/mdlogger/ui/account_views.py`의 등록·게스트 고지 문구 전송/제외 항목이 구현과 일치함을 확인.
+- 미루기 확정(사용자 지시 유지): 윗목의 Windows 빌드 실동작·빌드 산출물 시크릿 스캔 2개는 이번 릴리스에서 별도 처리로 미룬다.
 
 ---
 
@@ -856,6 +862,16 @@ flowchart TD
 | D-7 | **확정**: 최소 = 최신 = `0.1.5`(유일 버전), update_url 비움(당장 업데이트 없음). 업데이트 발생 시 재결정                                                |                                   |
 | D-8 | `md-YYYY-MM`(시드: `md-2026-08`)                                                                                                                        | 이후 불변                         |
 | D-9 | **확정(2026-08-10)**: rate limit 운영값 1분/10회 유지. Turnstile은 rate-limit(429) 반복 관측 또는 미지 installation 대량 거부 남용이 이어지면 도입 검토 | 운영 값 조정 가능(Edge/0014 상수) |
+
+### 소유자 게이트 서명 (2026-08-10)
+
+다음 검토·결정 게이트는 에이전트 대신 **소유자가 직접 서명**한 항목이다. §10의 진입 조건 최종 서명과 함께 이번 릴리스의 잔여 판단 게이트를 모두 해소한다.
+
+| 게이트                        | 결정      | 근거                                                                                |
+| ----------------------------- | --------- | ----------------------------------------------------------------------------------- |
+| ①-1 단계 12 진입 조건         | 최종 승인 | §10 서명 참조. Windows 빌드 실동작·시크릿 스캔 2개만 미루기 확정                    |
+| ①-2 RH1~RH6                   | 통과 승인 | 클라이언트 pytest 261 passed·4 skipped, pgTAP 173 tests, offline 1,000건 → obs=1000 |
+| ①-4 개인정보·자동 업로드 고지 | 승인      | `account_views.py` 고지 문구의 전송/제외 항목이 구현과 일치                         |
 
 ## 13. 참고자료
 
