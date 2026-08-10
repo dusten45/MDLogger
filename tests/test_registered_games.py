@@ -127,6 +127,62 @@ def test_apply_changes_uses_versioned_rpc_and_returns_applied_and_conflict():
     assert request["body"]["changes"][1]["expected_change_version"] == 6
 
 
+def test_rate_limited_falls_back_to_retry_after_header():
+    """B-4: 본문에 retry_after_seconds가 없으면 HTTP Retry-After 헤더를 쓴다."""
+    transport = FakeTransport(
+        [
+            HttpResponse(
+                status=429,
+                body=json.dumps({}).encode(),
+                headers={"Retry-After": "12"},
+            )
+        ]
+    )
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+    changes = [
+        build_game_change(
+            private_payload(),
+            sync_id=SYNC_ID,
+            operation="upsert",
+            remote_version=None,
+        )
+    ]
+
+    with pytest.raises(RegisteredGamesError) as exc_info:
+        client.apply_changes(changes, access_token="access-token")
+
+    assert exc_info.value.kind is RegisteredGamesErrorKind.RATE_LIMITED
+    assert exc_info.value.retry_after_seconds == 12
+
+
+def test_rate_limited_prefers_body_value_over_header():
+    """B-4: 본문 retry_after_seconds가 정수면 헤더보다 우선한다."""
+    transport = FakeTransport(
+        [
+            HttpResponse(
+                status=429,
+                body=json.dumps({"retry_after_seconds": 5}).encode(),
+                headers={"Retry-After": "99"},
+            )
+        ]
+    )
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+    changes = [
+        build_game_change(
+            private_payload(),
+            sync_id=SYNC_ID,
+            operation="upsert",
+            remote_version=None,
+        )
+    ]
+
+    with pytest.raises(RegisteredGamesError) as exc_info:
+        client.apply_changes(changes, access_token="access-token")
+
+    assert exc_info.value.kind is RegisteredGamesErrorKind.RATE_LIMITED
+    assert exc_info.value.retry_after_seconds == 5
+
+
 def test_pull_and_device_calls_use_cursor_and_version_contract():
     transport = FakeTransport(
         [

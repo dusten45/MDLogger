@@ -51,6 +51,17 @@ REMOTE_GAME_FIELDS = (
 )
 
 
+def _header_retry_after(headers: Mapping[str, str]) -> int | None:
+    """HTTP ``Retry-After`` 헤더에서 초 단위 지연을 읽는다(B-4).
+
+    헤더 키는 대소문자를 구분하지 않고, 초 단위 숫자일 때만 반환한다.
+    """
+    for name, value in headers.items():
+        if name.lower() == "retry-after" and value.strip().isdigit():
+            return int(value.strip())
+    return None
+
+
 class RegisteredGamesErrorKind(StrEnum):
     NETWORK = "network"
     AUTH_REQUIRED = "auth_required"
@@ -358,13 +369,14 @@ class RegisteredGamesClient:
         code = body.get("code") if isinstance(body, dict) else None
         if response.status == 429:
             retry_after = body.get("retry_after_seconds")
+            if not isinstance(retry_after, int):
+                # 본문에 없거나 숫자가 아니면 HTTP Retry-After 헤더로 대체한다(B-4).
+                retry_after = _header_retry_after(response.headers)
             raise RegisteredGamesError(
                 RegisteredGamesErrorKind.RATE_LIMITED,
                 f"요청이 많아 등록 games {action}이 잠시 제한됐습니다. (HTTP 429)",
                 code=str(code) if code else None,
-                retry_after_seconds=int(retry_after)
-                if isinstance(retry_after, int)
-                else None,
+                retry_after_seconds=retry_after,
             )
         if response.status in (401, 403):
             kind = (
