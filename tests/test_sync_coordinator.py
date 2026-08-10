@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 from pathlib import Path
 from typing import cast
 
 from mdlogger.game_service import GameService
-from mdlogger.game_sync.coordinator import SyncCoordinator, _Command
+from mdlogger.game_sync.coordinator import SyncCoordinator
 from mdlogger.game_sync.engine import SyncEngine
 from mdlogger.game_sync.models import SyncPhase, SyncStatus
 from mdlogger.profiles import ProfileManager
@@ -164,8 +165,9 @@ def test_stop_keeps_thread_when_join_times_out():
     assert coordinator._thread is not None
 
 
-def test_commands_are_offloaded_to_worker_thread():
-    """P1-5: engine 연산은 UI thread가 아닌 worker thread에서 실행된다."""
+def test_retry_failed_runs_on_caller_thread():
+    """A-2: outbox 재시도는 로컬 SQLite 연산이라 worker가 아닌 호출자(UI) thread에서
+    실행되고, 실패는 예외로 전파된다."""
 
     class RecordingEngine:
         def __init__(self) -> None:
@@ -179,25 +181,14 @@ def test_commands_are_offloaded_to_worker_thread():
             return self._status
 
         def retry_failed(self) -> None:
-            import threading
-
             self.thread_id = threading.current_thread().ident
 
     engine = RecordingEngine()
     coordinator = SyncCoordinator(cast(SyncEngine, engine), interval_seconds=0.05)
-    coordinator.start()
-    worker_thread = coordinator._thread
-    assert worker_thread is not None
-    coordinator._post(_Command("retry_failed"))
-    # worker가 명령을 처리할 때까지 대기한다.
-    deadline = time.monotonic() + 1
-    while engine.thread_id is None:
-        if time.monotonic() >= deadline:
-            raise AssertionError("worker가 명령을 처리하지 않았습니다.")
-        time.sleep(0.01)
+    # worker를 시작하지 않아도 retry_failed가 호출자(이 테스트) 스레드에서 즉시 실행된다.
+    coordinator.request_sync(retry_failed=True)
+    assert engine.thread_id == threading.current_thread().ident
     coordinator.stop()
-
-    assert worker_thread.ident == engine.thread_id
 
 
 def test_list_conflicts_returns_engine_result():

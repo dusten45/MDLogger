@@ -242,7 +242,7 @@ class ProfileRouter:
         )
         dialog.login_requested.connect(lambda: self._open_auth_from_account(dialog))
         dialog.logout_requested.connect(lambda: self._logout_from_dialog(dialog))
-        dialog.sync_requested.connect(lambda: self._app.request_sync(retry_failed=True))
+        dialog.sync_requested.connect(self._request_sync)
         dialog.conflicts_requested.connect(lambda: self._open_conflicts(dialog))
         dialog.export_requested.connect(lambda: self._export_account_data(dialog))
         dialog.sign_out_all_requested.connect(
@@ -599,6 +599,20 @@ class ProfileRouter:
                 return
         dialog.accept()
         self._open_profile(self._profiles.guest())
+
+    def _request_sync(self) -> None:
+        """동기화 버튼: outbox 재시도 후 즉시 동기화를 시도한다(A-2)."""
+        try:
+            self._app.request_sync(retry_failed=True)
+        except Exception as error:  # noqa: BLE001
+            parent = self._main_window()
+            if parent is not None:
+                QMessageBox.information(
+                    parent,
+                    "재시도",
+                    f"재시도 항목을 다시 처리하지 못했습니다.\n{error}\n"
+                    "자동으로 다시 시도됩니다.",
+                )
 
     def _export_account_data(self, dialog: AccountDialog) -> None:
         """본인 개인 데이터를 파일로 내보낸다(로드맵 12.4)."""

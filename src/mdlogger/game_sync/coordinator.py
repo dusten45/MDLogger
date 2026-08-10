@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from threading import Event, Lock, Thread
-from typing import Any
 
 from PySide6.QtCore import QObject, Signal
 
@@ -36,10 +35,8 @@ class SyncCoordinator(QObject):
         self._stop = Event()
         self._lock = Lock()
         self._thread: Thread | None = None
-        # worker가 처리할 명령 큐. 초기 상태는 I/O 없이 기본값으로 시작하고
-        # 첫 tick에서 worker가 실제 상태로 갱신한다(P1-5).
-        self._command_lock = Lock()
-        self._commands: list[_Command] = []
+        # 초기 상태는 I/O 없이 기본값으로 시작하고 첫 tick에서 worker가
+        # 실제 상태로 갱신한다(P1-5).
         self._status = self._DEFAULT_STATUS
 
     @property
@@ -59,7 +56,9 @@ class SyncCoordinator(QObject):
 
     def request_sync(self, *, retry_failed: bool = False) -> None:
         if retry_failed:
-            self._post(_Command("retry_failed"))
+            # 로컬 SQLite 쓰기라 호출자(UI) thread에서 즉시 실행한다. 실패하면
+            # 예외가 그대로 전파되어 호출부가 사용자에게 안내할 수 있다(A-2).
+            self._engine.retry_failed()
         self._wake.set()
 
     def list_conflicts(self) -> list[SyncConflict]:
@@ -96,30 +95,6 @@ class SyncCoordinator(QObject):
             if not thread.is_alive():
                 self._thread = None
 
-    def _post(self, command: _Command) -> None:
-        with self._command_lock:
-            self._commands.append(command)
-        self._wake.set()
-
-    def _drain_commands(self) -> None:
-        with self._command_lock:
-            commands = self._commands
-            self._commands = []
-        for command in commands:
-            try:
-                self._execute_command(command)
-            except Exception as error:  # noqa: BLE001 - 명령 실패를 호출자에게 전달
-                command.error = error
-            finally:
-                command.done.set()
-
-    def _execute_command(self, command: _Command) -> None:
-        method = command.method
-        if method == "retry_failed":
-            self._engine.retry_failed()
-        else:  # pragma: no cover - 알 수 없는 명령은 프로그래밍 오류
-            raise ValueError(f"알 수 없는 sync 명령: {method}")
-
     def _set_status(self, status: SyncStatus) -> None:
         if self._stop.is_set():
             return
@@ -146,11 +121,8 @@ class SyncCoordinator(QObject):
                 )
                 self._wake.wait(self._interval_seconds)
                 self._wake.clear()
-        # 종료 전 남은 명령을 처리해 resolve_conflict 등이 반쯤 남지 않게 한다.
-        self._drain_commands()
 
     def _tick(self) -> None:
-        self._drain_commands()
         current = self._engine.status()
         self._set_status(
             SyncStatus(
@@ -169,26 +141,3 @@ class SyncCoordinator(QObject):
             return
         self._wake.wait(self._interval_seconds)
         self._wake.clear()
-
-
-class _Command:
-    """worker thread에서 실행할 단일 명령과 결과/완료 동기화 객체."""
-
-    __slots__ = ("method", "args", "kwargs", "result", "error", "done")
-
-    def __init__(
-        self,
-        method: str,
-        args: tuple[Any, ...] = (),
-        kwargs: dict[str, Any] | None = None,
-    ) -> None:
-        self.method = method
-        self.args = args
-        self.kwargs = kwargs or {}
-        self.result: Any = None
-        self.error: Exception | None = None
-        self.done = Event()
-
-    def wait(self, timeout: float | None = None) -> bool:
-        """완료 Event를 기다린다. 제한 시간 안에 완료되면 True를 반환한다."""
-        return self.done.wait(timeout)
