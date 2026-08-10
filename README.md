@@ -1,11 +1,10 @@
-# MD WCQ 전적 로거
+# 마스터듀얼 전적 로거
 
-마스터듀얼 **WCQ(World Championship Qualifier)** 전적을 듀얼 한 판마다 빠르게 기록하는 Windows 데스크톱 앱(PySide6).
+듀얼 한 판마다 승/패를 빠르게 기록하는 데스크톱 앱(PySide6). Windows · macOS · Linux 모두 지원.
 
 ## 요구 사항
 
-- Windows 10
-- [uv](https://docs.astral.sh/uv/)
+- [uv](https://docs.astral.sh/uv/) (Python 3.13)
 
 ## 설치 / 실행
 
