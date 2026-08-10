@@ -155,6 +155,45 @@ def test_login_logout_switches_scopes_without_deleting_local_databases(tmp_path:
             service.count_games()
 
 
+def test_failed_switch_preserves_current_scope(tmp_path: Path):
+    """B-2: 새 프로필 DB 준비가 실패해도 기존 scope가 닫히지 않아, 사용자가
+    화면 없는 상태로 남지 않는다."""
+    manager = ProfileManager(tmp_path)
+    services: list[GameService] = []
+    windows: list[TrackingWindow] = []
+    controller = make_controller(manager, services, windows)
+
+    controller.start_guest()
+    services[-1].insert_game(sample("guest"))
+    guest_window = windows[0]
+    guest_service = services[0]
+
+    # 게스트 상태에서, 소유권이 어긋난 등록 프로필로 전환을 시도한다.
+    # 어긋난 소유권을 만들기 위해 대상 DB를 손상시킨다.
+    profile_a = manager.registered(ACCOUNT_A, "계정 A")
+    manager.prepare_database(profile_a)  # 정상 준비(소유권 귀속)
+    import sqlite3 as _sqlite3
+
+    connection = _sqlite3.connect(profile_a.database_path)
+    try:
+        connection.execute("UPDATE database_metadata SET owner_id=?", (ACCOUNT_B,))
+        connection.commit()
+    finally:
+        connection.close()
+
+    # 소유권 불일치로 switch가 실패해야 한다.
+    with pytest.raises(Exception):
+        controller.switch_profile(profile_a)
+
+    # 기존 게스트 scope가 그대로 유지된다.
+    assert controller.current_profile is not None
+    assert controller.current_profile.kind is ProfileKind.GUEST
+    assert not guest_window.closed
+    assert guest_service.count_games() == 1
+
+    controller.close()
+
+
 def test_switch_closes_visible_stats_window_before_old_connection(
     qapp: QApplication, tmp_path: Path
 ):

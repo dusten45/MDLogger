@@ -116,9 +116,16 @@ class AppController:
         self.start_guest()
 
     def switch_profile(self, profile: ProfileContext) -> None:
-        """기존 창과 연결을 정리한 뒤 새 프로필 범위를 시작한다."""
-        self._close_current_scope()
+        """새 프로필 DB를 검증·준비한 뒤 기존 창과 연결을 정리하고 새 범위를 시작한다.
+
+        새 DB 준비가 실패하면 기존 scope를 아직 닫지 않아 사용자를 화면 없는
+        상태로 두지 않는다(B-2).
+        """
+        # 새 프로필 DB의 소유권·스키마를 먼저 검증한다. 실패하면 여기서 예외가
+        # 나며 기존 scope는 그대로 유지된다.
         self._profiles.prepare_database(profile)
+
+        self._close_current_scope()
 
         games = self._service_factory(profile)
         try:
