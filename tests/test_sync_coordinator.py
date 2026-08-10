@@ -221,6 +221,9 @@ def test_conflict_ops_do_not_block_on_slow_network_worker():
     """근본 수정: 충돌 조회·해결은 로컬 SQLite 연산이라 worker의 느린 네트워크
     사이클에 블로킹되지 않고 즉시 동작한다(P1-5 회귀 근본 해결)."""
 
+    entered = threading.Event()
+    release = threading.Event()
+
     class SlowNetworkEngine:
         def status(self) -> SyncStatus:
             return SyncStatus(
@@ -228,7 +231,10 @@ def test_conflict_ops_do_not_block_on_slow_network_worker():
             )
 
         def run_once(self) -> SyncStatus:
-            time.sleep(5)  # 느린 네트워크 사이클을 흉내
+            # 느린 네트워크 사이클을 흉내 낸다. 테스트가 release를 set할 때까지
+            # worker가 run_once 안에 묶여 있게 한다(sleep 대신 결정적 대기).
+            entered.set()
+            release.wait()
             return self.status()
 
         def list_conflicts(self) -> list:
@@ -248,15 +254,16 @@ def test_conflict_ops_do_not_block_on_slow_network_worker():
         cast(SyncEngine, SlowNetworkEngine()), interval_seconds=0.05
     )
     coordinator.start()
-    time.sleep(0.2)  # worker가 느린 run_once 안에 들어가게 한다
+    assert entered.wait(2.0), "worker가 run_once 진입에 실패"
     started = time.monotonic()
     try:
         result = coordinator.list_conflicts()
         elapsed = time.monotonic() - started
         assert result == ["CONFLICT-A"]
-        assert elapsed < 1.0, f"list_conflicts가 {elapsed:.1f}s 블로킹됨"
+        assert elapsed < 0.5, f"list_conflicts가 {elapsed:.1f}s 블로킹됨"
     finally:
-        coordinator.stop(timeout_seconds=7)
+        release.set()
+        coordinator.stop()
 
 
 def test_resolve_conflict_propagates_stale_version_error():
