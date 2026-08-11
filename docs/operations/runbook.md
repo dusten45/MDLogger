@@ -37,7 +37,8 @@ MDLOGGER_SUPABASE_ANON_KEY=<hosted anon key> \
 #    → src/mdlogger/remote/_bundled_config.py 생성 (gitignore 대상, 커밋 금지)
 
 # 2) 빌드 — 생성 모듈이 패키지 내부에 존재하므로 PyInstaller가 자동 번들한다.
-uv run pyinstaller --noconfirm --clean --onefile --windowed --name MDLogger run.py
+#    MDLogger.spec이 패키지 데이터(decks.json·테마 SVG 아이콘)를 함께 수집한다.
+uv run pyinstaller --noconfirm --clean MDLogger.spec
 
 # 3) 산출물 시크릿 스캔 — service-role key·secret JWT·URL 자격 증명 0건이어야 한다.
 uv run python -m mdlogger.secret_scan dist/MDLogger.exe

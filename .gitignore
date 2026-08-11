@@ -29,8 +29,10 @@ dist/
 *.manifest
 # Keep the .spec if you want a reusable build recipe. This project's
 # "마듀 듀얼로그 생성기.spec" hardcodes a local icon path (D:\Downloads\asdf.ico),
-# so uncomment the next line if you'd rather not track it:
+# so .spec files are ignored by default. The MDLogger.spec is a clean, generic
+# recipe (no local paths) and IS tracked for reproducible builds:
 *.spec
+!MDLogger.spec
 
 # ---- Runtime data (recreated on first launch via ensure_data_dir) ----
 # The SQLite DB is per-user gameplay data, and decks_sync.json is local ETag state.
