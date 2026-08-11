@@ -176,6 +176,28 @@ def system_theme_mode(app: QApplication) -> ThemeMode:
     return resolve_theme_mode(ThemeMode.SYSTEM, app.styleHints().colorScheme())
 
 
+def current_colors(app: QApplication | None = None) -> ColorTokens:
+    """현재 해석된 테마 모드의 색상 토큰을 반환한다.
+
+    `ThemeController`가 앱에 설정한 `themeMode` 속성을 우선하고, 없으면 시스템
+    색상 체계로 판별한다. pyqtgraph처럼 QSS에 반응하지 않는 위젯이 테마를
+    따라가는 데 사용한다.
+    """
+
+    if app is None:
+        instance = QApplication.instance()
+        if not isinstance(instance, QApplication):
+            return LIGHT_COLORS
+        app = instance
+    mode = app.property("themeMode")
+    if isinstance(mode, str):
+        try:
+            return colors_for_mode(ThemeMode(mode))
+        except ValueError:
+            pass
+    return colors_for_mode(system_theme_mode(app))
+
+
 def relative_luminance(color: str) -> float:
     """`#RRGGBB` 색상의 WCAG 상대 휘도를 계산한다."""
 
@@ -448,6 +470,9 @@ QAbstractItemView {{
     outline: 0;
 }}
 QAbstractItemView:focus {{ border: {metrics.focus_width}px solid {colors.focus_ring}; }}
+QTableWidget[statsTable="true"]::item:selected {{
+    border: {metrics.focus_width}px solid {colors.accent};
+}}
 QHeaderView::section {{
     background-color: {colors.surface_subtle};
     color: {colors.text_primary};

@@ -94,7 +94,9 @@ def main() -> None:
     controller = AppController(
         profiles,
         service_factory=lambda profile: GameService.open(profile.database_path),
-        window_factory=lambda games, profile: MainWindow(games, decks, profile),
+        window_factory=lambda games, profile: MainWindow(
+            games, decks, profile, theme=_theme_controller
+        ),
         sync_factory=sync_factory,
     )
     router = ProfileRouter(profiles, controller, sessions)

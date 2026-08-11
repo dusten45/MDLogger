@@ -252,6 +252,173 @@ def test_confirm_without_deck_selection_shows_validation_and_does_not_save(
     games.close()
 
 
+def test_stats_empty_states_and_disabled_record_actions(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """단계 3: 빈 그래프/기록에 안내 상태와, 선택이 없을 때 편집·삭제 disabled(§9.3·§9.4)."""
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    window.refresh_header()
+
+    stats = _open_stats(window, qapp)
+
+    # 데이터 없음: 그래프는 빈 상태(2번 인덱스), 기록은 빈 상태(1번 인덱스)
+    assert stats._plot_stack.currentIndex() == 2
+    assert stats._records_stack.currentIndex() == 1
+    # 선택 없음: 편집/삭제 disabled
+    assert not stats._edit_btn.isEnabled()
+    assert not stats._del_btn.isEnabled()
+
+    # 기록 추가 → 그래프는 '데이터 적음'(1번), 기록은 테이블(0번), 편집/삭제 enabled(선택 후)
+    games.insert_game(_make_record())
+    stats.refresh()
+    assert stats._plot_stack.currentIndex() == 1  # 1개뿐이라 추세 선 대신 안내
+    assert stats._records_stack.currentIndex() == 0
+    stats._rtable.selectRow(0)
+    assert stats._edit_btn.isEnabled()
+    assert stats._del_btn.isEnabled()
+
+    window.close_profile_windows()
+    games.close()
+
+
+def test_stats_export_error_is_handled(
+    qapp: QApplication,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """단계 3 회귀 방지: 내보내기 중 오류가 나도 예외가 전파되지 않고 안내로 처리된다."""
+    from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    window.refresh_header()
+    stats = _open_stats(window, qapp)
+
+    monkeypatch.setattr(
+        QFileDialog,
+        "getSaveFileName",
+        staticmethod(lambda *a, **k: ("/tmp/out.csv", "")),
+    )
+    errors: list[str] = []
+    monkeypatch.setattr(
+        QMessageBox,
+        "critical",
+        staticmethod(lambda *a, **k: errors.append(str(a[2]) if len(a) > 2 else "")),
+    )
+
+    def _boom(path: str) -> None:
+        raise OSError("저장 권한 없음")
+
+    stats._export("CSV", "games.csv", "CSV (*.csv)", _boom)  # 예외가 전파되면 안 됨
+    assert any("저장 권한 없음" in e for e in errors)
+
+    window.close_profile_windows()
+    games.close()
+
+
+def test_stats_plot_follows_app_theme_changed_signal(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """단계 3 회귀 방지: 앱 테마 컨트롤러가 모드를 바꿔도(theme_changed) 그래프 배경이 따라간다."""
+    from mdlogger.ui.theme import ThemeMode, apply_theme
+
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    games.insert_game(_make_record())
+    games.insert_game(_make_record())
+    games.insert_game(_make_record())
+    games.insert_game(_make_record())  # 4개 → 그래프 표시
+    window.refresh_header()
+
+    controller = apply_theme(qapp, ThemeMode.LIGHT)
+    stats = StatsWindow(games, DECKS, theme=controller)
+    stats.show()
+    qapp.processEvents()
+    assert stats._plot.backgroundBrush().color().name().upper() == "#FFFFFF"
+
+    controller.set_mode(ThemeMode.DARK)
+    qapp.processEvents()
+    assert stats._plot.backgroundBrush().color().name().upper() == "#191F28"
+
+    stats.close()
+    window.close_profile_windows()
+    games.close()
+
+
+def test_stats_plot_background_syncs_with_theme(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """단계 3 회귀 방지: pyqtgraph 배경이 앱 테마 토큰(라이트/다크 표면)을 따라간다."""
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    games.insert_game(_make_record())
+    games.insert_game(_make_record())
+    games.insert_game(_make_record())
+    games.insert_game(_make_record())  # 4개 → 그래프 표시
+    window.refresh_header()
+
+    stats = _open_stats(window, qapp)
+    qapp.setProperty("themeMode", "dark")
+    stats._apply_theme()
+    assert stats._plot.backgroundBrush().color().name().upper() == "#191F28"
+
+    qapp.setProperty("themeMode", "light")
+    stats._apply_theme()
+    assert stats._plot.backgroundBrush().color().name().upper() == "#FFFFFF"
+
+    window.close_profile_windows()
+    games.close()
+
+
+def test_stats_window_resize_does_not_crash(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """단계 3 회귀 방지: 통계 창을 재배치해도 pyqtgraph/레이아웃이 크래시하지 않는다.
+
+    `DateAxisItem`에 `axis.setGrid()`를 쓰면 재배치 시 크래시가 났으므로,
+    실제 창 크기를 여러 번 바꿔도 안전한지 확인한다.
+    """
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    games.insert_game(_make_record())
+    games.insert_game(_make_record())
+    games.insert_game(_make_record())
+    games.insert_game(_make_record())  # 4개 → 그래프 표시
+    window.refresh_header()
+
+    stats = _open_stats(window, qapp)
+    stats.show()
+    for width, height in ((900, 600), (400, 600), (760, 500), (520, 600)):
+        stats.resize(width, height)
+        qapp.processEvents()
+    # 마지막 크기에서 카드가 정상 배치되고 값이 유지되는지 확인
+    assert stats._card_total._value.text() == "4판 4승 0패"
+
+    window.close_profile_windows()
+    games.close()
+
+
+def test_stats_matchup_filter_defaults_to_all_and_filters(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """단계 3: 선/후공 필터는 기본 '전체'로 선택되고, 변경 시 매치업 테이블을 갱신한다."""
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    games.insert_game(_make_record(turn_order="first", my_deck="융합 덱"))
+    games.insert_game(_make_record(turn_order="second", my_deck="융합 덱"))
+    window.refresh_header()
+
+    stats = _open_stats(window, qapp)
+
+    # 기본 필터 = '전체' (segment 버튼이 선택된 상태)
+    assert stats._filter.value() == "all"
+    assert stats._mtable.rowCount() == 1  # 매치업 1행(융합 덱)
+
+    # '선공'으로 변경 → 같은 덱이지만 선공 1건만 집계
+    stats._filter.setValue("first")
+    stats._refresh_matchups()
+    assert stats._mtable.rowCount() == 1
+    assert _cell_text(stats._mtable, 0, 1) == "1"  # 판수
+
+    window.close_profile_windows()
+    games.close()
+
+
 def test_stats_window_opens_and_renders_summary_and_records(
     qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):

@@ -3,6 +3,7 @@
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QPalette
+from PySide6.QtWidgets import QApplication
 
 from mdlogger.ui.theme import (
     DARK_COLORS,
@@ -13,8 +14,10 @@ from mdlogger.ui.theme import (
     build_stylesheet,
     colors_for_mode,
     contrast_ratio,
+    current_colors,
     font_for_role,
     resolve_theme_mode,
+    system_theme_mode,
 )
 
 
@@ -82,3 +85,17 @@ def test_font_roles_derive_from_system_font_without_changing_family() -> None:
     assert title.pointSizeF() > base.pointSizeF()
     assert title.weight() == QFont.Weight.DemiBold
     assert caption.pointSizeF() >= 9.0
+
+
+def test_current_colors_prefers_app_theme_mode() -> None:
+    app = QApplication.instance()
+    if not isinstance(app, QApplication):
+        app = QApplication([])
+    app.setProperty("themeMode", "dark")
+    assert current_colors(app) is DARK_COLORS
+    app.setProperty("themeMode", "light")
+    assert current_colors(app) is LIGHT_COLORS
+    app.setProperty("themeMode", None)
+    # mode 속성이 없으면 시스템 색상 체계 해석으로 판별한다(offscreen: Unknown → 라이트)
+    assert current_colors(app) is colors_for_mode(system_theme_mode(app))
+    assert current_colors(app) is LIGHT_COLORS

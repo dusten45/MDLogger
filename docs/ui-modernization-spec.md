@@ -1,8 +1,8 @@
 # MDLogger 크로스 플랫폼 UI 현대화 명세서
 
-- 상태: 단계 1 핵심 기반·계정 인증 UI·단계 2 공통 위젯 및 메인/상세 화면 현대화 구현 완료, 단계 3 통계·기록 관리 현대화는 미착수
+- 상태: 단계 1 핵심 기반·계정 인증 UI·단계 2 공통 위젯 및 메인/상세 화면·단계 3 통계·기록 관리 현대화 구현 완료, 단계 4 아이콘·미세 상호작용은 미착수
 - 작성일: 2026-08-07
-- 최근 개정: 2026-08-11 (단계 2 공통 위젯·메인/상세 화면 현대화 구현 완료 반영)
+- 최근 개정: 2026-08-12 (단계 3 통계·기록 관리 현대화 완료)
 - 대상 프로젝트: MDLogger (`mdlogger`)
 - 주요 플랫폼: Windows, macOS, Linux
 - UI 기술: PySide6 Qt Widgets 유지
@@ -67,6 +67,17 @@
 - focus, hover, pressed, checked, disabled, invalid 상태 표현과 시각 순서에 맞는 입력 포커스를 구현했다. 키보드 전용 조작은 지원하지 않는 마우스 중심 방침에 따라 액션 버튼에 포커스 링을 표시하지 않는다.
 - 남은 인라인 하드코딩 스타일은 단계 3 대상인 `edit_dialog.py`·`stats_window.py`에만 존재한다.
 - 관련 자동 테스트(`tests/test_theme.py` 등)가 통과했으며, 단계 2 완료 기준선은 계정 기능 직후 `302 passed` 기준을 유지한다.
+
+### 단계 3 완료 (2026-08-12)
+
+단계 3(통계·기록 관리 현대화)의 코드 구현과 자동 검증을 완료하고 상태를 확정했다.
+
+- `src/mdlogger/ui/theme.py`: `current_colors(app)` 헬퍼를 추가해 QSS에 반응하지 않는 pyqtgraph도 라이트/다크 테마 토큰을 따라가게 했다.
+- `src/mdlogger/ui/stats_window.py`: 요약 카드를 폭에 따라 `3+2 / 2+2+1 / 1열` grid로 재배치(`_relayout_cards`)하고, 점수 시계열을 제목 있는 표면 안에 넣으며 빈/데이터 적음 안내 상태를 추가했다. pyqtgraph 배경·축·격자·선 색상을 테마와 동기화(`_apply_theme`)하고, hover 시 정확한 점수/시각 tooltip을 제공한다. 승/패 점은 색상 외에도 marker 모양(원/×)으로 구분한다. 선/후공 필터를 `SingleSelect`(segment)로 교체하고, 매치업 테이블에도 빈 안내 상태를 추가했다. 기록 테이블은 그리드 제거·교차 배경·행 높이 개선, 긴 덱/메모 셀은 최대 열 폭(280px)에서 elide + tooltip(`_ElideDelegate`), 선택이 없으면 편집/삭제 disabled + tooltip, 삭제 확인 문구가 대상 기록을 식별한다. 선택된 행은 배경색에 더해 `statsTable` 속성 QSS로 current-cell 경계를 보강한다(소유자 선택 2). 내보내기 실패는 예외가 전파되지 않고 안내 다이얼로그로 처리한다.
+- 테마 동기화는 시스템 `colorSchemeChanged`와 앱 `ThemeController.theme_changed`를 모두 구독해, 나중에 앱 내부 테마 스위처를 추가해도 그래프가 따라오도록 미리 대비했다(소유자 선택 B). `MainWindow`·`StatsWindow`에 옵션 `theme` 파라미터를 추가하고 `app.py`에서 전달한다.
+- `src/mdlogger/ui/edit_dialog.py`: 필드 레이블(muted)·오류 상태(danger)·저장(primary)/취소(ghost) 버튼을 `theme.py` 토큰과 역할 기반 스타일로 전환했다.
+- 관련 자동 테스트(`tests/test_theme.py`·`tests/test_ui_flow_clicks.py`)에 `current_colors`, 빈/데이터 적음 상태, 편집·삭제 disabled, 필터 기본값·매치업 갱신, 창 재배치 크래시, pyqtgraph 배경 테마 동기화, 내보내기 오류를 추가했다. `DateAxisItem`에 `axis.setGrid()`를 쓰면 재배치 시 크래시가 나므로 `showGrid` + 축 펜 색으로 대체했다.
+- 전체 테스트 기준선은 `326 passed / 2 skipped`로 갱신했다. 사전 존재하는 환경 관련 실패(테스트 제외) 1건은 단계 3 변경과 무관하다.
 
 ## 1. 목적
 

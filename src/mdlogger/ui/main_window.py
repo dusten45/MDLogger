@@ -17,6 +17,7 @@ from ..game_sync.models import SyncStatus
 from ..profiles import ProfileContext, ProfileKind
 from .detail_view import DetailView
 from .result_view import ResultView
+from .theme import ThemeController
 
 
 class MainWindow(QMainWindow):
@@ -27,11 +28,13 @@ class MainWindow(QMainWindow):
         games: GameService,
         decks: list[str],
         profile: ProfileContext | None = None,
+        theme: ThemeController | None = None,
     ):
         super().__init__()
         self._games = games
         self._profile = profile
         self._decks = list(decks)
+        self._theme = theme
         self._current_result: str | None = None
         self._stats = None  # 지연 생성되는 통계 창
         self._sync: SyncCoordinator | None = None
@@ -132,7 +135,7 @@ class MainWindow(QMainWindow):
         from .stats_window import StatsWindow
 
         if self._stats is None:
-            self._stats = StatsWindow(self._games, self._decks)
+            self._stats = StatsWindow(self._games, self._decks, theme=self._theme)
             self._stats.data_changed.connect(self.refresh_header)
         self._stats.refresh()
         self._stats.show()
