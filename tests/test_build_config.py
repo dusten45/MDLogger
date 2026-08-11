@@ -198,6 +198,19 @@ def test_scan_file(tmp_path):
     assert not scan_file(good)
 
 
+def test_scan_file_handles_binary_invalid_utf8(tmp_path):
+    # 실제 PyInstaller 산출물처럼 유효하지 않은 UTF-8 바이트가 섞인 파일도
+    # LookupError 없이 스캔해야 한다(오류 핸들러 `ignore`). 회귀 방지(단계 5).
+    bad = tmp_path / "bad-bin"
+    bad.write_bytes(
+        b"\xff\xfe\x00release " + SERVICE_ROLE_PREFIX_KEY.encode() + b"\xff"
+    )
+    assert scan_file(bad)
+    good = tmp_path / "good-bin"
+    good.write_bytes(b"\xff\xfe\x00release " + ANON_PREFIX_KEY.encode() + b"\xff")
+    assert not scan_file(good)
+
+
 # ----- 생성 모듈 gitignore 강제 + 생성 스크립트 -----
 
 

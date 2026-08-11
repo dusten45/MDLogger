@@ -90,7 +90,7 @@ def scan_build_config(path: Path) -> list[str]:
 def scan_bytes(data: bytes) -> list[str]:
     """바이트 데이터에서 service-role key·비밀 자격 증명을 찾아 반환한다."""
     issues: list[str] = []
-    text = data.decode("utf-8", errors="ignored")
+    text = data.decode("utf-8", errors="ignore")
     lower = text.lower()
     if _SERVICE_ROLE_PREFIX in lower:
         issues.append(f"'{_SERVICE_ROLE_PREFIX}' service-role key 접두사 발견")
