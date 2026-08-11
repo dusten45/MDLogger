@@ -1801,16 +1801,20 @@ R11 검토 결과(코드 수준):
 - **tombstone 물리 정리·비활성 장치 제거**: 데이터 규모 문제 발생 후 도입. `games.deleted_at` tombstone과 `duel_observations.withdrawn_at` 마커는 무기한 보존한다.
 - **도메인 DTO 도입**: 반환 행 타입은 현재 `sqlite3.Row` 유지. 제품 결정 시점에 재검토.
 
-작업:
+작업 (2026-08-11 갱신):
 
-- 실제 Windows PyInstaller 빌드에서 인증, secure storage, 네트워크와 worker 종료를 검증한다.
-- macOS/Linux 지원 범위에서도 secure storage와 경로를 검증한다.
-- 구버전 앱에서 새 버전으로 업그레이드 rehearsal을 수행한다.
-- staging에서 장시간 offline/online 전환과 대량 동기화를 수행한다.
-- RLS와 서버 함수에 대한 최종 공격 테스트를 수행한다.
-- 개인정보 및 자동 업로드 고지의 최종 검토를 수행한다.
-- 제한된 테스트 사용자에게 점진 배포한다.
-- rollback/forward-fix 기준과 최소 지원 앱 버전을 확정한다.
+- [x] 하드닝 H1~~H6 검토 게이트 RH1~~RH6 통과 · 소유자 서명 (2026-08-10)
+- [x] staging에서 장시간 offline/online 전환 + 대량(1,000건) 동기화 수행 — 완료 (2026-08-11, guest 경로)
+      rate limit(1분/10회) 경계로 1건이 일시 대기했으나 1분 후 자동 재시도·업로드됨, 서버 검증 완료.
+- [x] RLS와 서버 함수에 대한 최종 공격 테스트 — 완료 (2026-08-11, `supabase db reset`+`test db`)
+- [x] 개인정보 및 자동 업로드 고지의 최종 검토 — 완료 (2026-08-10 소유자 승인 ①-4 + 코드 재검토, `GuestNoticeDialog`)
+- [x] rollback/forward-fix 기준과 최소 지원 앱 버전 확정 — 완료 (결정 D-7: 최소=최신=0.1.6, forward-fix 정책) + 클라이언트 OS 인지 릴리스 정책 + `0020`로 macOS/Linux 행 추가 (2026-08-11)
+- [ ] 실제 Windows PyInstaller 빌드에서 인증, secure storage, 네트워크와 worker 종료를 검증한다.
+      (이번 릴리스 별도 처리로 미룸 — 배포 후 빌드 실동작으로 검증 예정, `docs/windows-check.md`)
+- [ ] macOS/Linux 지원 범위에서도 secure storage와 경로를 검증한다.
+      (미룸 — macOS 장비 없음, Linux Secret Service는 검증 완료)
+- [ ] 구버전 앱에서 새 버전으로 업그레이드 rehearsal을 수행한다. (해당 없음 — 최초 배포라 구버전 없음)
+- [ ] 제한된 테스트 사용자에게 점진 배포한다. (이번 릴리스에서 패스 — 테스트 사용자 미모집, 주변 지인 실사용 검증으로 대체)
 
 #### 단계 12 코드 검토·로직 분석 기록 (2026-08-11)
 
