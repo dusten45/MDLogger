@@ -50,6 +50,10 @@ games.xlsx
 supabase/.branches/
 supabase/.temp/
 
+# ---- Supabase function local env (service-role key 등 비밀). 커밋 금지. ----
+supabase/functions/.env.local
+supabase/functions/**/.env.local
+
 # ---- Claude Code local settings ----
 .claude/settings.local.json
 

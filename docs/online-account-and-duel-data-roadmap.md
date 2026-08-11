@@ -1812,6 +1812,62 @@ R11 검토 결과(코드 수준):
 - 제한된 테스트 사용자에게 점진 배포한다.
 - rollback/forward-fix 기준과 최소 지원 앱 버전을 확정한다.
 
+#### 단계 12 코드 검토·로직 분석 기록 (2026-08-11)
+
+코드·로직 관점에서 RF 게이트를 검토하고, 발견된 round-trip 결함 1건을 수정했다.
+(Windows 빌드·staging·배포 등 소유자 operational 작업은 아래 "소유자 잔여 작업"으로 남긴다.)
+
+**수정한 결함 (round-trip 충실도):**
+
+- `environment_version_id`(하드닝 H4, 신규 기록에 부여)가 휴대용 아카이브 round-trip과
+  게스트→등록 import에서 탈락됐다. `portable.PORTABLE_RECORD_FIELDS` 와
+  `guest_import._IMPORTED_VALUE_FIELDS` 에 필드가 없어, export→import 후 NULL로
+  저장됐다(서버 `PRIVATE_GAME_FIELDS`·`_DIRECT_FIELDS`에는 있어 동기화·분석 대상).
+    - 수정: 두 필드 목록에 `environment_version_id` 추가. `tests/test_portable.py`,
+      `tests/test_guest_import.py` round-trip 테스트에 보존 단언 추가(환경 부여 후 재현).
+    - 검증: `ruff check`, `ruff format --check`, `ty check`, 전체 `pytest` 300 passed·4 skipped.
+
+**코드 검토 결과 (RF 게이트, 2회 재검토):**
+
+- 데이터 손실: PASS. migration은 전체 `BEGIN IMMEDIATE`/rollback + 검증된 백업(`conn.backup()`),
+  삭제는 soft delete, legacy/휴대용 copy는 WAL 일관 `conn.backup()`(critical-fixes §2-2).
+  P0-1(첫 동기화 전 삭제)은 `build_game_change` delete-if-exists + 테스트 P0-1-A/B로 고정.
+- 권한 격리: PASS. RLS는 `auth.uid()` 소유권 전용, analytics 함수는 0019에서 anon/authenticated
+  EXECUTE 명시 회수, `guest_rate_events` RLS 활성(0017).
+- 중복/누락: PASS. batch_id·sync_id idempotency, backoff 재시도, cursor 경계 검증, 강제 종료 복구.
+- 스레딩: PASS. 네트워크 sync만 worker thread, 로컬 SQLite는 호출자 thread 짧은 연결(WAL+
+  busy_timeout), 종료 시 sync.stop → window → games.close 순서로 파일 락 없음(P1-9).
+- 비밀 관리: PASS. `secret_scan`이 service-role key·secret JWT·URL credential 검출, anon 허용.
+- 개인정보: PASS. `GuestNoticeDialog` 고지 문구가 `_DIRECT_FIELDS` allowlist·note 제외와 일치.
+- 남용 방어: PASS. guest-ingest Edge의 필드 allowlist·값 범위 + DB `guest_rate_check`(1분/10회).
+- 호환성: PASS(경미). 구버전 DB migration, 이전 export 포맷 거부. `_migration_1`은 legacy 테이블에
+  `my_deck`만 추가 — legacy 스키마에 다른 기본 컬럼이 없으면 안전 실패 권장(경미, 범위 가정).
+- UX: PASS. 릴리스 정책·환경 조회는 비차단 폴백, coordinator가 UI thread를 네트워크 I/O에서 격리.
+- 운영: PASS(준비됨). runbook §1.1~§11에 빌드·백업·복구·key rotation·유출 대응 문서화.
+
+**릴리스 정책 플랫폼 지원 (2026-08-11, 6번 완료):**
+
+- 이전에는 클라이언트가 `DEFAULT_PLATFORM="windows"`로 항상 `windows` 정책 행만 조회해
+  macOS/Linux 빌드가 자기 플랫폼 정책을 쓰지 못했다. 수정: `release_policy.default_platform()`이
+  `sys.platform`을 `windows`/`macos`/`linux`로 매핑하고, `ReleasePolicyClient`·`from_row`가 이를
+  기본 플랫폼으로 사용한다(알 수 없는 OS는 windows 폴백). `tests/test_release_policy.py`에
+  OS 매핑·OS 인지 기본 플랫폼 테스트 추가.
+- 서버 forward-fix `0020_release_policy_platforms.sql`이 결정 D-7(최소=최신=0.1.6)에 맞춰
+  `linux`·`macos` 행을 멱등 삽입(`on conflict (platform) do nothing`).
+- 검증: `ruff check`, `ruff format --check`, `ty check`, `pytest` 302 passed·4 skipped.
+
+**소유자 잔여 작업 (운영·배포, 여기서 수행 불가):**
+
+- Windows PyInstaller 빌드 실동작 검증(로그인·게스트 ingest·Credential Manager·worker 종료,
+  `docs/windows-check.md` §2)·빌드 산출물 시크릿 스캔(§3).
+- macOS/Linux secure storage·경로 검증(Windows는 미검증, Linux Secret Service는 검증 완료).
+- 구버전→신버전 업그레이드 rehearsal.
+- staging에서 장시간 offline/online 전환 + 대량(1,000건) 동기화 스트레스(§2.1).
+- RLS·서버 함수 최종 공격 테스트는 소유자 Supabase 환경에서 실행(이 sandbox는 Docker 불가).
+- 제한된 테스트 사용자에게 점진 배포 후 migration·sync 지표 확인.
+- `supabase db push`로 마이그레이션 `0020_release_policy_platforms.sql`을 hosted에 적용해
+  `linux`·`macos` release policy 행이 조회되게 한다(before migrate에서 None → 허용으로 안전).
+
 최종 검토 게이트 RF:
 
 - 데이터 손실: migration, import, conflict, delete, rollback에서 원본 보존이 검증되었는가
