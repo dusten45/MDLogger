@@ -1,8 +1,8 @@
 # MDLogger 크로스 플랫폼 UI 현대화 명세서
 
-- 상태: 단계 1 핵심 기반·계정 인증 UI·단계 2 공통 위젯 및 메인/상세 화면·단계 3 통계·기록 관리·단계 4 아이콘·미세 상호작용 구현 완료
+- 상태: 단계 1 핵심 기반·계정 인증 UI·단계 2 공통 위젯 및 메인/상세 화면·단계 3 통계·기록 관리·단계 4 아이콘·미세 상호작용·단계 5 플랫폼 검증 및 패키징 구현 완료
 - 작성일: 2026-08-07
-- 최근 개정: 2026-08-12 (단계 4 아이콘·미세 상호작용 완료)
+- 최근 개정: 2026-08-12 (단계 5 플랫폼 검증 및 패키징 완료)
 - 대상 프로젝트: MDLogger (`mdlogger`)
 - 주요 플랫폼: Windows, macOS, Linux
 - UI 기술: PySide6 Qt Widgets 유지
@@ -87,11 +87,21 @@
 - 번들 SVG 아이콘(`undo`/`minus`/`plus`)을 `src/mdlogger/ui/icons/`에 추가했다. 외부 아이콘 패키지 의존성은 추가하지 않았고, 단순한 원형 기하 아이콘을 직접 작성해 재배포 라이선스 이슈를 피했다.
 - `src/mdlogger/ui/result_view.py`: 되돌리기 버튼의 유니코드 `↶`를 제거하고 "마지막 기록 취소" 텍스트 + 20px undo 아이콘으로 교체했다. 텍스트가 동작을 계속 설명하므로 아이콘 누락 시에도 의미가 유지된다.
 - `src/mdlogger/ui/widgets.py`: `Stepper`의 −/＋를 16px 아이콘으로 교체하고, `accessibleName` + tooltip을 설정했다. SVG가 없으면 기존 −/＋ 텍스트로 fallback한다(§10 "아이콘 누락 시에도 텍스트로 동작을 이해할 수 있다").
-- 패키징: hatchling wheel에 `ui/icons/*.svg` 포함을 확인했고, PyInstaller는 `importlib.resources` 사용을 추적해 번들 덱 카탈로그와 동일한 방식으로 수집한다. `tests/test_icons.py`가 번들 누락·로드·테마 리컬러·disabled/active 색상·fallback을 검증한다.
+- 패키징: hatchling wheel에 `ui/icons/*.svg` 포함을 확인했다. 소스 실행에서는 `importlib.resources`가 패키지 데이터를 읽는다. 단, PyInstaller는 `importlib.resources` 호출만으로 데이터를 수집하지 않으므로, 배포 빌드는 `MDLogger.spec`의 `collect_data_files("mdlogger")`로 `data/decks.json`과 `ui/icons/*.svg`를 명시적으로 번들한다(단계 5에서 오프라인 스모크로 확인). `tests/test_icons.py`가 소스 모드의 번들 로드·테마 리컬러·disabled/active 색상·fallback을 검증한다.
 - 미세 상호작용: 기존 승/패 버튼의 hover 성장 애니메이션과 QSS 상태 표현이 이미 준수하므로(Quiet Utility, 입력 지연 금지) 새 애니메이션은 추가하지 않았다.
 - 전체 테스트 기준선은 `333 passed / 2 skipped`(+7, 아이콘 테스트)로 갱신했다. 사전 존재하는 환경 관련 실패 1건(`test_startup_migrates_old_db_and_retains_backup`)은 단계 4 변경과 무관함을 clean 기준선에서 확인했다.
 
 **완료 상태**: 단계 4 코드 구현과 자동 검증을 마쳤다. 실제 Windows/macOS/Ubuntu PyInstaller 빌드에서 아이콘 표시 확인은 단계 5(플랫폼 검증 및 패키징)에서 수행한다. 아이콘은 패키지 데이터로 포함되고 누락 시 텍스트 fallback이 동작하므로 완료 기준을 충족한다.
+
+### 단계 5 완료 (2026-08-12)
+
+단계 5(플랫폼 검증 및 패키징)의 코드 기반 패키징 수정과 Linux(현재 환경) 자동 검증을 수행하고 상태를 확정했다. 실제 Windows/macOS 화면 검증은 소유자 환경에서 수행해야 한다(아래 참고).
+
+- **패키징 버그 수정**: 기존 `pyinstaller run.py` CLI 빌드는 `mdlogger/data/decks.json`과 `mdlogger/ui/icons/*.svg`를 번들하지 않았다. 기존 명세 단계 4의 "PyInstaller가 `importlib.resources` 사용을 추적해 수집한다"는 전제가 실제로는 성립하지 않아, 오프라인 첫 실행 시 덱 카탈로그가 `["기타"]`뿐이 됐고 아이콘은 텍스트로 fallback됐다(기존 스모크가 네트워크 덱 동기화로 가려졌음). `MDLogger.spec`을 추가해 `collect_data_files("mdlogger")`로 패키지 데이터를 명시적으로 번들하고, 이전 스모크 확인을 `MDLOGGER_DECKS_URL=''`(동기화 off)로 재현해 카탈로그 52개 전체 시드와 아이콘 3종(`minus`/`plus`/`undo`)의 런타임 추출을 확인했다.
+- **빌드 절차 문서 갱신**: `docs/operations/runbook.md` §1.1과 `docs/windows-check.md` §5의 빌드 명령을 `pyinstaller --noconfirm --clean MDLogger.spec`으로 통일했다.
+- **Linux 자동 검증**: `uv run pyinstaller MDLogger.spec`로 Linux onefile 빌드에 성공했고, 오프스크린(QT_QPA_PLATFORM=offscreen)에서 패키지 앱이 정상 시작(비정상 종료 없음)·데이터 체계(디렉터리 700, 파일 600) 구축·번들 덱 시드·아이콘 추출을 확인했다. ruff·format·ty·전체 테스트는 `335 passed / 2 skipped`로 통과했다(비-UTF-8 산출물 시크릿 스캔 회귀 테스트 1건 추가).
+- **테스트 격리 수정**: 단계 3·4에서 기록했던 사전 존재 환경 실패 `test_startup_migrates_old_db_and_retains_backup`는 코드 버그가 아니라 모듈 전역 `EnvironmentVersionProvider`가 실제 사용자 캐시(`~/.local/share/mdlogger/environment_version_cache.json`)를 읽어 오프라인 신규 기록에 환경 id를 부여한 것이었다. `tests/test_ui_flow_clicks.py`에서 주입 지점 `mdlogger.db._environment_id`를 `None`으로 monkeypatch해 오프라인 시나리오를 격리했고(기존 `test_insert_game_*`와 동일 패턴), 실제 사용자 캐시가 있는 환경에서도 전체 `335 passed / 2 skipped`로 통과한다.
+- **이번 단계에서 해결하지 않은 항목(소유자 환경 필요)**: 실제 Windows(100/125/150%, Credential Manager, 고대비)·macOS(Apple Silicon, Retina, 전역 메뉴)·Ubuntu GNOME(Wayland, 200%) 화면 검증과 그레이모드/접근성 시각 QA는 `docs/ui-modernization-spec.md` §15·§15.1과 `docs/windows-check.md`를 따라 소유자 환경에서 수행한다. headless/offscreen 검증은 실제 플랫폼 시각 검증을 대체하지 않는다(§16).
 
 ## 1. 목적
 
