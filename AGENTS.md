@@ -24,6 +24,7 @@
 - Use the [Conventional Commits](https://www.conventionalcommits.org/) format: start with a type tag such as `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `build:`, `perf:`, or `style:`.
 - Keep the subject (head) short, imperative, and lowercase after the tag, e.g. `feat: add score export`, `fix: handle empty deck list`, `docs: simplify README`.
 - Use a head only; a body is not required and should be omitted unless the change genuinely needs extra context.
+- Describe the feature or change being committed, not process bookkeeping. Do not mention implementation stages or steps (e.g. no "step 3", "stage 2", "1단계" etc.) in the subject or body.
 
 ## Required validation
 
