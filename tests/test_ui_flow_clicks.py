@@ -539,6 +539,10 @@ def test_startup_migrates_old_db_and_retains_backup(
     이후 실제 클릭 기록이 남는다. (마이그레이션/백업 확인 다이얼로그는 없으므로
     시작 경로 전체를 구동한다.)"""
     monkeypatch.setattr("mdlogger.ui.main_window.load_decks", lambda: list(DECKS))
+    # 오프라인 시나리오 격리: 모듈 전역 provider가 실제 사용자 캐시
+    # (environment_version_cache.json)를 읽어 환경 id를 부여하지 않게 한다.
+    # db._environment_id는 테스트 주입 지점(test_insert_game_*와 동일 패턴).
+    monkeypatch.setattr("mdlogger.db._environment_id", lambda: None)
     profiles = ProfileManager(tmp_path)
     profile = profiles.guest()
     db_path = profile.database_path
