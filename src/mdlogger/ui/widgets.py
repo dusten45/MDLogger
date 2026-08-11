@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
     QComboBox,
@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .icons import load_icon
 from .theme import METRICS, FontRole, font_for_role, set_style_property
 
 
@@ -142,7 +143,7 @@ class SearchableDeckCombo(QComboBox):
 
 
 class Stepper(QWidget):
-    """−/＋ 버튼만으로 조작하는 정수 스테퍼 (키 입력 없음)."""
+    """−/＋ 또는 아이콘 버튼만으로 조작하는 정수 스테퍼 (키 입력 없음)."""
 
     changed = Signal(int)
 
@@ -158,8 +159,8 @@ class Stepper(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(METRICS.space_2)
 
-        self._minus = self._step_button("−", "소요 턴 감소")
-        self._plus = self._step_button("＋", "소요 턴 증가")
+        self._minus = self._step_button("−", "minus", "소요 턴 감소")
+        self._plus = self._step_button("＋", "plus", "소요 턴 증가")
 
         self._label = QLabel(str(self._value))
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -174,7 +175,9 @@ class Stepper(QWidget):
         layout.addWidget(self._plus)
         layout.addStretch(1)
 
-    def _step_button(self, text: str, accessible_name: str) -> QPushButton:
+    def _step_button(
+        self, text: str, icon_name: str, accessible_name: str
+    ) -> QPushButton:
         btn = QPushButton(text)
         # 진행 정보 행에서 세그먼트 버튼과 높이를 맞춘다
         btn.setFixedSize(40, METRICS.control_height)
@@ -182,6 +185,13 @@ class Stepper(QWidget):
         btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setAccessibleName(accessible_name)
+        btn.setToolTip(accessible_name)
+        # 아이콘을 기본으로, SVG가 없으면 텍스트로 동작을 설명한다(§10).
+        icon = load_icon(icon_name)
+        if icon is not None:
+            btn.setIcon(icon)
+            btn.setIconSize(QSize(METRICS.icon_small, METRICS.icon_small))
+            btn.setText("")
         return btn
 
     def value(self) -> int:

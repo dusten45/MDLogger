@@ -23,7 +23,8 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QEnterEvent, QResizeEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from .theme import FontRole, font_for_role, set_style_property
+from .icons import load_icon
+from .theme import METRICS, FontRole, font_for_role, set_style_property
 
 _RESULT_ASPECT = 4 / 3  # 세로:가로 — 세로가 조금 더 길게
 _RESULT_GAP = 12
@@ -197,7 +198,11 @@ class ResultView(QWidget):
         # 하단: 되돌리기 / 통계
         bottom = QHBoxLayout()
         bottom.setSpacing(8)
-        self._undo = QPushButton("↶ 마지막 기록 취소")
+        self._undo = QPushButton("마지막 기록 취소")
+        undo_icon = load_icon("undo")
+        if undo_icon is not None:
+            self._undo.setIcon(undo_icon)
+            self._undo.setIconSize(QSize(METRICS.icon_medium, METRICS.icon_medium))
         self._undo.setCursor(Qt.CursorShape.PointingHandCursor)
         self._undo.setMinimumHeight(36)
         self._undo.setFocusPolicy(Qt.FocusPolicy.NoFocus)

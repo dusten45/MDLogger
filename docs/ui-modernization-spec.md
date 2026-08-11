@@ -1,8 +1,8 @@
 # MDLogger 크로스 플랫폼 UI 현대화 명세서
 
-- 상태: 단계 1 핵심 기반·계정 인증 UI·단계 2 공통 위젯 및 메인/상세 화면·단계 3 통계·기록 관리 현대화 구현 완료, 단계 4 아이콘·미세 상호작용은 미착수
+- 상태: 단계 1 핵심 기반·계정 인증 UI·단계 2 공통 위젯 및 메인/상세 화면·단계 3 통계·기록 관리·단계 4 아이콘·미세 상호작용 구현 완료
 - 작성일: 2026-08-07
-- 최근 개정: 2026-08-12 (단계 3 통계·기록 관리 현대화 완료)
+- 최근 개정: 2026-08-12 (단계 4 아이콘·미세 상호작용 완료)
 - 대상 프로젝트: MDLogger (`mdlogger`)
 - 주요 플랫폼: Windows, macOS, Linux
 - UI 기술: PySide6 Qt Widgets 유지
@@ -78,6 +78,20 @@
 - `src/mdlogger/ui/edit_dialog.py`: 필드 레이블(muted)·오류 상태(danger)·저장(primary)/취소(ghost) 버튼을 `theme.py` 토큰과 역할 기반 스타일로 전환했다.
 - 관련 자동 테스트(`tests/test_theme.py`·`tests/test_ui_flow_clicks.py`)에 `current_colors`, 빈/데이터 적음 상태, 편집·삭제 disabled, 필터 기본값·매치업 갱신, 창 재배치 크래시, pyqtgraph 배경 테마 동기화, 내보내기 오류를 추가했다. `DateAxisItem`에 `axis.setGrid()`를 쓰면 재배치 시 크래시가 나므로 `showGrid` + 축 펜 색으로 대체했다.
 - 전체 테스트 기준선은 `326 passed / 2 skipped`로 갱신했다. 사전 존재하는 환경 관련 실패(테스트 제외) 1건은 단계 3 변경과 무관하다.
+
+### 단계 4 완료 (2026-08-12)
+
+단계 4(아이콘과 미세 상호작용)의 공통 아이콘 기반과 첫 유니코드 아이콘 교체를 구현하고 상태를 확정했다.
+
+- `src/mdlogger/ui/icons.py`를 추가했다. `importlib.resources`로 패키지 데이터(`ui/icons/`)의 단색 SVG를 읽고, `_ThemeIconEngine`(커스텀 `QIconEngine`)이 paint 시점에 `current_colors()`로 결정된 테마 색상으로 다시 칠한다. `QIcon.Mode`(normal/active/disabled)가 각각 `text_primary`/`accent`/`text_disabled` 토큰을 따르므로 라이트·다크와 disabled 상태가 모두 테마에 반응한다(실제 `QIcon.pixmap()` 호출로 라이트→다크 전환 시 색상 갱신을 검증).
+- 번들 SVG 아이콘(`undo`/`minus`/`plus`)을 `src/mdlogger/ui/icons/`에 추가했다. 외부 아이콘 패키지 의존성은 추가하지 않았고, 단순한 원형 기하 아이콘을 직접 작성해 재배포 라이선스 이슈를 피했다.
+- `src/mdlogger/ui/result_view.py`: 되돌리기 버튼의 유니코드 `↶`를 제거하고 "마지막 기록 취소" 텍스트 + 20px undo 아이콘으로 교체했다. 텍스트가 동작을 계속 설명하므로 아이콘 누락 시에도 의미가 유지된다.
+- `src/mdlogger/ui/widgets.py`: `Stepper`의 −/＋를 16px 아이콘으로 교체하고, `accessibleName` + tooltip을 설정했다. SVG가 없으면 기존 −/＋ 텍스트로 fallback한다(§10 "아이콘 누락 시에도 텍스트로 동작을 이해할 수 있다").
+- 패키징: hatchling wheel에 `ui/icons/*.svg` 포함을 확인했고, PyInstaller는 `importlib.resources` 사용을 추적해 번들 덱 카탈로그와 동일한 방식으로 수집한다. `tests/test_icons.py`가 번들 누락·로드·테마 리컬러·disabled/active 색상·fallback을 검증한다.
+- 미세 상호작용: 기존 승/패 버튼의 hover 성장 애니메이션과 QSS 상태 표현이 이미 준수하므로(Quiet Utility, 입력 지연 금지) 새 애니메이션은 추가하지 않았다.
+- 전체 테스트 기준선은 `333 passed / 2 skipped`(+7, 아이콘 테스트)로 갱신했다. 사전 존재하는 환경 관련 실패 1건(`test_startup_migrates_old_db_and_retains_backup`)은 단계 4 변경과 무관함을 clean 기준선에서 확인했다.
+
+**완료 상태**: 단계 4 코드 구현과 자동 검증을 마쳤다. 실제 Windows/macOS/Ubuntu PyInstaller 빌드에서 아이콘 표시 확인은 단계 5(플랫폼 검증 및 패키징)에서 수행한다. 아이콘은 패키지 데이터로 포함되고 누락 시 텍스트 fallback이 동작하므로 완료 기준을 충족한다.
 
 ## 1. 목적
 
@@ -793,6 +807,8 @@ Qt Widgets에서 웹과 같은 완전한 반응형 UI를 목표로 하지 않지
 - PyInstaller 패키지에서 모든 아이콘이 표시된다.
 - 아이콘 누락 시에도 텍스트로 동작을 이해할 수 있다.
 - 애니메이션 때문에 입력이 지연되거나 테스트가 불안정해지지 않는다.
+
+현재 상태: **완료 (2026-08-12)**. 공통 아이콘 기반(`ui/icons.py`)과 첫 유니코드 아이콘 교체(되돌리기 `↶`, 스테퍼 −/＋)를 마쳤고 번들·테마 리컬러·fallback을 자동 검증했다. 실제 Windows/macOS/Ubuntu PyInstaller 빌드에서 아이콘 표시 확인은 단계 5(플랫폼 검증 및 패키징)에서 수행한다.
 
 ### 단계 5: 플랫폼 검증 및 패키징
 
