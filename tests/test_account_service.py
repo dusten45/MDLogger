@@ -275,6 +275,8 @@ def test_account_operations_require_missing_session_raises_token_expired():
         (400, "refresh_token_already_used", AuthErrorKind.TOKEN_EXPIRED),
         (403, "session_not_found", AuthErrorKind.TOKEN_EXPIRED),
         (500, "unexpected_failure", AuthErrorKind.SERVER_REJECTED),
+        (429, "over_email_send_rate_limit", AuthErrorKind.RATE_LIMITED),
+        (429, "over_request_rate_limit", AuthErrorKind.RATE_LIMITED),
     ],
 )
 def test_error_classification(status, error_code, expected_kind):
@@ -287,6 +289,41 @@ def test_error_classification(status, error_code, expected_kind):
 
     assert exc_info.value.kind is expected_kind
     assert exc_info.value.code == error_code
+
+
+def test_rate_limit_429_without_error_code_is_classified():
+    """게이트웨이가 error_code 없이 평문·HTML 429를 주면 상태 코드로 분류한다."""
+    service, _ = make_service(HttpResponse(status=429, body=b"Too Many Requests"))
+
+    with pytest.raises(AuthError) as exc_info:
+        service.sign_in("a@test.local", "pw")
+
+    assert exc_info.value.kind is AuthErrorKind.RATE_LIMITED
+    assert exc_info.value.code is None
+
+
+def test_delete_account_rate_limited_is_classified():
+    service, _ = make_service(HttpResponse(status=429, body=b"rate limited"))
+
+    with pytest.raises(AuthError) as exc_info:
+        service.delete_account("access-1")
+
+    assert exc_info.value.kind is AuthErrorKind.RATE_LIMITED
+    assert exc_info.value.code is None
+
+
+def test_unrecognized_error_message_includes_code():
+    """분류하지 못한 서버 오류는 원인 코드를 메시지에 남겨 진단할 수 있다."""
+    service, _ = make_service(
+        json_response(500, {"error_code": "some_unknown_code", "msg": "err"})
+    )
+
+    with pytest.raises(AuthError) as exc_info:
+        service.sign_in("a@test.local", "pw")
+
+    assert exc_info.value.kind is AuthErrorKind.SERVER_REJECTED
+    assert exc_info.value.code == "some_unknown_code"
+    assert "some_unknown_code" in str(exc_info.value)
 
 
 @pytest.mark.parametrize("status", [400, 401, 422])

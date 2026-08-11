@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLayout,
     QLineEdit,
     QPushButton,
     QStackedWidget,
@@ -26,6 +27,24 @@ from ..auth.models import DeviceInfo
 from ..game_sync.models import SyncConflict
 from ..remote.games import PRIVATE_GAME_FIELDS
 from .theme import METRICS, set_style_property
+
+
+def _wrapped_label(
+    text: str, width: int, *, role: str | None = None, tone: str | None = None
+) -> QLabel:
+    """주어진 폭에서 줄바꿈된 전체 문장이 잘리지 않는 최소 높이를 가진 라벨을 만든다."""
+
+    label = QLabel(text)
+    label.setWordWrap(True)
+    if role is not None:
+        label.setProperty("role", role)
+    if tone is not None:
+        label.setProperty("tone", tone)
+    # QSS의 굵기·크기가 적용된 폰트로 높이를 계산해야 실제 표시와 일치한다.
+    label.ensurePolished()
+    label.setMinimumWidth(width)
+    label.setMinimumHeight(label.heightForWidth(width))
+    return label
 
 
 class AuthMode(StrEnum):
@@ -206,7 +225,8 @@ class AuthWindow(QWidget):
 
         back = QPushButton("로그인으로 돌아가기")
         back.setProperty("role", "primary")
-        back.clicked.connect(self.show_login)
+        # clicked(bool)의 checked 인자가 show_login(message)로 전달되지 않게 감싼다.
+        back.clicked.connect(lambda: self.show_login())
         layout.addWidget(back)
         layout.addStretch(1)
         return page
@@ -389,54 +409,62 @@ class AuthWindow(QWidget):
 class GuestNoticeDialog(QDialog):
     """첫 프로필 진입 전에 한 번 표시하는 필수 듀얼 데이터 고지."""
 
+    CONTENT_WIDTH = 452
+
     def __init__(
         self, parent: QWidget | None = None, *, registered: bool = False
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("듀얼 데이터 사용 안내")
         self.setModal(True)
-        self.resize(500, 430)
-        self.setMinimumWidth(380)
+        self.setMinimumWidth(self.CONTENT_WIDTH + 2 * METRICS.space_6)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
             METRICS.space_6, METRICS.space_6, METRICS.space_6, METRICS.space_6
         )
-        layout.setSpacing(METRICS.space_3)
+        layout.setSpacing(METRICS.space_4)
+        # 고지 본문은 어느 한 줄도 잘려서는 안 되므로 레이아웃이 요구하는 높이를 보장한다.
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
 
-        title = QLabel(
-            "계정으로 계속하기 전에 확인해 주세요"
-            if registered
-            else "게스트로 계속하기 전에 확인해 주세요"
+        layout.addWidget(
+            _wrapped_label(
+                "계정으로 계속하기 전에 확인해 주세요"
+                if registered
+                else "게스트로 계속하기 전에 확인해 주세요",
+                self.CONTENT_WIDTH,
+                role="title",
+            )
         )
-        title.setProperty("role", "title")
-        title.setWordWrap(True)
-        layout.addWidget(title)
 
         profile_intro = (
             "계정 기록은 이 PC에 먼저 저장되고 서버의 개인 기록과 동기화됩니다. "
             if registered
             else "게스트 기록은 이 PC에 계속 보관됩니다. "
         )
-        body = QLabel(
+        body = _wrapped_label(
             profile_intro + "네트워크에 연결되면 "
             "듀얼 환경 분석을 위해 아래 게임 정보가 자동으로 전송됩니다.\n\n"
             "전송: 승패, 선·후공, 덱 분류, 턴 수, 종료 방식, 플레이 문맥과 점수, "
             "기록 시각, 앱·payload 버전\n\n"
             "전송하지 않음: 자유 입력 메모, 이메일, 표시 이름, 비밀번호·인증 토큰, "
             "로컬 파일 경로와 OS 사용자명\n\n"
-            "오프라인에서도 기록할 수 있으며 전송은 연결이 복구된 뒤 진행됩니다."
+            "오프라인에서도 기록할 수 있으며 전송은 연결이 복구된 뒤 진행됩니다.",
+            self.CONTENT_WIDTH,
         )
-        body.setWordWrap(True)
         body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(body, 1)
 
-        note = QLabel("이 필수 데이터 사용에 동의하지 않으면 앱을 사용할 수 없습니다.")
-        note.setProperty("tone", "muted")
-        note.setWordWrap(True)
-        layout.addWidget(note)
+        layout.addWidget(
+            _wrapped_label(
+                "이 필수 데이터 사용에 동의하지 않으면 앱을 사용할 수 없습니다.",
+                self.CONTENT_WIDTH,
+                tone="muted",
+            )
+        )
 
         buttons = QHBoxLayout()
+        buttons.setSpacing(METRICS.space_2)
         cancel = QPushButton("돌아가기")
         cancel.clicked.connect(self.reject)
         accept = QPushButton(
@@ -454,41 +482,88 @@ class GuestNoticeDialog(QDialog):
 class GuestRecordChoiceDialog(QDialog):
     """게스트에서 등록 계정으로 전환하기 전 원본 기록 처리를 확인한다."""
 
+    CONTENT_WIDTH = 424
+
     def __init__(self, record_count: int, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.choice = GuestRecordChoice.LATER
         self.setWindowTitle("게스트 기록 처리")
         self.setModal(True)
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(self.CONTENT_WIDTH + 2 * METRICS.space_6)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
             METRICS.space_6, METRICS.space_6, METRICS.space_6, METRICS.space_6
         )
-        layout.setSpacing(METRICS.space_3)
-        title = QLabel(f"게스트 기록 {record_count}건이 있습니다.")
-        title.setProperty("role", "title")
-        layout.addWidget(title)
+        layout.setSpacing(METRICS.space_6)
+        # 줄바꿈된 설명이 잘려 보이지 않도록 레이아웃이 요구하는 높이를 보장한다.
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
 
-        description = QLabel(
-            "게스트 기록을 현재 계정으로 가져오거나, 게스트에 그대로 보관한 채 전환할 "
-            "수 있습니다. 원본 게스트 기록은 어떤 경우에도 삭제되지 않습니다."
+        header = QVBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(METRICS.space_2)
+        header.addWidget(
+            _wrapped_label(
+                f"게스트 기록 {record_count}건이 있습니다.",
+                self.CONTENT_WIDTH,
+                role="title",
+            )
         )
-        description.setWordWrap(True)
-        layout.addWidget(description)
+        header.addWidget(
+            _wrapped_label(
+                "이 기록을 현재 계정으로 가져올지 선택해 주세요. "
+                "원본 게스트 기록은 어떤 경우에도 삭제되지 않습니다.",
+                self.CONTENT_WIDTH,
+            )
+        )
+        layout.addLayout(header)
 
-        import_button = QPushButton("현재 계정으로 가져오기")
-        import_button.setProperty("role", "primary")
-        import_button.clicked.connect(lambda: self._finish(GuestRecordChoice.IMPORT))
-        layout.addWidget(import_button)
+        import_button = self._add_choice(
+            layout,
+            text="현재 계정으로 가져오기",
+            caption="기록을 계정으로 복사한 뒤 계정으로 전환합니다.",
+            choice=GuestRecordChoice.IMPORT,
+            primary=True,
+        )
+        keep = self._add_choice(
+            layout,
+            text="게스트에 보관하고 계정으로 전환",
+            caption="가져오지 않고 계정으로 전환합니다. 기록은 게스트에 남아 있습니다.",
+            choice=GuestRecordChoice.KEEP,
+        )
+        later = self._add_choice(
+            layout,
+            text="나중에 결정",
+            caption="전환을 취소하고 게스트로 계속 사용합니다.",
+            choice=GuestRecordChoice.LATER,
+        )
 
-        keep = QPushButton("게스트에 보관하고 계정으로 전환")
-        keep.clicked.connect(lambda: self._finish(GuestRecordChoice.KEEP))
-        layout.addWidget(keep)
+        QWidget.setTabOrder(import_button, keep)
+        QWidget.setTabOrder(keep, later)
+        import_button.setFocus(Qt.FocusReason.OtherFocusReason)
 
-        later = QPushButton("나중에 결정")
-        later.clicked.connect(lambda: self._finish(GuestRecordChoice.LATER))
-        layout.addWidget(later)
+    def _add_choice(
+        self,
+        layout: QVBoxLayout,
+        *,
+        text: str,
+        caption: str,
+        choice: GuestRecordChoice,
+        primary: bool = False,
+    ) -> QPushButton:
+        button = QPushButton(text)
+        if primary:
+            button.setProperty("role", "primary")
+        button.setAccessibleDescription(caption)
+        button.clicked.connect(lambda: self._finish(choice))
+
+        group = QVBoxLayout()
+        group.setContentsMargins(0, 0, 0, 0)
+        group.setSpacing(METRICS.space_1)
+        group.addWidget(button)
+        group.addWidget(_wrapped_label(caption, self.CONTENT_WIDTH, tone="muted"))
+        layout.addLayout(group)
+        return button
 
     def _finish(self, choice: GuestRecordChoice) -> None:
         self.choice = choice

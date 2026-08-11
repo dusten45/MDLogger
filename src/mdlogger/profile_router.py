@@ -813,7 +813,13 @@ class ProfileRouter:
             return "세션이 만료되었습니다. 다시 로그인해 주세요."
         if error.kind is AuthErrorKind.EMAIL_UNVERIFIED:
             return "이메일 인증이 필요합니다. 메일함을 확인해 주세요."
-        return "인증 서버가 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+        if error.kind is AuthErrorKind.RATE_LIMITED:
+            return "요청이 너무 잦아 잠시 제한됐습니다. 잠시 후 다시 시도해 주세요."
+        # 분류하지 못한 서버 오류는 원인 코드를 함께 보여줘 진단할 수 있게 한다.
+        hint = f" (코드: {error.code})" if error.code else ""
+        return (
+            f"인증 서버가 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.{hint}"
+        )
 
     def _profile_status(self, profile: ProfileContext) -> str:
         sync_status = self._app.sync_status

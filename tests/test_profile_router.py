@@ -522,3 +522,25 @@ def test_prepare_database_secures_profile_db_sidecars(tmp_path: Path):
         )
         if sidecar.exists():
             assert stat.S_IMODE(sidecar.stat().st_mode) == 0o600
+
+
+def test_auth_error_message_rate_limited_and_code_hint():
+    """RATE_LIMITED는 재시도 안내로, 분류 못 한 서버 오류는 원인 코드를 함께 보인다."""
+    rate_message = ProfileRouter._auth_error_message(
+        AuthError(AuthErrorKind.RATE_LIMITED, "제한됨")
+    )
+    assert "잠시 후 다시 시도" in rate_message
+
+    unknown = ProfileRouter._auth_error_message(
+        AuthError(
+            AuthErrorKind.SERVER_REJECTED,
+            "거부됨",
+            code="over_email_send_rate_limit",
+        )
+    )
+    assert "over_email_send_rate_limit" in unknown
+
+    no_code = ProfileRouter._auth_error_message(
+        AuthError(AuthErrorKind.SERVER_REJECTED, "거부됨")
+    )
+    assert "(코드:" not in no_code

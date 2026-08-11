@@ -200,6 +200,22 @@ def contrast_ratio(foreground: str, background: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
+def _shade(color: str, factor: float) -> str:
+    """`#RRGGBB`의 각 채널을 `factor`배만큼 어두운/밝은 색으로 만든다.
+
+    `factor < 1`은 어둡게, `> 1`은 밝게. hover처럼 미묘한 상태 변화에 쓴다.
+    """
+
+    value = color.removeprefix("#")
+    if len(value) != 6:
+        return color
+
+    def channel(index: int) -> int:
+        return min(255, int(round(int(value[index : index + 2], 16) * factor)))
+
+    return f"#{channel(0):02x}{channel(2):02x}{channel(4):02x}"
+
+
 def font_for_role(base_font: QFont, role: FontRole) -> QFont:
     """시스템 기본 글꼴을 보존하면서 역할에 맞는 크기와 굵기를 파생한다."""
 
@@ -382,6 +398,14 @@ QPushButton[role="result-loss"] {{
     color: {colors.danger};
     border-color: {colors.danger};
     font-weight: 600;
+}}
+QPushButton[role="result-win"]:hover {{
+    background-color: {_shade(colors.success_subtle, 0.97)};
+    border-color: {_shade(colors.success, 0.9)};
+}}
+QPushButton[role="result-loss"]:hover {{
+    background-color: {_shade(colors.danger_subtle, 0.97)};
+    border-color: {_shade(colors.danger, 0.9)};
 }}
 QPushButton[role="result-win"]:pressed, QPushButton[role="result-loss"]:pressed,
 QPushButton[role="result-win"]:checked, QPushButton[role="result-loss"]:checked {{

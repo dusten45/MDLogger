@@ -55,6 +55,10 @@ supabase/.temp/
 supabase/functions/.env.local
 supabase/functions/**/.env.local
 
+# ---- Local dev env (MDLogger Supabase anon key 등). 커밋 금지. ----
+/.env
+/.env.local
+
 # ---- Claude Code local settings ----
 .claude/settings.local.json
 

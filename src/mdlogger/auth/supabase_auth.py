@@ -2,7 +2,7 @@
 
 publishable(anon) key만 사용하며 service-role key는 앱에 존재하지 않는다.
 서버 오류는 ``error_code`` 기준으로 네트워크, 자격 증명, 이메일 미인증,
-token 만료, 서버 거부로 분류한다(로드맵 단계 5).
+token 만료, 요청 제한(rate limit), 서버 거부로 분류한다(로드맵 단계 5).
 """
 
 from __future__ import annotations
@@ -41,6 +41,15 @@ _CREDENTIAL_CODES = frozenset(
     }
 )
 _EMAIL_UNVERIFIED_CODES = frozenset({"email_not_confirmed"})
+_RATE_LIMIT_CODES = frozenset(
+    {
+        # GoTrue rate limit error_code. 응답이 평문/HTML 429인 경우 error_code가
+        # 없을 수 있으므로 상태 코드 폴백으로도 분류한다(게이트웨이 429 참고).
+        "over_email_send_rate_limit",
+        "over_request_rate_limit",
+        "over_requests_within_interval",
+    }
+)
 _TOKEN_EXPIRED_CODES = frozenset(
     {
         "refresh_token_not_found",
@@ -167,6 +176,11 @@ class SupabaseAccountService(AccountService):
                 AuthErrorKind.SERVER_REJECTED,
                 "이 계정은 이 장치에서 삭제할 수 없습니다.",
                 code="target_mismatch",
+            )
+        if response.status == 429:
+            raise AuthError(
+                AuthErrorKind.RATE_LIMITED,
+                "요청이 너무 잦아 잠시 제한됐습니다. 잠시 후 다시 시도해 주세요.",
             )
         if response.status >= 400:
             raise AuthError(
@@ -318,6 +332,15 @@ class SupabaseAccountService(AccountService):
         code = body.get("error_code")
         code = str(code) if code is not None else None
 
+        # 429(및 rate-limit 코드)는 재시도 가능한 제한으로 별도 분류한다.
+        # 게이트웨이가 평문·HTML 429를 주면 error_code가 없더라도 상태 코드로
+        # 판단한다(remote/guest_ingest.py, games.py와 동일한 경계).
+        if response.status == 429 or code in _RATE_LIMIT_CODES:
+            return AuthError(
+                AuthErrorKind.RATE_LIMITED,
+                "요청이 너무 잦아 잠시 제한됐습니다. 잠시 후 다시 시도해 주세요.",
+                code=code,
+            )
         if code in _EMAIL_UNVERIFIED_CODES:
             return AuthError(
                 AuthErrorKind.EMAIL_UNVERIFIED,
@@ -339,9 +362,11 @@ class SupabaseAccountService(AccountService):
                 "이메일 또는 비밀번호를 확인해 주세요.",
                 code=code,
             )
+        # 인식하지 못한 서버 오류는 원인 코드를 메시지에 남겨 진단할 수 있게 한다.
+        hint = f" (코드: {code})" if code else ""
         return AuthError(
             AuthErrorKind.SERVER_REJECTED,
-            f"인증 서버가 요청을 거부했습니다. (HTTP {response.status})",
+            f"인증 서버가 요청을 거부했습니다. (HTTP {response.status}){hint}",
             code=code,
         )
 

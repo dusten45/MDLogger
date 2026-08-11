@@ -18,17 +18,13 @@ import pytest
 
 from mdlogger.auth.models import AuthError, AuthErrorKind
 from mdlogger.auth.supabase_auth import SupabaseAccountService
-from mdlogger.remote.config import RemoteConfig
+from mdlogger.remote.config import RemoteConfig, get_remote_config
 from mdlogger.remote.games import RegisteredGamesClient, build_registered_game
 from mdlogger.remote.guest_ingest import GuestIngestClient, build_observation
 
 
 def _config() -> RemoteConfig | None:
-    base_url = os.environ.get("MDLOGGER_SUPABASE_URL", "").strip()
-    anon_key = os.environ.get("MDLOGGER_SUPABASE_ANON_KEY", "").strip()
-    if not base_url or not anon_key:
-        return None
-    return RemoteConfig(base_url=base_url, anon_key=anon_key)
+    return get_remote_config()
 
 
 requires_supabase = pytest.mark.skipif(

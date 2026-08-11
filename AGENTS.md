@@ -16,6 +16,7 @@
 - Use scoped PySide6 enums such as `Qt.AlignmentFlag` and `QMessageBox.StandardButton` rather than deprecated aliases.
 - Preserve the existing local naive ISO timestamp format used by `played_at` unless a data migration is explicitly requested.
 - User data belongs in the OS-standard data directory resolved by `src/mdlogger/paths.py`. Preserve `MDLOGGER_DATA_DIR` support and the non-destructive legacy-data migration behavior.
+- The UI is Korean. Always write Korean text (labels, captions, comments, docstrings, messages, test assertions) as literal Hangul, never as Unicode escape sequences (`\uXXXX`) or any other encoding. Escaped or decomposed Hangul corrupts the UI and is unacceptable. After editing any Korean text, re-read the affected lines and confirm every syllable renders intact.
 
 ## Commit message conventions
 

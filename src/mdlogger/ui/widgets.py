@@ -22,30 +22,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-ACCENT = "#1565c0"
-
-
-def _seg_style(checked_bg: str) -> str:
-    return f"""
-        QPushButton {{
-            padding: 7px 10px;
-            border: 1px solid #c4c4c4;
-            border-radius: 6px;
-            background: #f3f3f3;
-            color: #222;
-        }}
-        QPushButton:hover {{ background: #e9e9e9; }}
-        QPushButton:checked {{
-            background: {checked_bg};
-            color: white;
-            border-color: {checked_bg};
-            font-weight: 600;
-        }}
-    """
+from .theme import METRICS, FontRole, font_for_role, set_style_property
 
 
 class SingleSelect(QWidget):
-    """(value, label) 옵션 중 하나만 선택하는 버튼 그룹."""
+    """(value, label) 옵션 중 하나만 선택하는 버튼 그룹.
+
+    색상은 `theme.py`의 `role="segment"` 역할 기반 QSS로 채택한다.
+    `color_map`은 하위 호환을 위해 받아들이지만 더 이상 인라인 색으로 적용하지 않는다.
+    """
 
     changed = Signal(str)
 
@@ -59,14 +44,18 @@ class SingleSelect(QWidget):
 
         layout = QGridLayout(self) if columns > 0 else QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(METRICS.space_2)
 
         for i, (value, text) in enumerate(options):
             btn = QPushButton(text)
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setMinimumHeight(38)
-            btn.setStyleSheet(_seg_style(color_map.get(value, ACCENT)))
+            btn.setMinimumHeight(METRICS.control_height)
+            btn.setAccessibleName(text)
+            # 키보드 전용 조작을 쓰지 않으므로 버튼에 포커스 링을 띄우지 않는다
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            set_style_property(btn, "role", "segment")
+            btn.setFont(font_for_role(btn.font(), FontRole.LABEL))
             self._group.addButton(btn)
             self._buttons[value] = btn
             self._values[btn] = value
@@ -109,7 +98,7 @@ class SearchableDeckCombo(QComboBox):
         self.setEditable(True)
         self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.setMaxVisibleItems(12)
-        self.setMinimumHeight(34)
+        self.setMinimumHeight(METRICS.control_height_small)
 
         completer = self.completer()
         if completer is not None:
@@ -145,10 +134,11 @@ class SearchableDeckCombo(QComboBox):
         return None
 
     def mark_invalid(self) -> None:
-        self.setStyleSheet("QComboBox { border: 1px solid #c62828; }")
+        """theme QSS의 `[invalid="true"]` 상태를 켜 빨간 테두리로 표시한다."""
+        set_style_property(self, "invalid", True)
 
     def clear_invalid(self) -> None:
-        self.setStyleSheet("")
+        set_style_property(self, "invalid", None)
 
 
 class Stepper(QWidget):
@@ -166,23 +156,15 @@ class Stepper(QWidget):
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(METRICS.space_2)
 
-        self._minus = QPushButton("−")
-        self._plus = QPushButton("＋")
-        for b in (self._minus, self._plus):
-            b.setFixedSize(40, 36)
-            b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.setStyleSheet(
-                "QPushButton { border:1px solid #c4c4c4; border-radius:6px;"
-                " background:#f3f3f3; font-size:16px; }"
-                " QPushButton:hover { background:#e9e9e9; }"
-            )
+        self._minus = self._step_button("−", "소요 턴 감소")
+        self._plus = self._step_button("＋", "소요 턴 증가")
 
         self._label = QLabel(str(self._value))
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._label.setMinimumWidth(48)
-        self._label.setStyleSheet("font-size:15px; font-weight:600;")
+        self._label.setFont(font_for_role(self._label.font(), FontRole.SECTION))
 
         self._minus.clicked.connect(lambda: self.set_value(self._value - 1))
         self._plus.clicked.connect(lambda: self.set_value(self._value + 1))
@@ -191,6 +173,16 @@ class Stepper(QWidget):
         layout.addWidget(self._label)
         layout.addWidget(self._plus)
         layout.addStretch(1)
+
+    def _step_button(self, text: str, accessible_name: str) -> QPushButton:
+        btn = QPushButton(text)
+        # 진행 정보 행에서 세그먼트 버튼과 높이를 맞춘다
+        btn.setFixedSize(40, METRICS.control_height)
+        # 키보드 전용 조작을 쓰지 않으므로 버튼에 포커스 링을 띄우지 않는다
+        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setAccessibleName(accessible_name)
+        return btn
 
     def value(self) -> int:
         return self._value
@@ -204,23 +196,27 @@ class Stepper(QWidget):
 
 
 class Card(QFrame):
-    """통계 요약 카드: 제목 + 큰 값."""
+    """통계 요약 카드: 제목 + 큰 값.
+
+    표면은 `theme.py`의 `surface="summary-card"` 역할 기반 QSS로 채택한다.
+    """
 
     def __init__(self, title: str, value: str = "—", parent=None):
         super().__init__(parent)
-        self.setObjectName("card")
-        self.setFrameShape(QFrame.Shape.StyledPanel)
-        self.setStyleSheet(
-            "#card { background:#fafafa; border:1px solid #e0e0e0; border-radius:8px; }"
-        )
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        set_style_property(self, "surface", "summary-card")
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(2)
+        layout.setContentsMargins(
+            METRICS.space_3, METRICS.space_2, METRICS.space_3, METRICS.space_2
+        )
+        layout.setSpacing(0)
 
         self._title = QLabel(title)
-        self._title.setStyleSheet("color:#666; font-size:11px;")
+        set_style_property(self._title, "tone", "muted")
+        self._title.setFont(font_for_role(self._title.font(), FontRole.CAPTION))
         self._value = QLabel(value)
-        self._value.setStyleSheet("font-size:18px; font-weight:700; color:#1a1a1a;")
+        self._value.setFont(font_for_role(self._value.font(), FontRole.NUMERIC))
 
         layout.addWidget(self._title)
         layout.addWidget(self._value)

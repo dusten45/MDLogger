@@ -38,8 +38,8 @@ class MainWindow(QMainWindow):
         self._sync_status: SyncStatus | None = None
 
         self.setWindowTitle("MD WCQ 로거")
-        self.resize(360, 540)
-        self.setMinimumWidth(340)
+        self.resize(420, 680)
+        self.setMinimumWidth(380)
 
         self._stack = QStackedWidget()
         self._result_view = ResultView()

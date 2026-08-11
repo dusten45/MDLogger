@@ -20,6 +20,7 @@ class AuthErrorKind(StrEnum):
     CREDENTIALS = "credentials"
     EMAIL_UNVERIFIED = "email_unverified"
     TOKEN_EXPIRED = "token_expired"
+    RATE_LIMITED = "rate_limited"
     SERVER_REJECTED = "server_rejected"
 
 

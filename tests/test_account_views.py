@@ -31,6 +31,8 @@ from mdlogger.ui.account_views import (
     ConflictDialog,
     DeviceManagementDialog,
     GuestNoticeDialog,
+    GuestRecordChoice,
+    GuestRecordChoiceDialog,
 )
 from mdlogger.ui.main_window import MainWindow
 from mdlogger.ui.theme import DARK_COLORS, build_palette
@@ -98,6 +100,68 @@ def test_guest_notice_wraps_long_korean_copy_and_names_included_excluded_data(
     assert "전송하지 않음:" in text
     assert "자유 입력 메모" in text
     assert dialog.minimumWidth() >= 380
+    dialog.close()
+
+
+def test_verification_back_button_returns_to_login_and_clears_status(
+    qapp: QApplication,
+):
+    window = AuthWindow()
+    window.set_status("이전 상태 메시지", error=True)
+    window.show_verification("a@test.local")
+    window.show()
+    qapp.processEvents()
+
+    back = next(
+        button
+        for button in window._verification_page.findChildren(QPushButton)
+        if button.text() == "로그인으로 돌아가기"
+    )
+    back.click()
+
+    # clicked(bool)의 checked 값이 상태 메시지로 전달되면 setText가 실패한다.
+    assert window._stack.currentWidget() is window._form_page
+    assert window._status.text() == ""
+    window.close()
+
+
+def test_guest_record_choice_dialog_never_clips_wrapped_copy(qapp: QApplication):
+    dialog = GuestRecordChoiceDialog(1)
+    dialog.show()
+    qapp.processEvents()
+
+    labels = dialog.findChildren(QLabel)
+    assert labels
+    assert "삭제되지 않습니다" in " ".join(label.text() for label in labels)
+    for label in labels:
+        assert label.height() >= label.heightForWidth(label.width())
+
+    dialog.resize(dialog.minimumWidth(), 1)
+    qapp.processEvents()
+    for label in labels:
+        assert label.height() >= label.heightForWidth(label.width())
+    dialog.close()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("현재 계정으로 가져오기", GuestRecordChoice.IMPORT),
+        ("게스트에 보관하고 계정으로 전환", GuestRecordChoice.KEEP),
+        ("나중에 결정", GuestRecordChoice.LATER),
+    ],
+)
+def test_guest_record_choice_dialog_describes_and_returns_each_option(
+    qapp: QApplication, text: str, expected: GuestRecordChoice
+):
+    dialog = GuestRecordChoiceDialog(2)
+    buttons = {button.text(): button for button in dialog.findChildren(QPushButton)}
+
+    assert buttons[text].accessibleDescription() != ""
+    buttons[text].click()
+
+    assert dialog.choice is expected
+    assert dialog.result() == QDialog.DialogCode.Accepted
     dialog.close()
 
 

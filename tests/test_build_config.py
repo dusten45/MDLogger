@@ -15,7 +15,12 @@ from types import SimpleNamespace
 import pytest
 
 import mdlogger.remote.config as config_module
-from mdlogger.remote.config import RemoteConfig, bundled_config, get_remote_config
+from mdlogger.remote.config import (
+    RemoteConfig,
+    bundled_config,
+    env_file_config,
+    get_remote_config,
+)
 from mdlogger.secret_scan import (
     assert_not_secret,
     is_publishable_key,
@@ -78,6 +83,23 @@ def test_environment_overrides_bundled(monkeypatch):
     assert cfg.base_url == "https://env.example.com"
 
 
+def test_environment_overrides_env_file(monkeypatch, tmp_path):
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        f"{config_module._URL_ENV}=https://env-file.example.com\n"
+        f"{config_module._ANON_KEY_ENV}={ANON_PREFIX_KEY}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config_module, "bundled_config", lambda: None)
+    monkeypatch.setattr(
+        config_module, "env_file_config", lambda: env_file_config(env_path)
+    )
+    monkeypatch.setenv("MDLOGGER_SUPABASE_URL", "https://env.example.com")
+    monkeypatch.setenv("MDLOGGER_SUPABASE_ANON_KEY", ANON_PREFIX_KEY)
+    cfg = get_remote_config()
+    assert cfg is not None and cfg.base_url == "https://env.example.com"
+
+
 def test_bundled_used_when_no_environment(monkeypatch):
     bundle_cfg = RemoteConfig(
         base_url="https://bundle.example.com", anon_key=ANON_PREFIX_KEY
@@ -89,7 +111,54 @@ def test_bundled_used_when_no_environment(monkeypatch):
 
 def test_none_when_no_environment_and_no_bundle(monkeypatch):
     monkeypatch.setattr(config_module, "bundled_config", lambda: None)
+    monkeypatch.setattr(config_module, "env_file_config", lambda: None)
     assert get_remote_config() is None
+
+
+def test_env_file_used_when_no_environment_or_bundle(monkeypatch, tmp_path):
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        f"{config_module._URL_ENV}=https://env-file.example.com\n"
+        f"{config_module._ANON_KEY_ENV}={ANON_PREFIX_KEY}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config_module, "bundled_config", lambda: None)
+    monkeypatch.setattr(
+        config_module, "env_file_config", lambda: env_file_config(env_path)
+    )
+    cfg = get_remote_config()
+    assert cfg is not None and cfg.base_url == "https://env-file.example.com"
+
+
+def test_env_file_config_reads_values(tmp_path):
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "# comment\n"
+        f"{config_module._URL_ENV}=https://env-file.example.com\n"
+        f'{config_module._ANON_KEY_ENV}="{ANON_PREFIX_KEY}"\n',
+        encoding="utf-8",
+    )
+    cfg = env_file_config(env_path)
+    assert cfg is not None
+    assert cfg.base_url == "https://env-file.example.com"
+    assert cfg.anon_key == ANON_PREFIX_KEY
+
+
+def test_env_file_config_ignores_missing_or_incomplete(tmp_path):
+    assert env_file_config(tmp_path / ".env") is None
+    bad = tmp_path / ".env"
+    bad.write_text(f"{config_module._URL_ENV}=\n", encoding="utf-8")
+    assert env_file_config(bad) is None
+
+
+def test_env_file_config_ignores_bad_url(tmp_path):
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        f"{config_module._URL_ENV}=not-a-url\n"
+        f"{config_module._ANON_KEY_ENV}={ANON_PREFIX_KEY}\n",
+        encoding="utf-8",
+    )
+    assert env_file_config(env_path) is None
 
 
 # ----- 비밀 미포함 검사 -----

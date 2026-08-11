@@ -15,9 +15,11 @@
 | 테스트                | `supabase test db`             | staging에서 동일 절차               |
 
 클라이언트 앱은 `MDLOGGER_SUPABASE_URL`과 `MDLOGGER_SUPABASE_ANON_KEY` 두
-환경 변수를 읽는다(우선순위: 환경변수 > 번들 빌드 설정 > 없음, `remote/config.py`).
-배포 빌드는 §1.1의 절차로 anon key를 번들에 주입한다. service-role/secret key는
-`remote/config.py` 어디에도 들어가지 않는다.
+환경 변수를 읽는다(우선순위: 환경변수 > 번들 빌드 설정 > `.env` 파일 > 없음,
+`remote/config.py`). 로컬 개발에서는 프로젝트 루트의 `.env` 파일로 편리하게
+붙는다(예시 `/.env.example`, 커밋 금지). 배포 빌드는 §1.1의 절차로 anon key를
+번들에 주입한다. service-role/secret key는 `remote/config.py` 어디에도
+들어가지 않는다.
 
 ### 1.1 배포 빌드 절차 (publishable 설정 주입)
 
