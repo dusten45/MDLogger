@@ -45,6 +45,11 @@ def _make_source_db(path: Path, count: int = 3) -> list[str]:
                 "note": f"메모{index}",
             },
         )
+        with conn:
+            conn.execute(
+                "UPDATE games SET environment_version_id=? WHERE id=?",
+                (f"env-{index}", game_id),
+            )
         sync_ids.append(
             str(
                 conn.execute(
@@ -139,6 +144,11 @@ def test_round_trip_preserves_fields_and_registers_outbox(tmp_path: Path):
     ]
     assert [row["note"] for row in rows] == ["메모0", "메모1", "메모2"]
     assert [row["score_after"] for row in rows] == [1600, 1601, 1602]
+    assert [row["environment_version_id"] for row in rows] == [
+        "env-0",
+        "env-1",
+        "env-2",
+    ]
     assert all(row["sync_status"] == "pending" for row in rows)
     assert all(row["deleted_at"] is None for row in rows)
     assert _outbox_count(target) == 3

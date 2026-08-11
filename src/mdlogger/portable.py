@@ -77,6 +77,7 @@ PORTABLE_RECORD_FIELDS = (
     "event_points_after",
     "local_updated_at",
     "timezone_offset_minutes",
+    "environment_version_id",
 )
 
 
