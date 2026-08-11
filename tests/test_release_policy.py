@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import mdlogger.release_policy as rp
 from mdlogger import __version__
 from mdlogger.release_policy import (
     PolicyStatus,
     ReleasePolicy,
     ReleasePolicyClient,
+    default_platform,
     evaluate_current,
     evaluate_policy,
     load_cached_policy,
@@ -63,6 +65,38 @@ def _row(**overrides) -> dict:
 
 def _policy(**overrides) -> ReleasePolicy:
     return ReleasePolicy.from_row(_row(**overrides))
+
+
+# ----- 플랫폼 -----
+
+
+def test_default_platform_maps_os(monkeypatch):
+    assert default_platform() in (
+        "windows",
+        "macos",
+        "linux",
+    )
+    monkeypatch.setattr(rp.sys, "platform", "darwin")
+    assert default_platform() == "macos"
+    monkeypatch.setattr(rp.sys, "platform", "linux")
+    assert default_platform() == "linux"
+    monkeypatch.setattr(rp.sys, "platform", "win32")
+    assert default_platform() == "windows"
+    # 알 수 없는 OS는 windows로 폴백한다.
+    monkeypatch.setattr(rp.sys, "platform", "plan9")
+    assert default_platform() == "windows"
+
+
+def test_client_default_platform_is_os_aware(monkeypatch):
+    body = (
+        b'[{"platform":"linux","latest_version":"0.1.6",'
+        b'"minimum_supported_version":"0.1.6"}]'
+    )
+    transport, client = _fake_client(body=body)
+    monkeypatch.setattr(rp.sys, "platform", "linux")
+    policy = ReleasePolicyClient(CONFIG, client=client).fetch()
+    assert policy is not None
+    assert "platform=eq.linux" in transport.last_url
 
 
 # ----- 버전 해석/비교 -----

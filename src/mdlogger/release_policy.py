@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import urllib.parse
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -26,9 +27,20 @@ from .remote.client import JsonHttpClient
 from .remote.config import RemoteConfig
 from .remote.errors import NetworkError, ResponseFormatError
 
+# sys.platform → release_policies.platform 값. 알 수 없는 OS는 windows로 폴백한다.
+_PLATFORM_BY_SYS_PLATFORM = {
+    "win32": "windows",
+    "darwin": "macos",
+    "linux": "linux",
+}
 DEFAULT_PLATFORM = "windows"
 POLICY_TIMEOUT_SECONDS = 3.0
 _CACHE_SUFFIX = ".tmp"
+
+
+def default_platform() -> str:
+    """현재 실행 OS에 해당하는 release policy 플랫폼 문자열을 반환한다."""
+    return _PLATFORM_BY_SYS_PLATFORM.get(sys.platform, DEFAULT_PLATFORM)
 
 
 class PolicyStatus(StrEnum):
@@ -108,7 +120,7 @@ class ReleasePolicy:
     def from_row(cls, row: Mapping[str, Any]) -> ReleasePolicy:
         base = dict(row)
         return cls(
-            platform=str(base.get("platform") or DEFAULT_PLATFORM),
+            platform=str(base.get("platform") or default_platform()),
             latest_version=str(base.get("latest_version") or ""),
             minimum_supported_version=str(base.get("minimum_supported_version") or ""),
             notice=base.get("notice") if isinstance(base.get("notice"), str) else None,
@@ -177,12 +189,12 @@ class ReleasePolicyClient:
         config: RemoteConfig,
         *,
         client: JsonHttpClient | None = None,
-        platform: str = DEFAULT_PLATFORM,
+        platform: str | None = None,
         timeout: float = POLICY_TIMEOUT_SECONDS,
     ) -> None:
         self._config = config
         self._client = client or JsonHttpClient(timeout=timeout)
-        self._platform = platform
+        self._platform = platform or default_platform()
 
     def fetch(self) -> ReleasePolicy | None:
         """플랫폼 정책을 조회한다. 조회 실패/빈 결과는 None(비차단)."""
