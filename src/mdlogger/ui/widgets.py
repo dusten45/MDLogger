@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
     QComboBox,
@@ -91,6 +91,9 @@ class SearchableDeckCombo(QComboBox):
     """타이핑하면 부분일치로 필터링되는 덱 콤보박스.
 
     타이핑은 '검색' 용도이며 최종값은 후보(또는 '기타') 중 하나로 확정된다.
+    한글 등 IME 입력이 `textEdited`를 거치지 않고 텍스트만 바꾸는 commit 경로와
+    조합(preedit) 단계 양쪽에서도 completer가 실시간으로 필터링되도록
+    `textChanged` 연결 + InputMethod 이벤트 필터를 사용한다.
     """
 
     def __init__(self, parent=None):
@@ -106,6 +109,41 @@ class SearchableDeckCombo(QComboBox):
             completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
             completer.setFilterMode(Qt.MatchFlag.MatchContains)
             completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
+        # 실시간 필터링을 두 경로로 보장한다.
+        # 1) textChanged: 키보드뿐 아니라 실제 Linux IBus처럼 `textEdited`를
+        #    발화하지 않고 텍스트만 바꾸는 IME commit 경로까지 커버한다.
+        # 2) InputMethod 이벤트 필터: 조합(preedit) 단계에서도 반영한다.
+        line_edit = self.lineEdit()
+        if line_edit is not None:
+            line_edit.textChanged.connect(self._refresh_completer)
+            line_edit.installEventFilter(self)
+
+    def eventFilter(self, obj, event) -> bool:
+        # 한글 등 IME 조합(preedit) 단계에서도 completer가 실시간으로 갱신되도록
+        # 조합 중인 문자열까지 포함한 현재 텍스트로 completer를 갱신한다.
+        if obj is self.lineEdit() and event.type() == QEvent.Type.InputMethod:
+            preedit = event.preeditString()
+            if preedit:
+                text = obj.text()
+                pos = obj.cursorPosition()
+                effective = text[:pos] + preedit + text[pos:]
+                self._refresh_completer(effective)
+        return super().eventFilter(obj, event)
+
+    def _refresh_completer(self, text: str) -> None:
+        """현재 입력(조합 포함)을 prefix로 completer를 갱신하고 팝업을 띄운다."""
+        completer = self.completer()
+        if completer is None:
+            return
+        completer.setCompletionPrefix(text)
+        popup = completer.popup()
+        if popup is None:
+            return
+        if text and completer.completionCount() > 0:
+            completer.complete()
+        else:
+            popup.hide()
 
     def set_decks(self, decks: list[str]) -> None:
         self._decks = list(decks)
