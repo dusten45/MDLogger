@@ -135,8 +135,12 @@ class MainWindow(QMainWindow):
         from .stats_window import StatsWindow
 
         if self._stats is None:
-            self._stats = StatsWindow(self._games, self._decks, theme=self._theme)
+            self._stats = StatsWindow(
+                self._games, self._decks, theme=self._theme, profile=self._profile
+            )
             self._stats.data_changed.connect(self.refresh_header)
+            # 휴대용 아카이브 가져오기 성공 시 즉시 동기화를 요청한다.
+            self._stats.records_imported.connect(self.request_sync)
         self._stats.refresh()
         self._stats.show()
         self._stats.raise_()

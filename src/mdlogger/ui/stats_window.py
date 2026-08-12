@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 import pyqtgraph as pg
 from PySide6.QtCore import QModelIndex, QPersistentModelIndex, Qt, Signal
@@ -27,6 +28,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QMessageBox,
     QPushButton,
@@ -47,7 +49,10 @@ from ..enums import (
     label,
 )
 from ..game_service import GameService
+from ..paths import DB_PATH
+from ..profiles import ProfileContext, ProfileKind
 from .edit_dialog import EditDialog
+from .portable_import_dialog import PortableImportDialog
 from .theme import (
     LIGHT_COLORS,
     METRICS,
@@ -121,17 +126,20 @@ class _ElideDelegate(QStyledItemDelegate):
 
 class StatsWindow(QWidget):
     data_changed = Signal()  # 편집/삭제로 데이터가 바뀜(메인 헤더 갱신용)
+    records_imported = Signal()  # 휴대용 아카이브 가져오기 완료(즉시 동기화 트리거용)
 
     def __init__(
         self,
         games: GameService,
         decks: list[str],
         theme: ThemeController | None = None,
+        profile: ProfileContext | None = None,
     ):
         super().__init__()
         self._games = games
         self._decks = decks
         self._theme = theme
+        self._profile = profile
         self._colors = LIGHT_COLORS
         self._card_cols = 0
 
@@ -225,7 +233,9 @@ class StatsWindow(QWidget):
         self._matchup_stack.addWidget(self._matchup_empty)
         v.addWidget(self._matchup_stack, 1)
 
-        # 내보내기
+        # 내보내기 / 가져오기
+        # 버튼 4개를 한 행에 두면 최소 폭(360px)에서 넘치므로, 휴대용 아카이브 동작은
+        # 하단에 별도 행으로 배치해 항상 넘치지 않게 한다.
         ex = QHBoxLayout()
         ex.addStretch(1)
         csv_btn = QPushButton("CSV 내보내기")
@@ -237,6 +247,18 @@ class StatsWindow(QWidget):
         ex.addWidget(csv_btn)
         ex.addWidget(xlsx_btn)
         v.addLayout(ex)
+
+        portable_ex = QHBoxLayout()
+        portable_ex.addStretch(1)
+        portable_export_btn = QPushButton("휴대용 아카이브 내보내기")
+        portable_import_btn = QPushButton("휴대용 아카이브 가져오기")
+        set_style_property(portable_export_btn, "role", "secondary")
+        set_style_property(portable_import_btn, "role", "secondary")
+        portable_export_btn.clicked.connect(self._export_portable_archive)
+        portable_import_btn.clicked.connect(self._import_portable)
+        portable_ex.addWidget(portable_export_btn)
+        portable_ex.addWidget(portable_import_btn)
+        v.addLayout(portable_ex)
 
         return w
 
@@ -572,3 +594,60 @@ class StatsWindow(QWidget):
 
     def _export_xlsx(self) -> None:
         self._export("XLSX", "games.xlsx", "Excel (*.xlsx)", self._games.export_xlsx)
+
+    def _export_portable_archive(self) -> None:
+        """휴대용 아카이브(.mdlogger-export) 디렉터리를 선택 대상에 생성한다.
+
+        대상은 파일이 아니라 디렉터리이므로 부모 폴더를 고르고 폴더 이름을
+        입력받아 조합한다. `export_portable_archive`는 이미 존재하면 오류를
+        던지므로, 그 오류를 포함한 실패는 안내로 처리하고 예외를 전파하지 않는다.
+        """
+        parent_dir = QFileDialog.getExistingDirectory(
+            self, "휴대용 아카이브를 저장할 폴더 선택"
+        )
+        if not parent_dir:
+            return
+        default_name = f"MDLogger-export-{datetime.now():%Y%m%d-%H%M%S}"
+        name, ok = QInputDialog.getText(
+            self,
+            "휴대용 아카이브 내보내기",
+            "아카이브 폴더 이름",
+            text=default_name,
+        )
+        if not ok or not name.strip():
+            return
+        target = Path(parent_dir) / name.strip()
+        try:
+            self._games.export_portable_archive(
+                target,
+                profile_kind=self._profile.kind if self._profile else ProfileKind.GUEST,
+            )
+        except Exception as exc:  # noqa: BLE001 - 내보내기 실패를 사용자에게 안내
+            QMessageBox.critical(
+                self,
+                "휴대용 아카이브 내보내기 실패",
+                f"아카이브를 만들지 못했습니다.\n\n{exc}",
+                QMessageBox.StandardButton.Ok,
+            )
+            return
+        QMessageBox.information(
+            self,
+            "내보내기",
+            f"휴대용 아카이브 저장 완료:\n{target}",
+            QMessageBox.StandardButton.Ok,
+        )
+
+    def _import_portable(self) -> None:
+        """휴대용 아카이브를 선택해 현재 프로필 DB로 가져온다.
+
+        대상 DB 경로는 현재 프로필의 DB를, 없으면 기본 DB 경로를 쓴다. 실제
+        가져오기와 결과/오류 안내는 `PortableImportDialog`가 담당하고, 성공 시
+        통계/기록을 갱신하고 가져온 기록이 동기화되도록 즉시 동기화를 요청한다.
+        """
+        target = self._profile.database_path if self._profile else DB_PATH
+        dialog = PortableImportDialog(target, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        self.data_changed.emit()
+        self.records_imported.emit()
+        self.refresh()
