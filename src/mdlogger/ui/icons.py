@@ -32,6 +32,11 @@ _ICON_FILES: dict[str, str] = {
     "plus": "plus.svg",
 }
 
+# 앱 아이콘(번들 PNG). 루트 `icon/DuelistCup.png`와 같은 그림을 패키지에 번들해
+# 런타임(창·태스크바) 및 배포 빌드에 사용한다. hatchling/pyinstaller가 패키지
+# 데이터로 포함한다.
+_APP_ICON_FILE = "DuelistCup.png"
+
 
 @cache
 def _svg_bytes(name: str) -> bytes | None:
@@ -107,3 +112,24 @@ def load_icon(name: str) -> QIcon | None:
     if svg is None:
         return None
     return QIcon(_ThemeIconEngine(svg))
+
+
+@cache
+def application_icon() -> QIcon | None:
+    """앱 아이콘(번들 `DuelistCup.png`)을 반환한다. 패키지에 없으면 None.
+
+    창 타이틀바·태스크바용 정적 아이콘. 테마에 따라 다시 칠하지 않으며,
+    Windows 실행 파일(EXE) 아이콘(`MDLogger.spec`의 ``icon``)과 같은 그림이다.
+    ``importlib.resources`` 바이트를 QPixmap으로 읽어 frozen(onedir)에서도
+    아카이브 경로 문제 없이 동작한다.
+    """
+    try:
+        ref = importlib.resources.files(_ICON_PACKAGE).joinpath(
+            _ICON_DIR, _APP_ICON_FILE
+        )
+        pixmap = QPixmap()
+        if not pixmap.loadFromData(ref.read_bytes()):
+            return None
+        return QIcon(pixmap)
+    except (FileNotFoundError, ModuleNotFoundError, OSError):
+        return None

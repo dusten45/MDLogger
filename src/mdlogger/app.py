@@ -23,6 +23,7 @@ from .release_policy import resolve_policy_for_startup
 from .remote.config import get_remote_config
 from .remote.games import RegisteredGamesClient
 from .remote.guest_ingest import GuestIngestClient
+from .ui.icons import application_icon
 from .ui.main_window import MainWindow
 from .ui.theme import apply_theme
 
@@ -30,6 +31,9 @@ from .ui.theme import apply_theme
 def main() -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("MD WCQ 로거")
+    _app_icon = application_icon()
+    if _app_icon is not None:
+        app.setWindowIcon(_app_icon)  # 모든 창의 타이틀바·태스크바 아이콘
     _theme_controller = apply_theme(app)
 
     deck_sync.start_background_sync()  # 비차단; 다음 상세 진입에서 자동 반영
