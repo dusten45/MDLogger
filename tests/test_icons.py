@@ -45,6 +45,12 @@ def test_icons_bundled_in_package():
         assert svg.lstrip().startswith(b"<svg")
 
 
+def test_application_icon_bundled_and_loads(qapp):
+    icon = icons.application_icon()
+    assert icon is not None, "번들 앱 아이콘(DuelistCup.png) 누락"
+    assert not icon.isNull()
+
+
 def test_tint_pixmap_is_square_and_tinted(qapp):
     svg = icons._svg_bytes("plus")
     assert svg is not None
