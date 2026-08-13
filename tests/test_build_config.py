@@ -26,6 +26,7 @@ from mdlogger.secret_scan import (
     is_publishable_key,
     is_service_role_key,
     scan_file,
+    scan_path,
 )
 
 URL = "https://xyzproject.supabase.co"
@@ -209,6 +210,37 @@ def test_scan_file_handles_binary_invalid_utf8(tmp_path):
     good = tmp_path / "good-bin"
     good.write_bytes(b"\xff\xfe\x00release " + ANON_PREFIX_KEY.encode() + b"\xff")
     assert not scan_file(good)
+
+
+def test_scan_path_scans_directory_recursively(tmp_path):
+    # onedir 산출물 폴더처럼 중첩 구조에서도 비밀을 찾고 경로를 붙여 보고한다.
+    bundle = tmp_path / "MDLogger"
+    (bundle / "_internal").mkdir(parents=True)
+    (bundle / "MDLogger.exe").write_bytes(b"bootloader")
+    (bundle / "_internal" / "base_library.zip").write_bytes(
+        b"release " + SERVICE_ROLE_PREFIX_KEY.encode()
+    )
+
+    issues = scan_path(bundle)
+
+    assert any("base_library.zip" in i and "sb_secret_" in i for i in issues)
+    assert any(i.startswith("_internal/") for i in issues)
+
+
+def test_scan_path_accepts_single_file(tmp_path):
+    good = tmp_path / "good.exe"
+    good.write_bytes(b"release " + ANON_PREFIX_KEY.encode())
+    assert not scan_path(good)
+
+
+def test_scan_path_passes_clean_directory(tmp_path):
+    bundle = tmp_path / "MDLogger"
+    (bundle / "_internal").mkdir(parents=True)
+    (bundle / "MDLogger.exe").write_bytes(b"bootloader")
+    (bundle / "_internal" / "data.json").write_bytes(
+        b"release " + ANON_PREFIX_KEY.encode()
+    )
+    assert not scan_path(bundle)
 
 
 # ----- 생성 모듈 gitignore 강제 + 생성 스크립트 -----

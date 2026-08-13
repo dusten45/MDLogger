@@ -110,15 +110,31 @@ def scan_file(path: Path) -> list[str]:
     return scan_bytes(path.read_bytes())
 
 
+def scan_path(path: Path) -> list[str]:
+    """파일 또는 폴더에서 비밀 요소를 찾아 설명 목록을 반환한다.
+
+    PyInstaller onedir 산출물은 폴더 형태이므로, 폴더가 주어지면 내부의 일반
+    파일을 재귀적으로 모두 검사한다. 발견한 문제에는 어느 파일에서 나왔는지
+    경로를 접두로 붙인다(``path.relpath``).
+    """
+    if not path.is_dir():
+        return scan_file(path)
+    issues: list[str] = []
+    for file in sorted(p for p in path.rglob("*") if p.is_file()):
+        for issue in scan_file(file):
+            issues.append(f"{file.relative_to(path)}: {issue}")
+    return issues
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="배포 산출물의 service-role key·비밀 자격 증명 미포함 검사"
     )
-    parser.add_argument("file", type=Path, help="검사할 파일")
+    parser.add_argument("path", type=Path, help="검사할 파일 또는 폴더")
     args = parser.parse_args()
-    issues = scan_file(args.file)
+    issues = scan_path(args.path)
     if not issues:
-        print(f"OK: {args.file}")
+        print(f"OK: {args.path}")
         return
     for issue in issues:
         print(f"FAIL: {issue}")
