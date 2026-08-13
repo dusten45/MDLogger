@@ -72,9 +72,6 @@ docs/*
 !docs/operations/
 docs/operations/*
 !docs/operations/runbook.md
-!docs/pre-release-hardening-roadmap.md
-!docs/online-account-and-duel-data-roadmap.md
-!docs/ui-modernization-spec.md
 
 # ---- OS / editor cruft ----
 Thumbs.db
