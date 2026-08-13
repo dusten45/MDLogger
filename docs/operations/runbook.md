@@ -41,10 +41,11 @@ MDLOGGER_SUPABASE_ANON_KEY=<hosted anon key> \
 uv run pyinstaller --noconfirm --clean MDLogger.spec
 
 # 3) 산출물 시크릿 스캔 — service-role key·secret JWT·URL 자격 증명 0건이어야 한다.
-uv run python -m mdlogger.secret_scan dist/MDLogger.exe
+#    onedir 산출물은 폴더 단위로 재귀 스캔한다.
+uv run python -m mdlogger.secret_scan dist/MDLogger
 
-# 4) 체크섬
-uv run python -m mdlogger.checksum dist/MDLogger.exe
+# 4) 체크섬 — 폴더 전체의 sha256sum manifest(dist/MDLogger.sha256)를 만든다.
+uv run python -m mdlogger.checksum dist/MDLogger
 ```
 
 - `_bundled_config.py`에는 오직 URL과 anon key만 담는다. 생성 후 재스캔으로

@@ -11,9 +11,14 @@ MDLogger(Master Duel 듀얼 로거)를 각 OS용 실행 파일로 만들어서
 
 ## 이 문서를 먼저 읽어야 하는 이유
 
-이 프로젝트는 **단일 실행 파일**(onefile)로 배포하는 데스크톱 앱입니다.
+이 프로젝트는 **폴더형(onedir) 실행 파일 묶음**으로 배포하는 데스크톱 앱입니다.
 Python 코드를 실행 파일로 변환하는 도구가 **PyInstaller**이고, 어떤 파일을
 묶을지는 **`MDLogger.spec`** 파일이 결정합니다.
+
+> 💡 왜 onedir인가? onefile은 실행할 때마다 임시 폴더에 압축을 풀어서 **시작이
+> 느리고** 파일이 클수록 더 느립니다. onedir은 부팅 실행기와 부속 파일을 같은
+> 폴더에 두므로 압축 풀기가 없어 **시작이 빠릅니다.** (이 스펙을 만든 시점의
+> 검토 참고: `docs/deployment-guide.md` §1)
 
 배포는 결국 3가지 일의 반복입니다.
 
@@ -39,8 +44,8 @@ Python 코드를 실행 파일로 변환하는 도구가 **PyInstaller**이고, 
 ## 1. 배포 방식 한눈에 보기
 
 ```
-[소스 코드] --PyInstaller--> [OS별 실행 파일] --업로드--> [GitHub Releases]
-   main                        dist/ 폴더               태그: v0.1.6
+[소스 코드] --PyInstaller--> [OS별 실행 파일 묶음(onedir)] --업로드--> [GitHub Releases]
+   main                            dist/<산출물>/ 폴더               태그: v0.1.6
 ```
 
 **가장 중요한 규칙 먼저 하나:**
@@ -68,11 +73,11 @@ uv run pyinstaller --noconfirm --clean MDLogger.spec
 
 여기 쓰는 파라미터는 딱 2개입니다.
 
-| 파라미터 | 하는 일 |
-| -------- | ------- |
-| `--noconfirm` | `dist/`·`build/` 폴더가 이미 있어도 묻지 않고 덮어씀 (없으면 확인 창에서 멈춤) |
-| `--clean` | 빌드 캐시(`build/`)를 지우고 처음부터 다시 빌드. 주입한 설정/데이터가 바뀌어도 확실히 반영됨 |
-| `MDLogger.spec` | 공사 **설계도**. 이 파일을 넘겨주면 옵션을 하나하나 안 써도 됨 |
+| 파라미터        | 하는 일                                                                                      |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| `--noconfirm`   | `dist/`·`build/` 폴더가 이미 있어도 묻지 않고 덮어씀 (없으면 확인 창에서 멈춤)               |
+| `--clean`       | 빌드 캐시(`build/`)를 지우고 처음부터 다시 빌드. 주입한 설정/데이터가 바뀌어도 확실히 반영됨 |
+| `MDLogger.spec` | 공사 **설계도**. 이 파일을 넘겨주면 옵션을 하나하나 안 써도 됨                               |
 
 `--clean`은 "항상 붙이는 게 좋은가?" 의문이 들 수 있는데, **배포 직전에는 붙이는
 것을 권장합니다.** 이전 빌드 캐시가 남아 있으면 `_bundled_config.py`(주입한
@@ -83,17 +88,17 @@ Supabase 설정)나 데이터 파일이 제대로 갱신되지 않을 수 있거
 자주 언급되는 옵션들이 CLI에 있지만, 이 프로젝트는 전부 `MDLogger.spec`에
 반영되어 있어서 명령줄에 쓸 필요가 없습니다.
 
-| CLI 파라미터 | 의미 | 이 프로젝트에서 |
-| ------------ | ---- | --------------- |
-| `--onefile` | 실행 파일 하나로 묶기 | spec 구조로 이미 반영 |
-| `--windowed` | 콘솔 창 없이 GUI로 | spec의 `console=False` |
-| `--name NAME` | 산출물 이름 | spec의 `name="MDLogger"` |
-| `--add-data` | 데이터 파일 추가 | spec의 `collect_data_files()`가 대신 처리 |
-| `--hidden-import` | 숨겨진 모듈 추가 | spec의 `hiddenimports`로 대신 처리 |
-| `--exclude-module` | 모듈 제외 | spec의 `excludes` (지금은 비어 있음) |
-| `--icon` | 앱 아이콘 지정 | spec엔 아직 없음(추가 시 설정) |
-| `--version-file` | Windows 버전 정보 | 아직 비어 있음(추가 시 설정) |
-| `--log-level` | 빌드 로그 상세도 | 빌드가 실패할 때만 `--log-level DEBUG` 유용 |
+| CLI 파라미터       | 의미                                | 이 프로젝트에서                                   |
+| ------------------ | ----------------------------------- | ------------------------------------------------- |
+| `--onedir`         | 실행 파일을 폴더(+부속 파일)로 묶기 | spec의 `EXE(exclude_binaries)` + `COLLECT`로 반영 |
+| `--windowed`       | 콘솔 창 없이 GUI로                  | spec의 `console=False`                            |
+| `--name NAME`      | 산출물 이름                         | spec의 `name="MDLogger"`                          |
+| `--add-data`       | 데이터 파일 추가                    | spec의 `collect_data_files()`가 대신 처리         |
+| `--hidden-import`  | 숨겨진 모듈 추가                    | spec의 `hiddenimports`로 대신 처리                |
+| `--exclude-module` | 모듈 제외                           | spec의 `excludes` (지금은 비어 있음)              |
+| `--icon`           | 앱 아이콘 지정                      | spec엔 아직 없음(추가 시 설정)                    |
+| `--version-file`   | Windows 버전 정보                   | 아직 비어 있음(추가 시 설정)                      |
+| `--log-level`      | 빌드 로그 상세도                    | 빌드가 실패할 때만 `--log-level DEBUG` 유용       |
 
 > 💡 **실무 팁:** 옵션을 바꾸고 싶을 때 **CLI 파라미터를 늘리지 말고
 > `MDLogger.spec`을 수정**하세요. 그래야 다음 빌드 때 똑같이 재현됩니다.
@@ -134,25 +139,29 @@ a = Analysis(["run.py"], ...)
 
 ```python
 # ④ 실행 파일 본체 (핵심!)
-exe = EXE(pyz, a.scripts, a.binaries, a.datas, [],
-          name="MDLogger",   # 산출물 이름: dist/MDLogger(.exe)
-          console=False,     # 콘솔 창 안 뜨게 (GUI 앱)
-          upx=True,          # UPX로 실행 파일 용량 압축
+exe = EXE(pyz, a.scripts, [],
+          exclude_binaries=True,  # 바이너리를 exe 안에 박지 않는다(onedir 핵심)
+          name="MDLogger",       # 진입점 산출물: dist/MDLogger/(MDLogger(.exe))
+          console=False,          # 콘솔 창 안 뜨게 (GUI 앱)
+          upx=True,               # UPX로 부속 파일 용량 압축
           ...)
+coll = COLLECT(exe, a.binaries, a.datas, name="MDLogger")
 ```
 
-- `console=False` + 단일 `EXE` 구조 = **onefile + windowed** 설정입니다.
-- `EXE`가 `a.binaries`, `a.datas`까지 직접 포함하고 별도 `COLLECT`가 없으므로
-  실행 파일 **하나**로 묶이는 형태입니다.
+- `console=False` + `exclude_binaries=True` + `COLLECT` = **onedir + windowed** 설정입니다.
+- `EXE`는 부트스트래퍼(간이 실행기)만 담고, `a.binaries`·`a.datas`는 `COLLECT`가
+  **같은 폴더**에 모아둡니다. 그래서 산출물은 폴더 하나이며, 실행 시 임시 폴더에
+  압축을 풀지 않아 **시작이 빠릅니다**.
 
-| spec 요소 | 역할 |
-| --------- | ---- |
-| `collect_data_files()` | 패키지 데이터(덱 목록, 테마 아이콘) 자동 번들 |
-| `hiddenimports` | 동적 임포트라 놓치기 쉬운 설정 모듈 강제 포함 |
-| `Analysis(["run.py"])` | 실행 진입점 지정 |
-| `EXE(..., console=False)` | 단일 windowed 실행 파일 생성 |
-| `name="MDLogger"` | 산출물 이름 결정 |
-| `upx=True` | 압축(UPX가 없으면 무시됨) |
+| spec 요소                           | 역할                                             |
+| ----------------------------------- | ------------------------------------------------ |
+| `collect_data_files()`              | 패키지 데이터(덱 목록, 테마 아이콘) 자동 번들    |
+| `hiddenimports`                     | 동적 임포트라 놓치기 쉬운 설정 모듈 강제 포함    |
+| `Analysis(["run.py"])`              | 실행 진입점 지정                                 |
+| `EXE(..., exclude_binaries=True)`   | 부트스트래퍼만 담은 windowed 실행 파일 생성      |
+| `COLLECT(exe, a.binaries, a.datas)` | 부속 파일을 실행 파일과 같은 폴더에 모음(onedir) |
+| `name="MDLogger"`                   | 산출물 폴더/실행 파일 이름 결정                  |
+| `upx=True`                          | 압축(UPX가 없으면 무시됨)                        |
 
 > 📌 **주의:** `.gitignore`에 `*.spec`은 무시하되 `!MDLogger.spec`만 예외로 추적
 > 중입니다. 로컬 하드코딩 아이콘 경로가 있던 다른 spec(`마듀 듀얼로그 생성기.spec`)
@@ -185,17 +194,18 @@ MDLOGGER_SUPABASE_ANON_KEY=<hosted anon key> \
 uv run pyinstaller --noconfirm --clean MDLogger.spec
 ```
 
-산출물이 `dist/` 아래에 생깁니다. (OS별 경로는 5장 참고)
+산출물이 `dist/` 아래 **폴더 형태**(`dist/MDLogger/`)로 생깁니다. (OS별 경로는 5장 참고)
 
 ### 4-3) 검증 — 시크릿 스캔 + 체크섬
 
 ```bash
-uv run python -m mdlogger.secret_scan dist/<산출물>
-uv run python -m mdlogger.checksum dist/<산출물>
+uv run python -m mdlogger.secret_scan dist/MDLogger
+uv run python -m mdlogger.checksum dist/MDLogger
 ```
 
+- `secret_scan`·`checksum`은 onedir 폴더를 **재귀적으로** 처리합니다 (폴더 안의 압축 아카이브 내부까지는 보지 못할 수 있습니다 — 자세한 내용은 §5 macOS 주의 참고).
 - 시크릿 스캔: service-role key·secret JWT·URL 인증 정보가 **0건**이어야 합니다.
-- 체크섬: 파일이 온전한지 확인하고 배포 기록에 남길 해시를 만듭니다.
+- 체크섬: 폴더 전체 파일의 sha256sum manifest(`dist/MDLogger.sha256`)를 만들어 배포 기록에 남깁니다.
 
 ---
 
@@ -206,10 +216,10 @@ uv run python -m mdlogger.checksum dist/<산출물>
 
 ### 🪟 Windows
 
-| 항목 | 내용 |
-| ---- | ---- |
-| 산출물 | `dist\MDLogger.exe` |
-| 실행 환경 | Windows에서 PowerShell 또는 cmd |
+| 항목      | 내용                                        |
+| --------- | ------------------------------------------- |
+| 산출물    | `dist\MDLogger\MDLogger.exe` + `_internal/` |
+| 실행 환경 | Windows에서 PowerShell 또는 cmd             |
 
 ```powershell
 # 1) 설정 주입
@@ -220,9 +230,9 @@ uv run python scripts/generate_build_config.py
 # 2) 빌드
 uv run pyinstaller --noconfirm --clean MDLogger.spec
 
-# 3) 검증
-uv run python -m mdlogger.secret_scan dist\MDLogger.exe
-uv run python -m mdlogger.checksum dist\MDLogger.exe
+# 3) 검증 (폴더 전체를 시크릿 스캔 + 체크섬)
+uv run python -m mdlogger.secret_scan dist\MDLogger
+uv run python -m mdlogger.checksum dist\MDLogger
 ```
 
 **주의할 점**
@@ -231,15 +241,17 @@ uv run python -m mdlogger.checksum dist\MDLogger.exe
   게시자" 경고가 뜹니다. 릴리스 노트에 **"보안 경고가 뜨면 추가 정보 → 실행"**
   안내를 넣어주세요. 배포 품질을 높이려면 유료 코드 서명 인증서로 `signtool`을
   써서 서명하면 경고가 사라집니다.
-- **간혹 백신 오탐:** onefile 실행 파일은 가끔 백신이 오탐할 수 있습니다.
+- **onedir은 폴더 전체를 배포해야 합니다.** `MDLogger.exe` 하나만 복사하면
+  부속 파일(`_internal/`)이 없어 실행되지 않습니다. 압축(zip)으로 묶어 올리세요.
+- **간혹 백신 오탐:** 실행 파일이 가끔 백신이 오탐할 수 있습니다.
   오탐이 잦으면 해당 백신에 파일을 분류 신고하세요.
 
 ### 🍎 macOS
 
-| 항목 | 내용 |
-| ---- | ---- |
-| 산출물 | `dist/MDLogger` (onefile 실행 파일) |
-| 실행 환경 | 반드시 macOS에서 빌드 |
+| 항목      | 내용                                                  |
+| --------- | ----------------------------------------------------- |
+| 산출물    | `dist/MDLogger/MDLogger` + `_internal/` (onedir 폴더) |
+| 실행 환경 | 반드시 macOS에서 빌드                                 |
 
 ```bash
 # 1) 설정 주입
@@ -257,8 +269,15 @@ uv run python -m mdlogger.checksum dist/MDLogger
 
 **주의할 점**
 
-- 현재 spec은 .app 번들이 아니라 **onefile 실행 파일**을 만듭니다. 더 알맞은
+- 현재 spec은 .app 번들이 아니라 **onedir 폴더**를 만듭니다. 더 알맞은
   배포 형태(.app + .dmg/.zip)를 원하면 spec을 보완해야 합니다.
+- **onedir 폴더 전체를 zip으로 묶어 배포하세요.** 실행 파일 하나만 보내면
+  부속 파일(`_internal/`)이 없어 실행되지 않습니다.
+- **시크릿 스캔의 한계:** onedir의 파이썬 모듈은 PyInstaller 압축 아카이브
+  (`_internal/*.pyz`) 안에 들어가므로, 폴더 재귀 스캔으로는 그 내부까지 보지
+  못할 수 있습니다. 번들 설정이 비밀이 아닌지 확실히 검증하려면 빌드 **전후의
+  `mdlogger/remote/_bundled_config.py`**에 대한 CI 단계(§4-1, `.github/workflows/ci.yml`)
+  를 신뢰하세요.
 - **Gatekeeper 차단 (중요):** 서명·공증(notarization)이 없으면
   "손상된 앱입니다" / "확인할 수 없는 개발자" 경고가 뜹니다. 사용자에게
   **마우스 오른쪽 클릭 → 열기**로 실행하는 법을 안내하거나, Apple Developer
@@ -270,10 +289,10 @@ uv run python -m mdlogger.checksum dist/MDLogger
 
 ### 🐧 Linux
 
-| 항목 | 내용 |
-| ---- | ---- |
-| 산출물 | `dist/MDLogger` |
-| 실행 환경 | 배포 대상과 비슷한 배포판에서 빌드 권장 |
+| 항목      | 내용                                                  |
+| --------- | ----------------------------------------------------- |
+| 산출물    | `dist/MDLogger/MDLogger` + `_internal/` (onedir 폴더) |
+| 실행 환경 | 배포 대상과 비슷한 배포판에서 빌드 권장               |
 
 ```bash
 # 1) 설정 주입
@@ -293,6 +312,8 @@ uv run python -m mdlogger.checksum dist/MDLogger
 
 - 빌드한 배포판과 **glibc 버전이 다르면** 다른 시스템에서 실행이 안 될 수
   있습니다. 배포 대상과 같은 배포판(예: Ubuntu LTS)에서 빌드하는 게 안전합니다.
+- **onedir 폴더 전체를 tar.gz 등으로 묶어 배포하세요.** 실행 파일 하나만
+  보내면 부속 파일(`_internal/`)이 없어 실행되지 않습니다.
 - PySide6가 Qt 플랫폼 플러그인은 번들하지만, 타 시스템에서 `libGL`,
   `libxkbcommon`, `xcb` 같은 시스템 라이브러리가 부족하면 안 뜰 수 있습니다.
   이 경우 **AppImage**로 감싸는 배포 방식을 고려해 보세요.
@@ -351,21 +372,24 @@ Master Duel 듀얼 결과 기록을 더 편하게!
 ---
 
 ### 설치 안내
-- Windows: 위의 `MDLogger.exe` 다운로드 후 실행
+- Windows: 아래 `MDLogger-win64.zip`를 다운로드해 압축 풀고 `MDLogger.exe` 실행
+  - 폴더 전체(부속 파일 포함)를 한 곳에 풀어야 합니다.
   - SmartScreen 경고가 뜨면 **추가 정보 → 실행**을 눌러주세요.
-- macOS: `MDLogger` 실행 파일 다운로드 후 마우스 오른쪽 클릭 → 열기
+- macOS: `MDLogger-macos-<arch>.zip` 다운로드 후 풀고 마우스 오른쪽 클릭 → 열기
+- Linux: `MDLogger-linux.tar.gz` 다운로드 후 압축 풀고 `MDLogger` 실행
 ```
 
 ### 6-3) gh CLI로 만들기 (터미널 선호자)
 
+onedir은 **폴더 전체를 압축한 뒤** 올립니다. 예: Windows의 경우
+
 ```bash
-gh release create v0.1.6 \
-  ./dist/MDLogger.exe \
-  --title "v0.1.6" \
-  --notes "릴리스 노트 내용..."
+cd dist && 7z a ../MDLogger-win64.zip MDLogger && cd ..
+gh release create v0.1.6 MDLogger-win64.zip --title "v0.1.6" --notes "릴리스 노트 내용..."
 ```
 
-여러 OS 산출물을 올리려면 파일을 계속 나열하면 됩니다.
+여러 OS 산출물을 올리려면 파일을 계속 나열하면 됩니다. 체크섬 manifest
+(`dist/MDLogger.sha256`)를 함께 올리면 배포 기록에 남길 수 있습니다.
 
 ### 6-4) (권장) GitHub Actions 자동화
 
@@ -393,15 +417,16 @@ Releases에 자동 업로드하도록 만들 수 있습니다. 이 경우 Supaba
 
 ## 8. 자주 겪는 실수와 꿀팁
 
-| 상황 | 해결 |
-| ---- | ---- |
-| "빌드는 되는데 번들 설정이 안 들어간 것 같아" | `--clean`으로 캐시를 지우고, `_bundled_config.py`가 생성됐는지 확인 |
-| 설정 주입이 "빈 값"으로 실패 | `MDLOGGER_SUPABASE_URL` / `MDLOGGER_SUPABASE_ANON_KEY`가 비어 있지 않은지 확인 |
-| 주입 시도가 "secret"으로 거부 | service-role/secret 키가 아니라 **publishable(anon) 키**를 넣었는지 확인 |
-| 시크릿 스캔이 0건이 아님 | 빌드 전에 넣은 값이 anon 키인지 재확인. 절대 배포하지 말 것 |
-| 다른 OS에서 만든 파일을 올렸다 | PyInstaller는 크로스 컴파일 불가. **해당 OS에서 다시 빌드** |
-| 배포 직전에 항상 해야 할 것 | `uv run ruff check .` / `uv run ruff format --check .` / `uv run ty check` / `uv run pytest` 통과 확인 |
-| 실행 파일이 클 때 | `upx=True`가 이미 적용. 그래도 크면 불필요 의존성 `excludes`로 줄이기 |
+| 상황                                          | 해결                                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| "빌드는 되는데 번들 설정이 안 들어간 것 같아" | `--clean`으로 캐시를 지우고, `_bundled_config.py`가 생성됐는지 확인                                    |
+| 설정 주입이 "빈 값"으로 실패                  | `MDLOGGER_SUPABASE_URL` / `MDLOGGER_SUPABASE_ANON_KEY`가 비어 있지 않은지 확인                         |
+| 주입 시도가 "secret"으로 거부                 | service-role/secret 키가 아니라 **publishable(anon) 키**를 넣었는지 확인                               |
+| 시크릿 스캔이 0건이 아님                      | 빌드 전에 넣은 값이 anon 키인지 재확인. 절대 배포하지 말 것                                            |
+| 다른 OS에서 만든 파일을 올렸다                | PyInstaller는 크로스 컴파일 불가. **해당 OS에서 다시 빌드**                                            |
+| onedir 폴더만 보내니 실행이 안 돼             | 부속 파일 `_internal/`을 포함해 **폴더 전체를 압축해서 배포**해야 함                                   |
+| 배포 직전에 항상 해야 할 것                   | `uv run ruff check .` / `uv run ruff format --check .` / `uv run ty check` / `uv run pytest` 통과 확인 |
+| 실행 파일이 클 때                             | `upx=True`가 이미 적용. 그래도 크면 불필요 의존성 `excludes`로 줄이기                                  |
 
 ---
 
@@ -410,7 +435,8 @@ Releases에 자동 업로드하도록 만들 수 있습니다. 이 경우 Supaba
 - [ ] `_version.py` 값이 태그와 일치하는지 확인
 - [ ] 코드·테스트 통과 (ruff, ty, pytest)
 - [ ] 대상 OS에서 설정 주입 → 빌드
-- [ ] 시크릿 스캔 0건
-- [ ] 체크섬 생성
+- [ ] 시크릿 스캔 0건 (`uv run python -m mdlogger.secret_scan dist/MDLogger`)
+- [ ] 체크섬 생성 (`uv run python -m mdlogger.checksum dist/MDLogger`)
+- [ ] onedir 폴더를 OS에 맞는 압축(zip/tar.gz)으로 묶어 릴리스 첨부
 - [ ] 태그 푸시 `git push origin v0.1.6`
 - [ ] Releases 탭에서 산출물 첨부 + 릴리스 노트 작성 후 Publish
