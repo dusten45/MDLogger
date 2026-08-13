@@ -96,7 +96,7 @@ Supabase 설정)나 데이터 파일이 제대로 갱신되지 않을 수 있거
 | `--add-data`       | 데이터 파일 추가                    | spec의 `collect_data_files()`가 대신 처리         |
 | `--hidden-import`  | 숨겨진 모듈 추가                    | spec의 `hiddenimports`로 대신 처리                |
 | `--exclude-module` | 모듈 제외                           | spec의 `excludes` (지금은 비어 있음)              |
-| `--icon`           | 앱 아이콘 지정                      | spec엔 아직 없음(추가 시 설정)                    |
+| `--icon`           | 앱 아이콘 지정                      | spec의 `icon=["icon/DuelistCup.ico"]`로 반영      |
 | `--version-file`   | Windows 버전 정보                   | 아직 비어 있음(추가 시 설정)                      |
 | `--log-level`      | 빌드 로그 상세도                    | 빌드가 실패할 때만 `--log-level DEBUG` 유용       |
 
