@@ -36,7 +36,9 @@ dist/
 
 # ---- Runtime data (recreated on first launch via ensure_data_dir) ----
 # The SQLite DB is per-user gameplay data, and decks_sync.json is local ETag state.
-# decks.json (project root) is the curated deck list and IS tracked.
+# The canonical decks list lives on a GitHub Gist (see src/mdlogger/paths.py
+# DECKS_REMOTE_URL); no project-root decks.json is tracked anymore. Only the
+# bundled catalog inside the package (src/mdlogger/data/) is committed.
 data/
 # 번들 덱 카탈로그는 패키지 내부이며 커밋한다(하드닝 N-4). 위의 `data/` 규칙을 예외 처리.
 !src/mdlogger/data/
