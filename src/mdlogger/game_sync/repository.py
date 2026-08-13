@@ -174,6 +174,9 @@ class SyncRepository:
                 if retryable:
                     base_delay = min(2 ** min(attempt_count, 8), _MAX_RETRY_SECONDS)
                     delay = max(base_delay, retry_after_seconds or 0)
+                    # 재시도 시각을 흩뿌려 재시도 충돌/스탬핑을 완화하는 backoff
+                    # jitter 전용이다. 인증 토큰·nonce·암호 키가 아니므로
+                    # 암호학적 난수(secrets)가 필요하지 않다 (Semgrep B311 감사 명시).
                     random_jitter = (
                         random.uniform(0, min(delay * 0.25, 15))
                         if jitter is None

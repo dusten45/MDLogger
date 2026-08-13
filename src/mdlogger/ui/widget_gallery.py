@@ -103,7 +103,8 @@ class WidgetGallery(QDialog):
 
         self._controller = controller
         if self._controller is None:
-            assert app is not None
+            if app is None:
+                raise RuntimeError("QApplication이 초기화되지 않았습니다.")
             self._controller = apply_theme(app, ThemeMode.LIGHT)
 
         root = QVBoxLayout(self)

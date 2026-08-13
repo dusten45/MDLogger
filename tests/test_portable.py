@@ -292,6 +292,24 @@ def test_import_rejects_unexpected_extra_file(tmp_path: Path):
     assert not target.exists()
 
 
+def test_import_rejects_symlink_in_archive(tmp_path: Path):
+    source = tmp_path / "source.db"
+    target = tmp_path / "registered.db"
+    _make_source_db(source, count=1)
+    archive = tmp_path / "out.mdlogger-export"
+    export_portable_archive(archive, db.get_all_games(db.connect(source)))
+
+    # 체크섬 우회/경로 탈출을 시도하는 심볼릭 링크를 아카이브에 끼워 넣는다.
+    outside = tmp_path / "outside.txt"
+    outside.write_text("sensitive\n", encoding="utf-8")
+    (archive / "records.ndjson").unlink()
+    (archive / "records.ndjson").symlink_to(outside)
+
+    with pytest.raises(PortableArchiveError):
+        import_portable_archive(archive, target)
+    assert not target.exists()
+
+
 def test_import_rejects_missing_file(tmp_path: Path):
     source = tmp_path / "source.db"
     target = tmp_path / "registered.db"

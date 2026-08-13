@@ -125,11 +125,14 @@ def _retain_backups(db_path: Path, keep: int = BACKUP_RETENTION) -> None:
 
 
 def _column_names(conn: sqlite3.Connection, table: str) -> set[str]:
+    # PRAGMA table_info  식별자 `table`은 호출부에서 하드코딩된 내부 상수로만
+    # 전달되므로 SQL 주입이 불가하다 (Semgrep 포맷 SQL 감사 명시).
     return {str(row[1]) for row in conn.execute(f"PRAGMA table_info({table})")}
 
 
 def _add_column(conn: sqlite3.Connection, table: str, definition: str) -> None:
     name = definition.split(maxsplit=1)[0]
+    # `table`/`definition` 수리는 호출부 하드코딩 내부 상수 전용이다 (주입 불가).
     if name not in _column_names(conn, table):
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {definition}")
 
@@ -359,6 +362,7 @@ def migrate(conn: sqlite3.Connection) -> MigrationResult:
         for version in range(from_version + 1, LATEST_SCHEMA_VERSION + 1):
             migration = MIGRATIONS[version]
             migration(conn)
+            # `version`은 range(from+1, LATEST+1)에서 나온 정수라 주입 불가.
             conn.execute(f"PRAGMA user_version = {version}")
         conn.execute(
             "UPDATE database_metadata SET schema_version=? WHERE id=1",

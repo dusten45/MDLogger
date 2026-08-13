@@ -61,6 +61,8 @@ class UrllibTransport:
         body: bytes | None,
         timeout: float,
     ) -> HttpResponse:
+        # urlopen 직전에 https/http만 허용해 file:// 등 다른 스킴을 차단한다.
+        # (Semgrep B310 완화 — 스킴 검증이 존재함을 감사에 명시)
         if not url.startswith("https://") and not url.startswith("http://"):
             raise NetworkError("지원하지 않는 URL 스킴입니다.")
         request = urllib.request.Request(url, data=body, method=method)

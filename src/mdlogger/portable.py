@@ -285,6 +285,10 @@ def _validate_archive_layout(archive_dir: Path) -> None:
     if not archive_dir.is_dir():
         raise PortableArchiveError(f"Not a directory: {archive_dir}")
     entries = list(archive_dir.iterdir())
+    # 심볼릭 링크는 아카이브 밖 파일을 가리킬 수 있어 체크섬 우회/경로 탈출
+    # 표면이 된다. 압축 풀기가 아닌 단일 디렉터리 구조이므로 링크는 항상 거부한다.
+    if any(entry.is_symlink() for entry in entries):
+        raise PortableArchiveError("Symlink is not allowed in archive")
     if any(entry.is_dir() for entry in entries):
         raise PortableArchiveError("Unexpected subdirectory in archive")
     names = {entry.name for entry in entries}
