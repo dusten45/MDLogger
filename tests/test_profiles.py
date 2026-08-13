@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import sqlite3
 from pathlib import Path
@@ -86,6 +87,45 @@ def test_last_profile_and_data_consent_persist_without_secrets(tmp_path: Path):
     assert "password" not in state_text
     assert "access_token" not in state_text
     assert "refresh_token" not in state_text
+
+
+def test_session_state_updates_on_remember_and_logout(tmp_path: Path):
+    """로그인 시 'authenticated'가 기록되고, 프로필을 열지 않는 로그아웃 경로에서는
+    set_session_state로 'signed_out'을 기록한다."""
+    manager = ProfileManager(tmp_path)
+    account = manager.registered(ACCOUNT_A, "a@test.local")
+
+    manager.accept_data_consent("duel-data-v1")
+    manager.remember_profile(account)
+    profile = manager.last_profile()
+    assert profile is not None
+    assert profile.session_state == "authenticated"
+
+    manager.set_session_state("signed_out")
+    profile = manager.last_profile()
+    assert profile is not None
+    assert profile.session_state == "signed_out"
+
+    restored_manager = ProfileManager(tmp_path)
+    restored = restored_manager.last_profile()
+    assert restored is not None
+    assert restored.session_state == "signed_out"
+
+
+def test_old_state_without_session_state_defaults_to_authenticated(tmp_path: Path):
+    """session_state 필드가 없는 기존 상태 파일은 기본값 'authenticated'로 읽는다."""
+    manager = ProfileManager(tmp_path)
+    manager.accept_data_consent("duel-data-v1")
+    manager.remember_profile(manager.registered(ACCOUNT_A, "a@test.local"))
+    state_path = tmp_path / "global" / "profiles.json"
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    state.pop("session_state", None)
+    state_path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+
+    restored_manager = ProfileManager(tmp_path)
+    restored = restored_manager.last_profile()
+    assert restored is not None
+    assert restored.session_state == "authenticated"
 
 
 def test_failed_consent_write_does_not_accept_only_in_memory(

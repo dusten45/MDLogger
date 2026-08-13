@@ -35,6 +35,8 @@ class _ProfileState(TypedDict):
     last_profile_kind: NotRequired[str]
     last_registered_user_id: NotRequired[str]
     last_registered_display_name: NotRequired[str]
+    # 마지막 등록 세션의 상태(표시·다음 시작 라우팅 힌트). 로그인/로그아웃 시 갱신된다.
+    session_state: NotRequired[str]
 
 
 class ProfileKind(StrEnum):
@@ -128,10 +130,18 @@ class ProfileManager:
         display_name = self._state.get("last_registered_display_name")
         if not user_id or not display_name:
             return None
-        return self.registered(user_id, display_name)
+        return self.registered(
+            user_id,
+            display_name,
+            session_state=self._state.get("session_state", "authenticated"),
+        )
 
     def remember_profile(self, profile: ProfileContext) -> None:
-        """다음 시작 라우팅에 필요한 최소 프로필 정보만 저장한다."""
+        """다음 시작 라우팅에 필요한 최소 프로필 정보만 저장한다.
+
+        등록 프로필의 세션 상태도 함께 기록해, 로그인/로그아웃이 상태에 반영되게
+        한다. 다음 시작에서 실제 세션 유효성은 ``sessions.restore``가 재검증한다.
+        """
         updated = cast(_ProfileState, dict(self._state))
         updated["last_profile_kind"] = profile.kind.value
         if profile.kind is ProfileKind.REGISTERED:
@@ -139,6 +149,18 @@ class ProfileManager:
                 raise ProfileError("등록 프로필에는 remote user ID가 필요합니다.")
             updated["last_registered_user_id"] = profile.remote_user_id
             updated["last_registered_display_name"] = profile.display_name
+        updated["session_state"] = profile.session_state
+        self._write_state(updated)
+        self._state = updated
+
+    def set_session_state(self, session_state: str) -> None:
+        """마지막 등록 세션의 상태를 비민감 로컬 상태에 기록한다.
+
+        프로필을 열지 않고 로그아웃할 때(로그인 창으로 돌아가는 경우) 처럼
+        ``remember_profile``을 거치지 않는 경로에서 상태를 갱신할 때 사용한다.
+        """
+        updated = cast(_ProfileState, dict(self._state))
+        updated["session_state"] = session_state
         self._write_state(updated)
         self._state = updated
 
@@ -228,6 +250,12 @@ class ProfileManager:
             display_name = state.get("last_registered_display_name")
             if not isinstance(display_name, str) or not display_name.strip():
                 raise ProfileError("마지막 등록 계정 표시 이름이 올바르지 않습니다.")
+
+        session_state = state.get("session_state")
+        if session_state is not None and (
+            not isinstance(session_state, str) or not session_state.strip()
+        ):
+            raise ProfileError("저장된 세션 상태가 올바르지 않습니다.")
 
     def _write_state(self, state: _ProfileState) -> None:
         temporary_path = self._state_path.with_suffix(".tmp")

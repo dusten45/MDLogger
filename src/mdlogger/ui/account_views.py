@@ -23,7 +23,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..auth.models import DeviceInfo
 from ..game_sync.models import SyncConflict
 from ..remote.games import PRIVATE_GAME_FIELDS
 from .theme import METRICS, set_style_property
@@ -696,63 +695,6 @@ class ConflictDialog(QDialog):
         self.accept()
 
 
-class DeviceManagementDialog(QDialog):
-    """등록된 장치 목록을 보여주고 특정 장치를 해제한다(로드맵 단계 11)."""
-
-    def __init__(
-        self,
-        devices: list[DeviceInfo],
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("장치 관리")
-        self.setModal(True)
-        self.setMinimumWidth(420)
-        self.revoke_requested: str | None = None
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(
-            METRICS.space_6, METRICS.space_6, METRICS.space_6, METRICS.space_6
-        )
-        layout.setSpacing(METRICS.space_3)
-        title = QLabel("이 계정에 로그인한 장치")
-        title.setProperty("role", "title")
-        layout.addWidget(title)
-
-        if not devices:
-            empty = QLabel("등록된 장치가 없습니다.")
-            empty.setProperty("tone", "muted")
-            layout.addWidget(empty)
-        else:
-            for device in devices:
-                row = self._device_row(device)
-                layout.addLayout(row)
-
-        close = QPushButton("닫기")
-        close.clicked.connect(self.reject)
-        layout.addWidget(close)
-
-    def _device_row(self, device: DeviceInfo) -> QHBoxLayout:
-        row = QHBoxLayout()
-        row.setSpacing(METRICS.space_3)
-        name = device.display_name or "이름 없는 장치"
-        version = f" · v{device.client_version}" if device.client_version else ""
-        label = QLabel(f"{name}{version}\n{device.installation_id}")
-        label.setWordWrap(True)
-        row.addWidget(label, 1)
-        revoke = QPushButton("해제")
-        revoke.setProperty("role", "danger")
-        revoke.clicked.connect(
-            lambda _checked=False, device_id=device.id: self._revoke(device.id)
-        )
-        row.addWidget(revoke)
-        return row
-
-    def _revoke(self, device_id: str) -> None:
-        self.revoke_requested = device_id
-        self.accept()
-
-
 class AccountDialog(QDialog):
     """현재 프로필 상태와 로그인·로그아웃·계정 운영 동작을 제공한다."""
 
@@ -763,7 +705,6 @@ class AccountDialog(QDialog):
     export_requested = Signal()
     sign_out_all_requested = Signal()
     delete_account_requested = Signal()
-    manage_devices_requested = Signal()
 
     def __init__(
         self,
@@ -821,16 +762,12 @@ class AccountDialog(QDialog):
         layout.addWidget(login)
 
         if registered:
-            logout = QPushButton("로그아웃하고 게스트로 전환")
+            logout = QPushButton("로그아웃")
             logout.clicked.connect(self.logout_requested)
             layout.addWidget(logout)
 
         if registered:
             layout.addSpacing(METRICS.space_2)
-            manage_devices = QPushButton("장치 관리")
-            manage_devices.clicked.connect(self.manage_devices_requested)
-            layout.addWidget(manage_devices)
-
             sign_out_all = QPushButton("모든 기기에서 로그아웃")
             sign_out_all.setProperty("role", "danger")
             sign_out_all.clicked.connect(self.sign_out_all_requested)

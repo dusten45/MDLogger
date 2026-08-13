@@ -219,7 +219,7 @@ token만 보낸다. 함수는 JWT를 검증해 대상 사용자를 확인한 뒤
 
 분석용 `duel_observations`는 보존된다(계정 삭제는 듀얼 철회가 아님, 로드맵
 9.3). 클라이언트는 feedback으로 삭제 요약을 받고, 성공 시 저장된 refresh
-token을 제거하고 게스트로 전환한다.
+token을 제거하고 **로그인 창으로 돌아간다**(2026-08-13).
 
 ### 삭제 실패 시
 
@@ -229,24 +229,25 @@ token을 제거하고 게스트로 전환한다.
   재시도는 `deleteUser`를 멱등하게 처리한다. 중단된 사용자는 지원에서
   수동 확인한다.
 
-## 5. 장치 해제
+## 5. 로그아웃·장치 해제
 
-- "모든 기기에서 로그아웃": `revoke_all_devices` RPC. 서버에서 이 계정의
-  모든 `devices` 행을 삭제한다.
-- "특정 장치 해제": `revoke_device(installation_id)` RPC. 해당 장치만
-  해제한다.
+로아웃 옵션은 두 가지만 제공한다(단일 기기 해제 기능은 제거됨, 2026-08-13):
 
-### 한계 (하드닝 H-3, 결정 D-6)
+- **현재 PC에서 로그아웃**: 클라이언트 `sign_out`으로 현재 기기만 로그아웃. 로그인 창으로 돌아간다.
+- **모든 기기에서 로그아웃**: 클라이언트가 `revoke-sessions` **Edge Function**을
+  호출한다. 서버는 Auth Admin(service-role)로 요청자 본인의 **모든 세션·refresh
+  token을 실제로 폐기**(`admin.auth.admin.signOut(token, scope='global')`)한 뒤
+  `revoke_all_devices`로 `devices` 행을 정리한다(D-6).
 
-- `revoke_all_devices`/`revoke_device`는 **장치 행만 삭제**한다. 이미 발급된
-  access token의 세션·refresh token을 Auth Admin API로 폐기하지 않으므로,
-  해제된 이전 장치는 JWT 만료까지 계속 동기화할 수 있고 이후 자유롭게
-  재로그인해 재등록될 수 있다.
-- **현 단계 공지**: 실제 세션 폐기는 다음 릴리스에서 Auth Admin API 경로로
-  구현한다. 지금은 클라이언트가 "모든 기기에서 로그아웃" 후 자신의 저장된
-  refresh token을 제거하고 재로그인하도록 안내하며(클라이언트 계약),
-  서버 측 활성 세션 폐기는 미완이다. 유출 대응(10절)에서 refresh token 유출 시
-  이 한계를 고려해 임계 판단한다.
+### 동작·한계 (하드닝 H-3, 결정 D-6 보완)
+
+- "모든 기기에서 로그아웃"은 이제 서버에서 **요청자 계정의 refresh token을 실제로
+  폐기**하므로, 해제된 기기는 세션을 갱신하지 못하고 access token(JWT) 만료 후
+  재로그인해야 한다. access token 자체는 만료 전까지 무효화할 수 없다(GoTrue 특성).
+- 이 기기도 로그아웃되어 **로그인 창으로 돌아가고**, 클라이언트는 자신의 저장된
+  refresh token을 제거한다(`SessionManager.sign_out_all_devices`). 완료 알림으로
+  해제된 기기 수를 표시한다.
+- 유출 대응(10절)에서 refresh token 유출 시 이 동작을 고려해 임계 판단한다.
 
 `devices` 행 삭제는 pull cursor acknowledgment 정보를 잃지만, 삭제된 장치가
 다시 로그인하면 `register_or_touch_device`로 재등록된다.

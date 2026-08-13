@@ -27,7 +27,6 @@ from .ui.account_views import (
     AccountDialog,
     AuthWindow,
     ConflictDialog,
-    DeviceManagementDialog,
     GuestNoticeDialog,
     GuestRecordChoice,
     GuestRecordChoiceDialog,
@@ -249,7 +248,6 @@ class ProfileRouter:
             lambda: self._sign_out_all_devices(dialog)
         )
         dialog.delete_account_requested.connect(lambda: self._delete_account(dialog))
-        dialog.manage_devices_requested.connect(lambda: self._manage_devices(dialog))
         dialog.exec()
 
     def _open_conflicts(self, account_dialog: QDialog) -> None:
@@ -421,6 +419,13 @@ class ProfileRouter:
         self._auth.set_verification_status(message, error=True)
 
     def _restore_registered(self, stored_profile: ProfileContext) -> None:
+        if stored_profile.session_state == "signed_out":
+            # 사용자가 명시적으로 로그아웃했으므로 등록 프로필을 자동으로 열지 않고
+            # 깨끗한 로그인 창으로 시작한다. 로그인 창에서 다시 로그인하거나
+            # 게스트로 계속할 수 있다. 저장된 refresh token이 잔존해도 항상
+            # 로그인을 요구한다(로그아웃 상태가 우선).
+            self.show_auth("로그아웃되었습니다. 다시 로그인해 주세요.")
+            return
         sessions = self._sessions
         if stored_profile.remote_user_id is None:
             self.show_auth("저장된 등록 프로필 정보가 올바르지 않습니다.")
@@ -598,7 +603,28 @@ class ProfileRouter:
                 )
                 return
         dialog.accept()
-        self._open_profile(self._profiles.guest())
+        self._return_to_login()
+
+    def _return_to_login(self) -> None:
+        """현재 등록 계정을 로그아웃하고 로그인 창으로 돌아간다(게스트 선택 가능).
+
+        마지막 등록 세션 상태를 '로그아웃됨'으로 기록하고, 현재 등록 창을 닫은 뒤
+        로그인/회원가입 창을 보여준다. 사용자는 로그인 창에서 다시 로그인하거나
+        게스트로 계속할 수 있다.
+        """
+        try:
+            self._profiles.set_session_state("signed_out")
+        except ProfileError:
+            # 세션 상태 기록은 로그아웃의 필수 조건이 아니다. 토큰 제거는
+            # SessionManager.sign_out 계열이 이미 수행했으므로, 기록 실패가
+            # 로그아웃·로그인 창 전환을 막지 않게 한다.
+            pass
+        try:
+            self._app.close()
+        finally:
+            # 현재 등록 창 정리 중 예외가 나도 사용자가 화면 없이 남지 않도록
+            # 로그인 창은 반드시 보여준다(B-2).
+            self.show_auth()
 
     def _request_sync(self) -> None:
         """동기화 버튼: outbox 재시도 후 즉시 동기화를 시도한다(A-2)."""
@@ -692,46 +718,34 @@ class ProfileRouter:
             return
         try:
             count = sessions.sign_out_all_devices()
+        except CredentialStoreError as error:
+            # 서버측 세션 폐기·장치 행 정리는 이미 성공했지만, 로컬 refresh token
+            # 제거에 실패했다. 세션이 서버에서 폐기됐으므로 다음 갱신 시 재로그인된다.
+            QMessageBox.warning(
+                dialog,
+                "모든 기기 로그아웃 실패",
+                f"{error}\nOS 보안 저장소를 확인한 뒤 다시 시도해 주세요.",
+            )
+            return
         except AuthError as error:
             QMessageBox.warning(
                 dialog, "모든 기기 로그아웃 실패", self._auth_error_message(error)
             )
             return
-        QMessageBox.information(
-            dialog,
-            "모든 기기 로그아웃 완료",
-            f"{count}대의 기기의 장치 정보를 해제했습니다.\n"
-            "해제된 기기는 이전 세션의 유효 기간까지 계속 동기화할 수 있고,\n"
-            "이후 다시 로그인하면 재등록됩니다(하드닝 H-3 한계).",
-        )
+        dialog.accept()
+        self._return_to_login()
+        self._notify_sign_out_all(count)
 
-    def _manage_devices(self, dialog: AccountDialog) -> None:
-        """등록된 장치를 나열하고 특정 장치를 해제한다(로드맵 단계 11)."""
-        sessions = self._sessions
-        if sessions is None:
-            QMessageBox.information(dialog, "장치 관리", "온라인 계정 설정이 없습니다.")
-            return
-        try:
-            devices = sessions.list_devices()
-        except AuthError as error:
-            QMessageBox.warning(
-                dialog, "장치 조회 실패", self._auth_error_message(error)
-            )
-            return
-        device_dialog = DeviceManagementDialog(devices, dialog)
-        if device_dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-        device_id = device_dialog.revoke_requested
-        if device_id is None:
-            return
-        try:
-            sessions.revoke_device(device_id)
-        except AuthError as error:
-            QMessageBox.warning(
-                dialog, "장치 해제 실패", self._auth_error_message(error)
-            )
-            return
-        QMessageBox.information(dialog, "장치 해제 완료", "장치가 해제되었습니다.")
+    def _notify_sign_out_all(self, count: int) -> None:
+        """로그인 창 위에 모든 기기 로그아웃 완료 알림을 띄운다.
+
+        작고 단순한 확인용 알림으로, 한 번 확인하면 바로 닫힌다.
+        """
+        QMessageBox.information(
+            self._auth,
+            "모든 기기 로그아웃",
+            f"{count}대의 기기에서 로그아웃하였습니다.",
+        )
 
     def _delete_account(self, dialog: AccountDialog) -> None:
         """계정 삭제를 서버에 요청한다(로드맵 단계 11, 결정 4)."""
@@ -763,7 +777,7 @@ class ProfileRouter:
             "계정 삭제 완료",
             "서버 계정이 삭제되었습니다. 로컬 데이터는 그대로 유지됩니다.",
         )
-        self._open_profile(self._profiles.guest())
+        self._return_to_login()
 
     def _show_auth_error(self, error: AuthError, email: str) -> None:
         if error.code in {"email_exists", "user_already_exists"}:

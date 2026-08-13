@@ -183,35 +183,36 @@ def test_export_account_data_calls_rpc_and_parses_export():
     assert data.devices[0].last_acknowledged_version == 7
 
 
-def test_list_devices_parses_rows():
-    service, transport = make_service(json_response(200, export_payload()["devices"]))
-
-    devices = service.list_devices("access-1")
-
-    assert len(devices) == 1
-    assert devices[0].installation_id == "11111111-1111-4111-8111-111111111111"
-    assert devices[0].client_version == "0.2.0"
-
-
-def test_revoke_device_posts_installation_id():
-    service, transport = make_service(json_response(200, {}))
-
-    service.revoke_device("access-1", "11111111-1111-4111-8111-111111111111")
-
-    request = transport.requests[0]
-    assert request["url"].endswith("/rest/v1/rpc/revoke_device")
-    assert request["body"] == {
-        "installation_id": "11111111-1111-4111-8111-111111111111"
-    }
-
-
-def test_sign_out_all_devices_returns_revoked_count():
-    service, transport = make_service(json_response(200, {"revoked_devices": 3}))
+def test_sign_out_all_devices_calls_edge_function_and_returns_revoked_count():
+    service, transport = make_service(
+        json_response(200, {"code": "sessions_revoked", "revoked_devices": 3})
+    )
 
     count = service.sign_out_all_devices("access-1")
 
     assert count == 3
-    assert transport.requests[0]["url"].endswith("/rest/v1/rpc/revoke_all_devices")
+    request = transport.requests[0]
+    assert request["url"].endswith("/functions/v1/revoke-sessions")
+    assert request["headers"]["Authorization"] == "Bearer access-1"
+    assert request["headers"]["apikey"] == "anon-key"
+
+
+def test_sign_out_all_devices_rejects_wrong_code():
+    service, transport = make_service(json_response(200, {"code": "other"}))
+
+    with pytest.raises(AuthError) as exc_info:
+        service.sign_out_all_devices("access-1")
+
+    assert exc_info.value.kind is AuthErrorKind.SERVER_REJECTED
+
+
+def test_sign_out_all_devices_handles_401_as_expired():
+    service, _ = make_service(json_response(401, {}))
+
+    with pytest.raises(AuthError) as exc_info:
+        service.sign_out_all_devices("access-1")
+
+    assert exc_info.value.kind is AuthErrorKind.TOKEN_EXPIRED
 
 
 def test_delete_account_calls_edge_function():
@@ -255,15 +256,6 @@ def test_delete_account_rejects_malformed_success():
         service.delete_account("access-1")
 
     assert exc_info.value.kind is AuthErrorKind.SERVER_REJECTED
-
-
-def test_account_operations_require_missing_session_raises_token_expired():
-    service, transport = make_service(json_response(401, {}))
-
-    with pytest.raises(AuthError) as exc_info:
-        service.list_devices("access-1")
-
-    assert exc_info.value.kind is AuthErrorKind.TOKEN_EXPIRED
 
 
 @pytest.mark.parametrize(

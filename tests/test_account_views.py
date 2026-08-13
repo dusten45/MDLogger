@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
     QTableWidget,
 )
 
-from mdlogger.auth.models import DeviceInfo
 from mdlogger.game_service import GameService
 from mdlogger.game_sync.models import SyncConflict, SyncPhase, SyncStatus
 from mdlogger.profiles import ProfileManager
@@ -29,7 +28,6 @@ from mdlogger.ui.account_views import (
     AccountDialog,
     AuthWindow,
     ConflictDialog,
-    DeviceManagementDialog,
     GuestNoticeDialog,
     GuestRecordChoice,
     GuestRecordChoiceDialog,
@@ -281,39 +279,6 @@ def test_account_dialog_reserves_height_for_wrapped_text(qapp: QApplication):
     dialog.close()
 
 
-def test_device_management_dialog_lists_devices_and_revokes_selected(
-    qapp: QApplication,
-):
-    device = DeviceInfo(
-        id="d1",
-        installation_id="11111111-1111-4111-8111-111111111111",
-        display_name="PC A",
-        client_version="0.2.0",
-        created_at="2026-08-07T00:00:00Z",
-        last_seen_at="2026-08-09T00:00:00Z",
-        last_acknowledged_version=7,
-    )
-    dialog = DeviceManagementDialog([device])
-    dialog.show()
-    qapp.processEvents()
-
-    revoke_button = next(
-        button for button in dialog.findChildren(QPushButton) if button.text() == "해제"
-    )
-    revoke_button.click()
-
-    assert dialog.revoke_requested == "d1"
-    assert dialog.result() == QDialog.DialogCode.Accepted
-    dialog.close()
-
-
-def test_device_management_dialog_shows_empty_state(qapp: QApplication):
-    dialog = DeviceManagementDialog([])
-    text = " ".join(label.text() for label in dialog.findChildren(QLabel))
-    assert "등록된 장치가 없습니다" in text
-    dialog.close()
-
-
 def test_account_dialog_exposes_operation_buttons_only_for_registered(
     qapp: QApplication,
 ):
@@ -328,7 +293,6 @@ def test_account_dialog_exposes_operation_buttons_only_for_registered(
     assert "모든 기기에서 로그아웃" in registered_buttons
     assert "내 데이터 내보내기" in registered_buttons
     assert "계정 삭제" in registered_buttons
-    assert "장치 관리" in registered_buttons
     assert registered_buttons["계정 삭제"].property("role") == "danger"
     registered.close()
 
@@ -343,7 +307,6 @@ def test_account_dialog_exposes_operation_buttons_only_for_registered(
     assert "모든 기기에서 로그아웃" not in guest_buttons
     assert "내 데이터 내보내기" not in guest_buttons
     assert "계정 삭제" not in guest_buttons
-    assert "장치 관리" not in guest_buttons
     guest.close()
 
 
@@ -357,15 +320,13 @@ def test_account_dialog_emits_operation_signals(qapp: QApplication):
     dialog.export_requested.connect(lambda: emitted.append("export"))
     dialog.sign_out_all_requested.connect(lambda: emitted.append("sign_out_all"))
     dialog.delete_account_requested.connect(lambda: emitted.append("delete"))
-    dialog.manage_devices_requested.connect(lambda: emitted.append("devices"))
     buttons = {button.text(): button for button in dialog.findChildren(QPushButton)}
 
     buttons["내 데이터 내보내기"].click()
     buttons["모든 기기에서 로그아웃"].click()
     buttons["계정 삭제"].click()
-    buttons["장치 관리"].click()
 
-    assert emitted == ["export", "sign_out_all", "delete", "devices"]
+    assert emitted == ["export", "sign_out_all", "delete"]
     dialog.close()
 
 

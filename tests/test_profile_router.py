@@ -12,11 +12,12 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from mdlogger.app_controller import AppController
 from mdlogger.auth.credential_store import InMemoryCredentialStore
 from mdlogger.auth.models import (
+    AccountDeletionResult,
     AccountInfo,
     AuthError,
     AuthErrorKind,
@@ -29,7 +30,7 @@ from mdlogger.auth.session_manager import SessionManager, SessionState
 from mdlogger.game_service import GameService
 from mdlogger.profile_router import CONSENT_VERSION, ProfileRouter
 from mdlogger.profiles import ProfileContext, ProfileKind, ProfileManager
-from mdlogger.ui.account_views import AuthWindow, GuestRecordChoice
+from mdlogger.ui.account_views import AccountDialog, AuthWindow, GuestRecordChoice
 
 USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 
@@ -66,6 +67,7 @@ class FakeAccountService(AccountService):
         self.resend_calls: list[str] = []
         self.reset_calls: list[str] = []
         self.sign_in_gate: Event | None = None
+        self.sign_out_all_count: int = 0
 
     def sign_up(self, email: str, password: str) -> SignUpResult:
         if isinstance(self.sign_up_result, AuthError):
@@ -96,17 +98,18 @@ class FakeAccountService(AccountService):
     def export_account_data(self, access_token: str):
         raise NotImplementedError
 
-    def list_devices(self, access_token: str):
-        raise NotImplementedError
-
-    def revoke_device(self, access_token: str, installation_id: str) -> None:
-        raise NotImplementedError
-
     def sign_out_all_devices(self, access_token: str) -> int:
-        raise NotImplementedError
+        return self.sign_out_all_count
 
-    def delete_account(self, access_token: str, user_id: str | None = None):
-        raise NotImplementedError
+    def delete_account(
+        self, access_token: str, user_id: str | None = None
+    ) -> AccountDeletionResult:
+        return AccountDeletionResult(
+            deleted_games=0,
+            deleted_devices=0,
+            deleted_profiles=0,
+            deleted_auth_user=True,
+        )
 
 
 class TrackingWindow:
@@ -349,6 +352,118 @@ def test_revoked_saved_session_shows_login_but_keeps_local_profile_available(
     assert controller.current_profile.session_state == "reauth_required"
     assert router.auth_window.isVisible()
     assert "다시 로그인" in router.auth_window._status.text()
+    router.close()
+    controller.close()
+
+
+def test_signed_out_state_starts_with_clean_login_window(
+    qapp: QApplication, tmp_path: Path
+):
+    """로그아웃 상태(session_state='signed_out')가 영속화되어 있으면 다음 시작 시
+    등록 프로필을 열지 않고 깨끗한 로그인 창으로만 시작한다. 잔존 refresh token이
+    있어도 로그아웃 상태가 우선한다."""
+    values = make_router(tmp_path)
+    router, profiles, controller, _, store = values[:5]
+    profiles.accept_data_consent(CONSENT_VERSION)
+    profiles.remember_profile(profiles.registered(USER_ID, "a@test.local"))
+    store.save_refresh_token(USER_ID, "refresh-1")
+    profiles.set_session_state("signed_out")
+
+    router.start()
+
+    assert controller.current_profile is None
+    assert controller.current_window is None
+    assert router.auth_window.isVisible()
+    assert "로그아웃" in router.auth_window._status.text()
+    router.close()
+    controller.close()
+
+
+def test_logout_returns_to_login_window_and_marks_session_signed_out(
+    qapp: QApplication, tmp_path: Path
+):
+    """등록 계정 로그아웃 시 게스트로 전환하지 않고 로그인 창으로 돌아가며,
+    저장된 세션 상태를 '로그아웃됨'으로 갱신한다."""
+    values = make_router(tmp_path)
+    router, profiles, controller, _, _ = values[:5]
+    profiles.accept_data_consent(CONSENT_VERSION)
+    router.sign_in("a@test.local", "password")
+    assert controller.current_profile is not None
+    assert controller.current_profile.kind is ProfileKind.REGISTERED
+
+    router._logout_from_dialog(
+        AccountDialog("a@test.local", "로그인됨", registered=True)
+    )
+
+    assert controller.current_profile is None
+    assert profiles.last_profile() is not None
+    assert profiles.last_profile().session_state == "signed_out"
+    assert controller.current_window is None
+    assert router.auth_window.isVisible()
+    router.close()
+    controller.close()
+
+
+def test_sign_out_all_devices_returns_to_login_window(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """모든 기기에서 로그아웃도 게스트가 아닌 로그인 창으로 돌아간다."""
+    values = make_router(tmp_path)
+    router, profiles, controller, account_service, _ = values[:5]
+    profiles.accept_data_consent(CONSENT_VERSION)
+    router.sign_in("a@test.local", "password")
+    assert controller.current_profile is not None
+    assert controller.current_profile.kind is ProfileKind.REGISTERED
+
+    account_service.sign_out_all_count = 2
+    monkeypatch.setattr(
+        "mdlogger.profile_router.QMessageBox.question",
+        lambda *args, **kwargs: QMessageBox.StandardButton.Yes,
+    )
+    notices: list[str] = []
+    monkeypatch.setattr(
+        "mdlogger.profile_router.QMessageBox.information",
+        lambda *args, **kwargs: notices.append(str(args[2])),
+    )
+    router._sign_out_all_devices(
+        AccountDialog("a@test.local", "로그인됨", registered=True)
+    )
+
+    assert controller.current_profile is None
+    assert controller.current_window is None
+    assert router.auth_window.isVisible()
+    assert profiles.last_profile().session_state == "signed_out"
+    # 로그인 창 위에 해제된 기기 수 알림이 표시된다.
+    assert notices == ["2대의 기기에서 로그아웃하였습니다."]
+    router.close()
+    controller.close()
+
+
+def test_delete_account_returns_to_login_window(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """계정 삭제 후에도 게스트가 아닌 로그인 창으로 돌아간다."""
+    values = make_router(tmp_path)
+    router, profiles, controller, _, _ = values[:5]
+    profiles.accept_data_consent(CONSENT_VERSION)
+    router.sign_in("a@test.local", "password")
+    assert controller.current_profile is not None
+    assert controller.current_profile.kind is ProfileKind.REGISTERED
+
+    monkeypatch.setattr(
+        "mdlogger.profile_router.QMessageBox.warning",
+        lambda *args, **kwargs: QMessageBox.StandardButton.Yes,
+    )
+    monkeypatch.setattr(
+        "mdlogger.profile_router.QMessageBox.information",
+        lambda *args, **kwargs: None,
+    )
+    router._delete_account(AccountDialog("a@test.local", "로그인됨", registered=True))
+
+    assert controller.current_profile is None
+    assert controller.current_window is None
+    assert router.auth_window.isVisible()
+    assert profiles.last_profile().session_state == "signed_out"
     router.close()
     controller.close()
 

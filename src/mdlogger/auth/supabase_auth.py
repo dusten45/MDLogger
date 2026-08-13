@@ -121,37 +121,59 @@ class SupabaseAccountService(AccountService):
         body = self._rpc("export_account_data", None, access_token)
         return self._export_from_body(body)
 
-    def list_devices(self, access_token: str) -> list[DeviceInfo]:
-        body = self._rpc("list_user_devices", None, access_token)
-        if not isinstance(body, list):
+    def sign_out_all_devices(self, access_token: str) -> int:
+        """모든 기기에서 로그아웃한다.
+
+        서버의 ``revoke-sessions`` Edge Function이 요청자 본인의 모든 GoTrue
+        세션·refresh token을 실제로 폐기하고(하드닝 D-6) 장치 행을 정리한다.
+        """
+        response = self._client.post_json(
+            f"{self._config.functions_url}/revoke-sessions",
+            None,
+            {
+                "apikey": self._config.anon_key,
+                "Authorization": f"Bearer {access_token}",
+            },
+        )
+        if response.status == 401:
+            raise AuthError(
+                AuthErrorKind.TOKEN_EXPIRED,
+                "세션이 만료되었습니다. 다시 로그인해 주세요.",
+            )
+        if response.status == 403:
             raise AuthError(
                 AuthErrorKind.SERVER_REJECTED,
-                "장치 목록 응답 형식이 올바르지 않습니다.",
+                "모든 기기에서 로그아웃할 수 없습니다.",
+                code="target_mismatch",
+            )
+        if response.status == 429:
+            raise AuthError(
+                AuthErrorKind.RATE_LIMITED,
+                "요청이 너무 잦아 잠시 제한됐습니다. 잠시 후 다시 시도해 주세요.",
+            )
+        if response.status >= 400:
+            raise AuthError(
+                AuthErrorKind.SERVER_REJECTED,
+                f"모든 기기 로그아웃 요청이 거부되었습니다. (HTTP {response.status})",
             )
         try:
-            return [self._device_from_row(row) for row in body]
-        except (KeyError, TypeError, ValueError) as error:
+            body = response.json()
+        except ResponseFormatError as error:
             raise AuthError(
                 AuthErrorKind.SERVER_REJECTED,
-                "장치 목록 응답 형식이 올바르지 않습니다.",
+                "로그아웃 응답을 해석할 수 없습니다.",
             ) from error
-
-    def revoke_device(self, access_token: str, installation_id: str) -> None:
-        self._rpc("revoke_device", {"installation_id": installation_id}, access_token)
-
-    def sign_out_all_devices(self, access_token: str) -> int:
-        body = self._rpc("revoke_all_devices", None, access_token)
-        if not isinstance(body, dict):
+        if not isinstance(body, dict) or body.get("code") != "sessions_revoked":
             raise AuthError(
                 AuthErrorKind.SERVER_REJECTED,
-                "장치 해제 응답 형식이 올바르지 않습니다.",
+                "로그아웃 응답 형식이 올바르지 않습니다.",
             )
         try:
             return int(body.get("revoked_devices", 0))
         except (TypeError, ValueError) as error:
             raise AuthError(
                 AuthErrorKind.SERVER_REJECTED,
-                "장치 해제 응답 형식이 올바르지 않습니다.",
+                "로그아웃 응답 형식이 올바르지 않습니다.",
             ) from error
 
     def delete_account(

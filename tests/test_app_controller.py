@@ -132,7 +132,7 @@ def test_login_logout_switches_scopes_without_deleting_local_databases(tmp_path:
     with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
         first_service.count_games()
 
-    controller.logout()
+    controller.start_guest()
     assert controller.current_profile is not None
     assert controller.current_profile.kind is ProfileKind.GUEST
     assert guest_path.exists()
@@ -146,7 +146,7 @@ def test_login_logout_switches_scopes_without_deleting_local_databases(tmp_path:
     assert account_record is not None
     assert account_record["note"] == "account-a"
     controller.login_registered(ACCOUNT_B, "계정 B")
-    controller.logout()
+    controller.start_guest()
     controller.close()
 
     assert all(window.shown and window.closed for window in windows)

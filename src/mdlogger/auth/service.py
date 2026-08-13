@@ -12,7 +12,6 @@ from .models import (
     AccountDeletionResult,
     AccountExportData,
     AuthSession,
-    DeviceInfo,
     SignUpResult,
 )
 
@@ -47,14 +46,6 @@ class AccountService(ABC):
     @abstractmethod
     def export_account_data(self, access_token: str) -> AccountExportData:
         """본인 개인 데이터를 내려받는다(로드맵 12.4)."""
-
-    @abstractmethod
-    def list_devices(self, access_token: str) -> list[DeviceInfo]:
-        """등록된 장치 목록을 조회한다."""
-
-    @abstractmethod
-    def revoke_device(self, access_token: str, installation_id: str) -> None:
-        """특정 장치를 해제한다(모든 장치 로그아웃의 일부)."""
 
     @abstractmethod
     def sign_out_all_devices(self, access_token: str) -> int:

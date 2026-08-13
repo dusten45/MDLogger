@@ -111,10 +111,6 @@ class AppController:
     def login_registered(self, remote_user_id: str, display_name: str) -> None:
         self.switch_profile(self._profiles.registered(remote_user_id, display_name))
 
-    def logout(self) -> None:
-        """등록 계정의 로컬 DB를 보존한 채 지속형 게스트로 돌아간다."""
-        self.start_guest()
-
     def switch_profile(self, profile: ProfileContext) -> None:
         """새 프로필 DB를 검증·준비한 뒤 기존 창과 연결을 정리하고 새 범위를 시작한다.
 

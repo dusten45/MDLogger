@@ -83,8 +83,7 @@ def test_guest_account_dialog_shows_guest_only_actions_and_signals(qapp):
     # 등록 전용 동작은 게스트에서 노출하지 않는다
     for hidden in (
         "다른 계정으로 전환",
-        "로그아웃하고 게스트로 전환",
-        "장치 관리",
+        "로그아웃",
         "모든 기기에서 로그아웃",
         "내 데이터 내보내기",
         "계정 삭제",
@@ -126,8 +125,7 @@ def test_registered_account_dialog_shows_registered_actions(qapp):
     for expected in (
         "지금 동기화",
         "다른 계정으로 전환",
-        "로그아웃하고 게스트로 전환",
-        "장치 관리",
+        "로그아웃",
         "모든 기기에서 로그아웃",
         "내 데이터 내보내기",
         "계정 삭제",

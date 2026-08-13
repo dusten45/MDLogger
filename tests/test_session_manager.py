@@ -15,7 +15,6 @@ from mdlogger.auth.models import (
     AuthErrorKind,
     AuthSession,
     AuthTokens,
-    DeviceInfo,
     SignUpResult,
 )
 from mdlogger.auth.service import AccountService
@@ -49,6 +48,9 @@ class FakeAccountService(AccountService):
         self.sign_out_error: AuthError | None = None
         self.sign_out_calls: list[str] = []
         self.refresh_calls: list[str] = []
+        self.sign_out_all_error: AuthError | None = None
+        self.sign_out_all_calls: list[str] = []
+        self.sign_out_all_count: int = 0
 
     def sign_up(self, email: str, password: str) -> SignUpResult:
         if isinstance(self.sign_up_result, AuthError):
@@ -80,14 +82,11 @@ class FakeAccountService(AccountService):
     def export_account_data(self, access_token: str) -> AccountExportData:
         raise NotImplementedError
 
-    def list_devices(self, access_token: str) -> list[DeviceInfo]:
-        raise NotImplementedError
-
-    def revoke_device(self, access_token: str, installation_id: str) -> None:
-        raise NotImplementedError
-
     def sign_out_all_devices(self, access_token: str) -> int:
-        raise NotImplementedError
+        self.sign_out_all_calls.append(access_token)
+        if self.sign_out_all_error is not None:
+            raise self.sign_out_all_error
+        return self.sign_out_all_count
 
     def delete_account(
         self, access_token: str, user_id: str | None = None
@@ -249,6 +248,58 @@ def test_sign_out_removes_token_even_on_non_auth_error():
     assert store.load_refresh_token(USER_ID) is None
 
 
+def test_sign_out_all_devices_invalidates_local_session():
+    """클라이언트 계약(H-3/D-6): 모든 기기 로그아웃 성공 시 이 기기의 저장된
+    refresh token을 즉시 제거하고 세션을 종료한다. 잔존 토큰이 재사용되지
+    않도록 한다."""
+    manager, service, store = make_manager()
+    manager.sign_in("a@test.local", "pw")
+    service.sign_out_all_count = 3
+
+    count = manager.sign_out_all_devices()
+
+    assert count == 3
+    assert service.sign_out_all_calls == ["access-1"]
+    assert manager.state is SessionState.SIGNED_OUT
+    assert store.load_refresh_token(USER_ID) is None
+
+
+def test_sign_out_all_devices_error_keeps_local_session():
+    """서버가 장치 해제를 거부하면 로컬 세션을 유지한다. 폐기가 확인되지
+    않았으므로 재로그인을 강요하지 않는다."""
+    manager, service, store = make_manager()
+    manager.sign_in("a@test.local", "pw")
+    service.sign_out_all_error = AuthError(AuthErrorKind.SERVER_REJECTED, "서버 오류")
+
+    with pytest.raises(AuthError):
+        manager.sign_out_all_devices()
+
+    assert manager.state is SessionState.AUTHENTICATED
+    assert store.load_refresh_token(USER_ID) == "refresh-1"
+
+
+def test_sign_out_all_devices_requires_active_session():
+    manager, _, _ = make_manager()
+
+    with pytest.raises(AuthError):
+        manager.sign_out_all_devices()
+
+
+def test_sign_out_all_devices_after_rotate_invalidates_current_token():
+    """refresh로 회전된 토큰이 저장된 상태에서 모든 기기 로그아웃을 하면
+    그 회전 토큰도 제거된다."""
+    manager, service, store = make_manager()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    manager.restore(USER_ID)  # refresh-2로 회전
+    assert store.load_refresh_token(USER_ID) == "refresh-2"
+    service.sign_out_all_count = 1
+
+    manager.sign_out_all_devices()
+
+    assert manager.state is SessionState.SIGNED_OUT
+    assert store.load_refresh_token(USER_ID) is None
+
+
 def test_logout_during_refresh_discards_rotated_token():
     """B-1(a): refresh가 진행 중인 동안 로그아웃이 끼어들면, refresh가 늦게
     끝나도 회전된 토큰을 다시 저장하지 않고 SIGNED_OUT을 유지한다."""
@@ -346,8 +397,6 @@ def test_account_operations_require_active_session():
         manager.export_account_data()
     assert exc_info.value.kind is AuthErrorKind.TOKEN_EXPIRED
 
-    with pytest.raises(AuthError):
-        manager.list_devices()
     with pytest.raises(AuthError):
         manager.sign_out_all_devices()
     with pytest.raises(AuthError):
