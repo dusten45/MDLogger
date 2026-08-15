@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=MDLogger
+Name[ko]=MDLogger
+Comment=MDLogger — 듀얼 진행을 기록하는 데스크톱 앱
+Comment[en]=Master Duel match logger
+Exec=mdlogger
+Icon=io.github.dusten45.MDLogger
+Terminal=false
+Categories=Game;Utility;

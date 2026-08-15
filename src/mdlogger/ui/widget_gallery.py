@@ -330,7 +330,7 @@ class WidgetGallery(QDialog):
 def run_gallery() -> int:
     """QApplication을 만들고 위젯 gallery를 표시한다 (개발용 진입점)."""
     app = QApplication(sys.argv)
-    app.setApplicationName("MD WCQ 로거 — 위젯 갤러리")
+    app.setApplicationName("MDLogger — 위젯 갤러리")
     gallery = WidgetGallery()
     gallery.show()
     return app.exec()

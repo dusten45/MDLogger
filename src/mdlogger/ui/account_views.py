@@ -71,7 +71,7 @@ class AuthWindow(QWidget):
         super().__init__()
         self._mode = AuthMode.LOGIN
         self._verification_email = ""
-        self.setWindowTitle("MD WCQ 로거 · 계정")
+        self.setWindowTitle("MDLogger · 계정")
         self.resize(420, 560)
         self.setMinimumSize(360, 500)
 

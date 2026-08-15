@@ -40,7 +40,7 @@ class MainWindow(QMainWindow):
         self._sync: SyncCoordinator | None = None
         self._sync_status: SyncStatus | None = None
 
-        self.setWindowTitle("MD WCQ 로거")
+        self.setWindowTitle("MDLogger")
         self.resize(420, 680)
         self.setMinimumWidth(380)
 

@@ -1,0 +1,49 @@
+# MDLogger Flatpak manifest
+#
+# 배포 전략:
+#   PyInstaller 대신 Python venv + pip 를 사용해 소스를 그대로 /app/venv 에 설치한다.
+#   Windows 는 PyInstaller(Inno Setup)로, Linux 는 이 Flatpak 만으로 끝낸다.
+#   사용자 데이터는 이미 XDG 경로( $XDG_DATA_HOME/mdlogger )로 분리되어 있어
+#   샌드박스의 기본 데이터 디렉터리( ~/.var/app/<id>/data )에 자동 저장된다.
+#
+# 런타임: org.freedesktop.Platform 25.08 (SDK python 3.13)
+#   pyproject `requires-python >=3.13,<3.14` 와 정확히 일치한다.
+id: io.github.dusten45.MDLogger
+runtime: org.freedesktop.Platform
+runtime-version: "25.08"
+sdk: org.freedesktop.Sdk
+command: mdlogger
+
+finish-args:
+    - --share=network # Supabase / decks.json 동기화, 릴리스 정책·환경 조회
+    - --share=ipc # Qt 공유 메모리
+    - --socket=x11
+    - --socket=wayland
+    - --device=dri # Qt 렌더링(GPU)
+    - --talk-name=org.freedesktop.secrets # OS 키링(Secret Service) — refresh token 저장
+    # 사용자 데이터는 샌드박스 기본 XDG_DATA_HOME(~/.var/app/<id>/data)이므로
+    # 호스트 --filesystem 접근은 열지 않는다(더 안전).
+
+modules:
+    - name: mdlogger
+      buildsystem: simple
+      sources:
+          # 저장소 루트를 그대로 사용한다(빌드 스크립트가 git archive 로 정리된 복사본을 만듦)
+          - type: dir
+            path: ..
+      build-options:
+          build-args:
+              # 빌드 샌드박스는 기본적으로 네트워크가 없다(flatpak-builder 문서).
+              # pip 가 PyPI(PySide6·numpy·build backend 등)를 받으려면 열어야 한다.
+              - --share=network
+          env:
+              PIP_NO_CACHE_DIR: "1"
+              PYTHONDONTWRITEBYTECODE: "1"
+      build-commands:
+          - python3 -m venv /app/venv
+          - /app/venv/bin/pip install .
+          - mkdir -p /app/bin
+          - printf '#!/bin/sh\nexec /app/venv/bin/mdlogger "$@"\n' > /app/bin/mdlogger
+          - chmod +x /app/bin/mdlogger
+          - install -Dm644 flatpak/io.github.dusten45.MDLogger.desktop /app/share/applications/io.github.dusten45.MDLogger.desktop
+          - install -Dm644 icon/DuelistCup.png /app/share/icons/hicolor/256x256/apps/io.github.dusten45.MDLogger.png
