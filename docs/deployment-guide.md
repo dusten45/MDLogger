@@ -34,7 +34,7 @@ Python 코드를 실행 파일로 변환하는 도구가 **PyInstaller**이고, 
 - [2. PyInstaller 파라미터 이야기](#2-pyinstaller-파라미터-이야기)
 - [3. MDLogger.spec 파일 해설](#3-mdloggerspec-파일-해설)
 - [4. 공통 준비 단계 (모든 OS 공통)](#4-공통-준비-단계-모든-os-공통)
-- [5. OS별 빌드 방법](#5-os별-빌드-방법)
+- [5. OS별 빌드 방법](#5-os별-빌드-방법) (Linux는 Flatpak 권장 §5의 🐧참고)
 - [6. GitHub Releases 탭에 올리기](#6-github-releases-탭에-올리기)
 - [7. 릴리스 정책 (온라인 차단/킬 스위치)](#7-릴리스-정책-온라인-차단킬-스위치)
 - [8. 자주 겪는 실수와 꿀팁](#8-자주-겪는-실수와-꿀팁)
@@ -317,6 +317,52 @@ uv run python -m mdlogger.checksum dist/MDLogger
 - PySide6가 Qt 플랫폼 플러그인은 번들하지만, 타 시스템에서 `libGL`,
   `libxkbcommon`, `xcb` 같은 시스템 라이브러리가 부족하면 안 뜰 수 있습니다.
   이 경우 **AppImage**로 감싸는 배포 방식을 고려해 보세요.
+
+#### 🐧 Linux — Flatpak 권장 (배포판 파편화 해결)
+
+PyInstaller onedir은 배포판마다 glibc·시스템 라이브러리가 달라 **"다른
+컴퓨터에서 그대로 실행"**이 보장되지 않습니다. 여러 배포판(Debian/Ubuntu,
+Fedora, Arch…)에 **하나의 산출물로 배포**하려면 **Flatpak**을 쓰세요. Windows의
+Inno Setup 설치기와 비슷하게, 최종 사용자가 `flatpak install` 한 번으로 앱·
+바탕화면 메뉴·아이콘까지 받아 갑니다.
+
+- 빌드 방식: PyInstaller 없이 **Python venv + `pip install .`** 로 소스를
+  `/app/venv`에 설치합니다 (`flatpak/io.github.dusten45.MDLogger.yaml`).
+- 사용자 데이터(`decks.json`, `games.db`)는 이미 XDG 경로(`$XDG_DATA_HOME/`
+  `mdlogger`)로 분리되어 있어 샌드박스 기본 데이터 폴더에 자동 저장됩니다.
+  Windows에서 `Program Files` 쓰기 권한 때문에 설치 위치를 바꾼 그 문제는
+  Linux에서는 애초에 없습니다.
+- 온라인 기능(로그인·동기화·`decks.json` 갱신)은 `--share=network`만으로, OS
+  키링은 `--talk-name=org.freedesktop.secrets`(Secret Service)로 접근합니다.
+
+빌드 (저장소에서):
+
+```bash
+# 1) 설정 주입 (flatpak 에선 소스를 그대로 설치하므로 그대로 실행)
+MDLOGGER_SUPABASE_URL=<hosted project url> \
+MDLOGGER_SUPABASE_ANON_KEY=<hosted anon key> \
+    uv run python scripts/generate_build_config.py
+
+# 2) 빌드·설치 (flatpak-builder + FreeDesktop SDK 25.08 자동 안내)
+./scripts/flatpak_build.sh
+
+# 3) 실행 / 확인
+flatpak run io.github.dusten45.MDLogger
+flatpak list | grep MDLogger
+```
+
+**Flatpak 빌드 참고 사항**
+
+- **런타임:** `org.freedesktop.Platform/25.08`을 쓰면 SDK python이 **3.13**이라
+  `requires-python >=3.13,<3.14`와 정확히 맞습니다.
+- **플랫폼/아키텍처:** PySide6 manylinux wheel이 `x86_64`(·`aarch64`)에 맞춰
+  다운로드되어 설치됩니다. 온라인 상태에서 빌드해야 합니다.
+- **장기 유지:** `flatpak-builder --user --install`은 매번 빌드하지만
+  `--state-dir` 캐시로 덜 반복됩니다. 배포판별 패키징(.deb/.rpm)을 하나씩
+  만들 필요가 없습니다.
+- **개별 실행 파일 배포(선택):** `flatpak build-bundle`로 `.flatpak`(사용자가
+  `flatpak install *.flatpak`) 또는 `.flatpakref`를 뽑을 수 있습니다. 스크립트에
+  `FLATPAK_BUNDLE=<경로/이름.flatpak>` 환경변수로 예시가 있습니다.
 
 ---
 

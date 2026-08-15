@@ -30,7 +30,7 @@ from .ui.theme import apply_theme
 
 def main() -> None:
     app = QApplication(sys.argv)
-    app.setApplicationName("MD WCQ 로거")
+    app.setApplicationName("MDLogger")
     _app_icon = application_icon()
     if _app_icon is not None:
         app.setWindowIcon(_app_icon)  # 모든 창의 타이틀바·태스크바 아이콘
