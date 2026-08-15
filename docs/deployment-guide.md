@@ -335,7 +335,7 @@ Inno Setup 설치기와 비슷하게, 최종 사용자가 `flatpak install` 한 
 - 온라인 기능(로그인·동기화·`decks.json` 갱신)은 `--share=network`만으로, OS
   키링은 `--talk-name=org.freedesktop.secrets`(Secret Service)로 접근합니다.
 
-빌드 (저장소에서):
+빌드 (저장소에서, flatpak-builder 필요):
 
 ```bash
 # 1) 설정 주입 (flatpak 에선 소스를 그대로 설치하므로 그대로 실행)
@@ -343,10 +343,22 @@ MDLOGGER_SUPABASE_URL=<hosted project url> \
 MDLOGGER_SUPABASE_ANON_KEY=<hosted anon key> \
     uv run python scripts/generate_build_config.py
 
-# 2) 빌드·설치 (flatpak-builder + FreeDesktop SDK 25.08 자동 안내)
-./scripts/flatpak_build.sh
+# 2) 정리된 소스 스냅숏 (커밋된 파일만: .venv·dist 등 제외)
+STAGE="$(mktemp -d)"
+git ls-files -c -o --exclude-standard | tar -cf - -T - | tar -xf - -C "$STAGE"
+# 생성 설정 모듈은 .gitignore 라서 스냅숏에 빠지므로 명시적으로 복사
+cp src/mdlogger/remote/_bundled_config.py "$STAGE/src/mdlogger/remote/"
 
-# 3) 실행 / 확인
+# 3) 빌드·설치 (free-desktop SDK 25.08 + Python 3.13)
+flatpak-builder --user --install --force-clean \
+  --state-dir="$STAGE/state" --repo="$STAGE/repo" \
+  "$STAGE/build" "$STAGE/flatpak/io.github.dusten45.MDLogger.yaml"
+
+# 4) 단일 실행 파일(.flatpak)로 뽑기 (Releases 업로드용)
+flatpak build-bundle "$STAGE/repo" dist/linux/MDLogger.flatpak \
+  io.github.dusten45.MDLogger
+
+# 5) 실행 / 확인
 flatpak run io.github.dusten45.MDLogger
 flatpak list | grep MDLogger
 ```
@@ -360,9 +372,12 @@ flatpak list | grep MDLogger
 - **장기 유지:** `flatpak-builder --user --install`은 매번 빌드하지만
   `--state-dir` 캐시로 덜 반복됩니다. 배포판별 패키징(.deb/.rpm)을 하나씩
   만들 필요가 없습니다.
-- **개별 실행 파일 배포(선택):** `flatpak build-bundle`로 `.flatpak`(사용자가
-  `flatpak install *.flatpak`) 또는 `.flatpakref`를 뽑을 수 있습니다. 스크립트에
-  `FLATPAK_BUNDLE=<경로/이름.flatpak>` 환경변수로 예시가 있습니다.
+- **개별 실행 파일 배포(권장):** 위 4단계의 `flatpak build-bundle`로 `.flatpak`
+  하나를 만들고, 이것을 GitHub Releases에 올리면 사용자가
+  `flatpak install ./MDLogger.flatpak`로 설치합니다. 사용자는 Flatpak과
+  (설치 시 런타임을 받으므로)인터넷이 필요합니다.
+- **참고:** `.iss`(Windows 설치기)와 마찬가지로 배포 빌드 스크립트는 커밋하지
+  않는 로컬 전용입니다. 이 문서에서 보여주는 원시 명령이 단일 출처입니다.
 
 ---
 
