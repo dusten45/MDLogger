@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
+    QDialog,
     QMainWindow,
     QMessageBox,
     QStackedWidget,
@@ -14,6 +15,7 @@ from ..enums import RESULT_LABELS
 from ..game_service import GameService
 from ..game_sync.coordinator import SyncCoordinator
 from ..game_sync.models import SyncStatus
+from ..models import GameMode, RankStanding, StandingKind
 from ..profiles import ProfileContext, ProfileKind
 from .detail_view import DetailView
 from .result_view import ResultView
@@ -39,6 +41,9 @@ class MainWindow(QMainWindow):
         self._stats = None  # 지연 생성되는 통계 창
         self._sync: SyncCoordinator | None = None
         self._sync_status: SyncStatus | None = None
+        self._modes: list = []
+        self._mode_by_id: dict[str, GameMode] = {}
+        self._current_mode_id: str | None = None
 
         self.setWindowTitle("MDLogger")
         self.resize(420, 680)
@@ -56,10 +61,13 @@ class MainWindow(QMainWindow):
         self._result_view.undo_requested.connect(self.on_undo)
         self._result_view.stats_requested.connect(self.open_stats)
         self._result_view.account_requested.connect(self.account_requested)
+        self._result_view.mode_changed.connect(self.on_mode_changed)
+        self._result_view.settings_requested.connect(self.open_settings)
         # 화면2 시그널
         self._detail_view.back_requested.connect(self.show_result)
         self._detail_view.confirmed.connect(self.on_confirm)
 
+        self._load_modes()
         self.refresh_header()
         self.show_result()
 
@@ -86,16 +94,61 @@ class MainWindow(QMainWindow):
         self._current_result = None
         self._stack.setCurrentWidget(self._result_view)
 
+    def _load_modes(self) -> None:
+        """활성 모드 목록을 로드하고 기본/마지막 모드를 결정한다 (spec §6.1)."""
+        self._modes = self._games.get_active_play_modes()
+        self._mode_by_id = {
+            str(m["id"]): GameMode(
+                id=str(m["id"]),
+                standing_kind=StandingKind(str(m["standing_kind"])),
+                display_name=str(m["display_name"]),
+                play_context_id=m["play_context_id"],
+                sort_order=int(m["sort_order"] or 0),
+                is_active=bool(m["is_active"]),
+                season_label=m["season_label"],
+            )
+            for m in self._modes
+        }
+        self._result_view.set_modes(self._modes)
+        self._current_mode_id = self._games.resolve_default_mode_id()
+        if self._current_mode_id is not None:
+            self._result_view.set_mode(self._current_mode_id)
+        # 활성 모드가 없으면 승/패를 비활성화해 무모드 저장을 막는다(spec §2.5-7).
+        self._result_view.set_result_buttons_enabled(self._current_mode_id is not None)
+
+    def _current_mode(self) -> GameMode | None:
+        if self._current_mode_id is None:
+            return None
+        return self._mode_by_id.get(self._current_mode_id)
+
+    def on_mode_changed(self, mode_id: str) -> None:
+        self._current_mode_id = mode_id
+
     def show_detail(self, result: str) -> None:
         self._current_result = result
         # decks.json 편집 사항을 매 입력마다 반영
         self._decks = load_decks()
         self._detail_view.form.set_decks(self._decks)
+        mode = self._current_mode()
+        self._detail_view.set_mode(mode)
         self._detail_view.set_result(result)
         self._detail_view.form.reset(
-            score_base=self._games.get_last_score(),
-            my_deck=self._games.get_last_my_deck(),
+            score_base=0, my_deck=self._games.get_last_my_deck()
         )
+        if mode is not None:
+            kind = mode.standing_kind.value
+            if kind == StandingKind.EVENT_POINTS.value:
+                self._detail_view.form.set_score_base(
+                    self._games.get_last_score(mode.id)
+                )
+            elif kind == StandingKind.RANK.value:
+                standing = self._games.get_last_standing(mode.id)
+                if standing is not None:
+                    self._detail_view.form.set_rank_before(*standing)
+            elif kind == StandingKind.RATING.value:
+                rating = self._games.get_last_rating(mode.id)
+                if rating is not None:
+                    self._detail_view.form.set_rating_before(rating)
         self._detail_view.form.focus_deck()
         self._stack.setCurrentWidget(self._detail_view)
 
@@ -103,8 +156,14 @@ class MainWindow(QMainWindow):
     def on_confirm(self, values: dict) -> None:
         if self._current_result is None:
             return
+        mode = self._current_mode()
         record = {**values, "result": self._current_result}
+        if mode is not None:
+            record["standing_kind"] = mode.standing_kind.value
+            record["play_context_id"] = mode.play_context_id
         self._games.insert_game(record)
+        if mode is not None:
+            self._games.set_last_used_mode(mode.id)
         self.request_sync()
         self.refresh_header()
         self._refresh_stats()
@@ -114,10 +173,7 @@ class MainWindow(QMainWindow):
         last = self._games.get_last_game()
         if last is None:
             return
-        summary = (
-            f"{RESULT_LABELS.get(last['result'], last['result'])} · "
-            f"{last['opp_deck']} · {last['score_after']}점"
-        )
+        summary = self._record_summary(last)
         reply = QMessageBox.question(
             self,
             "마지막 기록 취소",
@@ -130,6 +186,38 @@ class MainWindow(QMainWindow):
             self.request_sync()
             self.refresh_header()
             self._refresh_stats()
+
+    @staticmethod
+    def _record_summary(row) -> str:
+        """모드별 확인 요약 (spec §6.3: 점수전=점수, 랭크전=골드 3 → 골드 2, 레이팅=rating)."""
+        kind = row["standing_kind"]
+        result = RESULT_LABELS.get(row["result"], row["result"])
+        if kind == StandingKind.RANK.value:
+            before = (
+                RankStanding(row["rank_tier_before"], int(row["rank_division_before"]))
+                if row["rank_tier_before"] and row["rank_division_before"] is not None
+                else None
+            )
+            after = (
+                RankStanding(row["rank_tier_after"], int(row["rank_division_after"]))
+                if row["rank_tier_after"] and row["rank_division_after"] is not None
+                else None
+            )
+            if before is not None and after is not None:
+                if before == after:
+                    standing = f"{after.label} 유지"
+                else:
+                    standing = f"{before.label} → {after.label}"
+            else:
+                standing = "랭크"
+            return f"{result} · {row['opp_deck']} · {standing}"
+        if kind == StandingKind.RATING.value:
+            rating = row["rating_after"] if row["rating_after"] is not None else "—"
+            return f"{result} · {row['opp_deck']} · 레이팅 {rating}"
+        score = (
+            row["event_points_after"] if row["event_points_after"] is not None else 0
+        )
+        return f"{result} · {row['opp_deck']} · {score}점"
 
     def open_stats(self) -> None:
         from .stats_window import StatsWindow
@@ -145,6 +233,16 @@ class MainWindow(QMainWindow):
         self._stats.show()
         self._stats.raise_()
         self._stats.activateWindow()
+
+    def open_settings(self) -> None:
+        """기본 모드 설정 대화상자를 연다 (spec §6.4)."""
+        from .settings_dialog import SettingsDialog
+
+        dialog = SettingsDialog(self._games, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        self._load_modes()
+        self.refresh_header()
 
     def close_profile_windows(self) -> None:
         """프로필 전환 전에 이 범위의 보조 창과 메인 창을 닫고 삭제를 예약한다.
@@ -183,6 +281,27 @@ class MainWindow(QMainWindow):
         wins, losses = self._games.get_today_record()
         self._result_view.set_today_record(wins, losses)
         self._result_view.set_undo_enabled(self._games.count_games() > 0)
+        self._result_view.set_mode_status(self._mode_status_text())
+
+    def _mode_status_text(self) -> str:
+        """활성 모드별 현재 상태 한 줄 (A5)."""
+        parts = []
+        for mode in self._modes:
+            kind = str(mode["standing_kind"])
+            name = str(mode["display_name"])
+            if kind == StandingKind.RANK.value:
+                standing = self._games.get_last_standing(str(mode["id"]))
+                if standing is not None:
+                    tier, division = standing
+                    parts.append(f"{name} {RankStanding(tier, division).label}")
+            elif kind == StandingKind.RATING.value:
+                rating = self._games.get_last_rating(str(mode["id"]))
+                if rating is not None:
+                    parts.append(f"{name} {rating}")
+            else:
+                score = self._games.get_last_score(str(mode["id"]))
+                parts.append(f"{name} {score}")
+        return "  ·  ".join(parts)
 
     def _refresh_stats(self) -> None:
         if self._stats is not None and self._stats.isVisible():

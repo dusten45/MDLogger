@@ -35,7 +35,6 @@ def remote_game(
         "opp_deck": "상대 덱",
         "turns": turns,
         "end_reason": "regular",
-        "score_after": 1500,
         "note": note,
         "play_context_id": None,
         "standing_kind": None,
@@ -46,7 +45,7 @@ def remote_game(
         "rating_before": None,
         "rating_after": None,
         "event_points_before": None,
-        "event_points_after": None,
+        "event_points_after": 1500,
         "timezone_offset_minutes": 540,
         "deleted_at": deleted_at,
         "change_version": version,
@@ -66,7 +65,10 @@ def local_payload(*, note: str, turns: int = 4) -> dict:
         "opp_deck": "상대 덱",
         "turns": turns,
         "end_reason": "regular",
-        "score_after": 1500,
+        "standing_kind": "event_points",
+        "play_context_id": "dc_cup_2026_08",
+        "event_points_before": 0,
+        "event_points_after": 1500,
         "note": note,
     }
 

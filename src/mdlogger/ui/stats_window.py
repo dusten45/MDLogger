@@ -44,11 +44,15 @@ from PySide6.QtWidgets import (
 
 from ..enums import (
     END_REASON_LABELS,
+    RANK_TIER_INDEX,
+    RANK_TIER_LABELS,
+    RANK_TIERS,
     RESULT_LABELS,
     TURN_ORDER_LABELS,
     label,
 )
 from ..game_service import GameService
+from ..models import StandingKind
 from ..paths import DB_PATH
 from ..profiles import ProfileContext, ProfileKind
 from .edit_dialog import EditDialog
@@ -62,7 +66,7 @@ from .theme import (
     font_for_role,
     set_style_property,
 )
-from .widgets import Card, SingleSelect
+from .widgets import Card, FlowLayout, SingleSelect
 
 # 통계 창 카드 배치 breakpoint (logical px). §9.3: 넓은 3+2 / 중간 2+2+1 / 좁은 1열.
 _CARD_WIDE = 720
@@ -150,16 +154,34 @@ class StatsWindow(QWidget):
         self.resize(760, 600)
         self.setMinimumWidth(360)
 
-        self._tabs = QTabWidget()
-        self._stats_tab = self._build_stats_tab()
-        self._records_tab = self._build_records_tab()
-        self._tabs.addTab(self._stats_tab, "통계")
-        self._tabs.addTab(self._records_tab, "기록 관리")
+        self._modes = self._games.get_play_modes()
+        self._mode_id: str | None = None  # None = 전체
+        self._mode_name_by_ctx = {
+            str(m["play_context_id"]): str(m["display_name"]) for m in self._modes
+        }
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(
             METRICS.space_2, METRICS.space_2, METRICS.space_2, METRICS.space_2
         )
+
+        # 상단 모드 필터: 전체 / 각 활성 모드 (spec §6.5, A1)
+        filter_row = QHBoxLayout()
+        filter_caption = QLabel("모드")
+        set_style_property(filter_caption, "tone", "muted")
+        filter_caption.setFont(font_for_role(filter_caption.font(), FontRole.LABEL))
+        filter_row.addWidget(filter_caption)
+        self._mode_filter = SingleSelect(self._mode_options())
+        self._mode_filter.setValue("all")
+        self._mode_filter.changed.connect(self._on_mode_filter)
+        filter_row.addWidget(self._mode_filter, 1)
+        outer.addLayout(filter_row)
+
+        self._tabs = QTabWidget()
+        self._stats_tab = self._build_stats_tab()
+        self._records_tab = self._build_records_tab()
+        self._tabs.addTab(self._stats_tab, "통계")
+        self._tabs.addTab(self._records_tab, "기록 관리")
         outer.addWidget(self._tabs)
 
         # 시스템 테마가 바뀌면 pyqtgraph도 함께 갱신한다.
@@ -234,31 +256,22 @@ class StatsWindow(QWidget):
         v.addWidget(self._matchup_stack, 1)
 
         # 내보내기 / 가져오기
-        # 버튼 4개를 한 행에 두면 최소 폭(360px)에서 넘치므로, 휴대용 아카이브 동작은
-        # 하단에 별도 행으로 배치해 항상 넘치지 않게 한다.
-        ex = QHBoxLayout()
-        ex.addStretch(1)
+        # 버튼 4개를 FlowLayout에 두어 좁은 폭(380px)이나 글자 확대 시에도
+        # 줄바꿈되어 가로 넘침이 생기지 않게 한다(spec §7.3).
+        ex = FlowLayout(spacing=METRICS.space_2)
         csv_btn = QPushButton("CSV 내보내기")
         xlsx_btn = QPushButton("XLSX 내보내기")
-        set_style_property(csv_btn, "role", "secondary")
-        set_style_property(xlsx_btn, "role", "secondary")
-        csv_btn.clicked.connect(self._export_csv)
-        xlsx_btn.clicked.connect(self._export_xlsx)
-        ex.addWidget(csv_btn)
-        ex.addWidget(xlsx_btn)
-        v.addLayout(ex)
-
-        portable_ex = QHBoxLayout()
-        portable_ex.addStretch(1)
         portable_export_btn = QPushButton("휴대용 아카이브 내보내기")
         portable_import_btn = QPushButton("휴대용 아카이브 가져오기")
-        set_style_property(portable_export_btn, "role", "secondary")
-        set_style_property(portable_import_btn, "role", "secondary")
+        for btn in (csv_btn, xlsx_btn, portable_export_btn, portable_import_btn):
+            set_style_property(btn, "role", "secondary")
+        csv_btn.clicked.connect(self._export_csv)
+        xlsx_btn.clicked.connect(self._export_xlsx)
         portable_export_btn.clicked.connect(self._export_portable_archive)
         portable_import_btn.clicked.connect(self._import_portable)
-        portable_ex.addWidget(portable_export_btn)
-        portable_ex.addWidget(portable_import_btn)
-        v.addLayout(portable_ex)
+        for btn in (csv_btn, xlsx_btn, portable_export_btn, portable_import_btn):
+            ex.addWidget(btn)
+        v.addLayout(ex)
 
         return w
 
@@ -272,10 +285,12 @@ class StatsWindow(QWidget):
         )
         layout.setSpacing(METRICS.space_2)
 
-        ctitle = QLabel("점수 시계열")
-        set_style_property(ctitle, "role", "section")
-        ctitle.setFont(font_for_role(ctitle.font(), FontRole.SECTION))
-        layout.addWidget(ctitle)
+        self._chart_title = QLabel("점수 시계열")
+        set_style_property(self._chart_title, "role", "section")
+        self._chart_title.setFont(
+            font_for_role(self._chart_title.font(), FontRole.SECTION)
+        )
+        layout.addWidget(self._chart_title)
 
         # 0: 그래프 / 1: 데이터 적음 안내 / 2: 빈 상태
         self._plot_stack = QStackedWidget()
@@ -310,12 +325,13 @@ class StatsWindow(QWidget):
             "ID",
             "시각",
             "결과",
+            "모드",
             "선/후공",
             "내 덱",
             "상대 덱",
             "턴",
             "종료",
-            "점수",
+            "상태",
             "메모",
         ]
         self._rtable = _make_table(headers)
@@ -327,7 +343,7 @@ class StatsWindow(QWidget):
         self._rtable.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         rhead = self._rtable.horizontalHeader()
         rhead.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        rhead.setSectionResizeMode(9, QHeaderView.ResizeMode.Stretch)  # 메모 늘림
+        rhead.setSectionResizeMode(10, QHeaderView.ResizeMode.Stretch)  # 메모 늘림
         # 긴 덱 이름은 열을 무한히 넓히지 않고 최대 폭에서 elide + tooltip으로 처리(§9.4)
         rhead.setMaximumSectionSize(280)
         self._rtable.doubleClicked.connect(self._edit_selected)
@@ -410,8 +426,25 @@ class StatsWindow(QWidget):
         self._refresh_matchups()
         self._refresh_records()
 
+    def _mode_options(self) -> list[tuple[str, str]]:
+        return [("all", "전체")] + [
+            (str(m["id"]), str(m["display_name"])) for m in self._modes
+        ]
+
+    def _on_mode_filter(self, value: str) -> None:
+        self._mode_id = None if value == "all" else value
+        self.refresh()
+
+    def _selected_mode(self):
+        if self._mode_id is None:
+            return None
+        for mode in self._modes:
+            if mode["id"] == self._mode_id:
+                return mode
+        return None
+
     def _refresh_cards(self) -> None:
-        s = self._games.get_summary()
+        s = self._games.get_summary(self._mode_id)
         self._card_total.set_value(f"{s['total']}판 {s['wins']}승 {s['losses']}패")
         self._card_overall.set_value(f"{s['winrate']:.1f}%")
         self._card_first.set_value(
@@ -423,31 +456,70 @@ class StatsWindow(QWidget):
         self._card_turns.set_value(f"{s['avg_turns']:.1f}")
 
     def _refresh_plot(self) -> None:
-        series = self._games.get_score_series()
         colors = self._colors
         self._plot.clear()
-
-        if not series:
-            self._plot_stack.setCurrentWidget(self._empty_label)
+        mode = self._selected_mode()
+        if mode is None:
+            # A1: 전체에서는 그래프를 그리지 않는다 (숫자 통계만)
+            self._chart_title.setText("추세")
+            self._sparse_label.setText(
+                "전체에서는 그래프를 표시하지 않습니다.\n모드를 선택하면 추세가 표시됩니다."
+            )
+            self._plot_stack.setCurrentWidget(self._sparse_label)
             return
+        kind = mode["standing_kind"]
+        if kind == "rank":
+            self._chart_title.setText("랭크 진행")
+            self._plot.setLabel("left", "랭크", color=colors.chart_axis)
+            self._set_rank_axis_ticks()
+            self._render_series(self._games.get_rank_series(self._mode_id), "rank")
+        elif kind == "rating":
+            self._chart_title.setText("레이팅 추이")
+            self._plot.setLabel("left", "레이팅", color=colors.chart_axis)
+            self._render_series(self._games.get_rating_series(self._mode_id), "rating")
+        else:
+            self._chart_title.setText("누적 점수")
+            self._plot.setLabel("left", "누적 점수", color=colors.chart_axis)
+            self._render_series(self._games.get_score_series(self._mode_id), "score")
 
+    def _set_rank_axis_ticks(self) -> None:
+        """랭크 그래프 Y축 tick을 사람이 읽는 티어 이름으로 설정한다(spec §5.5)."""
+        axis = self._plot.getAxis("left")
+        ticks = [(index * 10, label) for index, (_, label) in enumerate(RANK_TIERS)]
+        axis.setTicks([ticks])
+
+    def _render_series(self, rows, kind: str) -> None:
+        """모드별 시계열을 그린다. 승/패는 색상 외 marker 모양으로 구분한다(§9.3)."""
+        colors = self._colors
         xs: list[float] = []
-        ys: list[int] = []
+        ys: list[float] = []
         brushes = []
         symbols = []
-        labels = []
-        for row in series:
+        tips: list[tuple[str, str]] = []
+        for row in rows:
             try:
                 ts = datetime.fromisoformat(row["played_at"]).timestamp()
             except (TypeError, ValueError):
                 continue
+            if kind == "rank":
+                tier = row["rank_tier_after"]
+                division = row["rank_division_after"]
+                if tier is None or division is None:
+                    continue
+                y = RANK_TIER_INDEX[tier] * 10 - int(division)
+                value_text = f"{RANK_TIER_LABELS.get(tier, tier)} {division}"
+            elif kind == "rating":
+                y = row["rating_after"] or 0
+                value_text = f"레이팅 {y:,}"
+            else:
+                y = row["event_points_after"] or 0
+                value_text = f"점수 {y:,}"
             xs.append(ts)
-            ys.append(row["score_after"] or 0)
+            ys.append(float(y))
             is_win = row["result"] == "win"
             brushes.append(pg.mkBrush(colors.success if is_win else colors.danger))
-            # 승/패는 색상 외에도 marker 모양으로 구분한다(§9.3 색맹 대비)
             symbols.append("o" if is_win else "x")
-            labels.append(row["played_at"] or "")
+            tips.append((row["played_at"] or "", value_text))
 
         if not xs:
             self._plot_stack.setCurrentWidget(self._empty_label)
@@ -455,15 +527,17 @@ class StatsWindow(QWidget):
 
         if len(xs) < _PLOT_MIN_POINTS:
             self._sparse_label.setText(
-                f"기록이 {len(xs)}개뿐이라 추세를 표시하지 않습니다.\n최근 점수: {ys[-1]:,}"
+                f"기록이 {len(xs)}개뿐이라 추세를 표시하지 않습니다.\n최근 {tips[-1][1]}"
             )
             self._plot_stack.setCurrentWidget(self._sparse_label)
             return
 
-        def _tip(x: float, y: float, data: str | None) -> str:
-            # hover 시 정확한 점수/시각을 tooltip으로 제공한다 (§9.3)
-            when = data or ""
-            return f"{when}\n점수 {y:,.0f}" if when else f"점수 {y:,.0f}"
+        def _tip(x: float, y: float, data: tuple[str, str] | None) -> str:
+            # hover 시 정확한 값/시각을 tooltip으로 제공한다 (§9.3)
+            if data is None:
+                return ""
+            when, value = data
+            return f"{when}\n{value}" if when else value
 
         self._plot_stack.setCurrentWidget(self._plot)
         self._plot.plot(xs, ys, pen=pg.mkPen(colors.chart_primary, width=2))
@@ -476,7 +550,7 @@ class StatsWindow(QWidget):
             size=11,
             hoverable=True,
             tip=_tip,
-            data=labels,
+            data=tips,
         )
         self._plot.addItem(scatter)
 
@@ -484,7 +558,7 @@ class StatsWindow(QWidget):
         tf = self._filter.value()
         if tf == "all":
             tf = None
-        data = self._games.get_deck_matchups(tf)
+        data = self._games.get_deck_matchups(tf, self._mode_id)
         self._mtable.setRowCount(len(data))
         for i, row in enumerate(data):
             self._mtable.setItem(i, 0, _cell(row["deck"]))
@@ -494,8 +568,51 @@ class StatsWindow(QWidget):
             self._mtable.setItem(i, 4, _cell(f"{row['winrate']:.1f}%", center=True))
         self._matchup_stack.setCurrentIndex(1 if not data else 0)
 
+    def _mode_badge(self, row) -> str:
+        """기록 행의 모드 배지 (spec §6.5)."""
+        kind = row["standing_kind"]
+        if kind == StandingKind.RANK.value:
+            return "랭크"
+        if kind == StandingKind.RATING.value:
+            return "레이팅"
+        ctx = row["play_context_id"]
+        return self._mode_name_by_ctx.get(ctx, "점수")
+
+    def _record_state(self, row) -> str:
+        """기록 행의 상태 변화 표시 (spec §6.5)."""
+        kind = row["standing_kind"]
+        if kind == StandingKind.RANK.value:
+            before_tier = row["rank_tier_before"]
+            before_div = row["rank_division_before"]
+            after_tier = row["rank_tier_after"]
+            after_div = row["rank_division_after"]
+            if (
+                before_tier
+                and before_div is not None
+                and after_tier
+                and after_div is not None
+            ):
+                b = f"{RANK_TIER_LABELS.get(before_tier, before_tier)} {before_div}"
+                a = f"{RANK_TIER_LABELS.get(after_tier, after_tier)} {after_div}"
+                return f"{b} → {a}" if b != a else f"{a} 유지"
+            return "랭크"
+        if kind == StandingKind.RATING.value:
+            after = row["rating_after"]
+            return f"레이팅 {after}" if after is not None else "레이팅"
+        after = row["event_points_after"]
+        before = row["event_points_before"]
+        if after is None:
+            return "점수"
+        if before is not None:
+            return f"{after} ({after - before:+,})"
+        return str(after)
+
     def _refresh_records(self) -> None:
         games = self._games.get_all_games()
+        mode = self._selected_mode()
+        if mode is not None:
+            ctx = mode["play_context_id"]
+            games = [g for g in games if g["play_context_id"] == ctx]
         self._rtable.setRowCount(len(games))
         for i, g in enumerate(games):
             id_item = _cell(str(g["id"]), center=True)
@@ -505,17 +622,18 @@ class StatsWindow(QWidget):
             self._rtable.setItem(
                 i, 2, _cell(label(RESULT_LABELS, g["result"]), center=True)
             )
+            self._rtable.setItem(i, 3, _cell(self._mode_badge(g), center=True))
             self._rtable.setItem(
-                i, 3, _cell(label(TURN_ORDER_LABELS, g["turn_order"]), center=True)
+                i, 4, _cell(label(TURN_ORDER_LABELS, g["turn_order"]), center=True)
             )
-            self._rtable.setItem(i, 4, _cell(g["my_deck"] or ""))
-            self._rtable.setItem(i, 5, _cell(g["opp_deck"] or ""))
-            self._rtable.setItem(i, 6, _cell(str(g["turns"]), center=True))
+            self._rtable.setItem(i, 5, _cell(g["my_deck"] or ""))
+            self._rtable.setItem(i, 6, _cell(g["opp_deck"] or ""))
+            self._rtable.setItem(i, 7, _cell(str(g["turns"]), center=True))
             self._rtable.setItem(
-                i, 7, _cell(label(END_REASON_LABELS, g["end_reason"]), center=True)
+                i, 8, _cell(label(END_REASON_LABELS, g["end_reason"]), center=True)
             )
-            self._rtable.setItem(i, 8, _cell(str(g["score_after"]), center=True))
-            self._rtable.setItem(i, 9, _cell(g["note"] or ""))
+            self._rtable.setItem(i, 9, _cell(self._record_state(g), center=True))
+            self._rtable.setItem(i, 10, _cell(g["note"] or ""))
 
         self._records_stack.setCurrentIndex(1 if not games else 0)
         self._update_record_actions()

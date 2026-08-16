@@ -16,6 +16,7 @@ from .environment import refresh_from_server
 from .game_service import GameService
 from .game_sync.coordinator import SyncCoordinator
 from .game_sync.engine import SyncEngine
+from .game_sync.modes import GameModesClient
 from .paths import DATA_DIR
 from .profile_router import ProfileRouter
 from .profiles import ProfileManager
@@ -90,6 +91,9 @@ def main() -> None:
             profile,
             registered_client=registered_client,
             guest_client=guest_client,
+            modes_client=(
+                GameModesClient(remote_config) if remote_config is not None else None
+            ),
             token_provider=access_token,
             token_refresher=refresh_token,
         )

@@ -62,7 +62,10 @@ def _make_archive(tmp_path: Path, count: int = 2) -> Path:
                 "opp_deck": "싱크로 덱",
                 "turns": 3,
                 "end_reason": "regular",
-                "score_after": 1200 + i,
+                "standing_kind": "event_points",
+                "play_context_id": "dc_cup_2026_08",
+                "event_points_before": 0,
+                "event_points_after": 1200 + i,
                 "note": "",
             }
         )

@@ -23,7 +23,10 @@ def make_conn_with_rows():
             opp_deck="블루아이즈",
             turns=5,
             end_reason="regular",
-            score_after=2600,
+            standing_kind="event_points",
+            play_context_id="dc_cup_2026_08",
+            event_points_before=0,
+            event_points_after=2600,
             note="좋음",
         ),
     )
@@ -37,7 +40,10 @@ def make_conn_with_rows():
             opp_deck="엑조디아",
             turns=8,
             end_reason="surrender",
-            score_after=1300,
+            standing_kind="event_points",
+            play_context_id="dc_cup_2026_08",
+            event_points_before=0,
+            event_points_after=1300,
             note="",
         ),
     )
@@ -58,7 +64,7 @@ def test_export_csv(tmp_path):
     assert record["my_deck"] == "스네이크아이"
     assert record["opp_deck"] == "블루아이즈"
     assert record["result"] == "win"
-    assert record["score_after"] == "2600"
+    assert record["event_points_after"] == "2600"
     assert record["note"] == "좋음"
 
 
@@ -80,7 +86,10 @@ def test_export_csv_escapes_formula(tmp_path):
             "opp_deck": "=1+1",
             "turns": 5,
             "end_reason": "regular",
-            "score_after": 2600,
+            "standing_kind": "event_points",
+            "play_context_id": "dc_cup_2026_08",
+            "event_points_before": 0,
+            "event_points_after": 2600,
             "note": "@SUM(1,1)",
         },
     )
@@ -109,7 +118,7 @@ def test_export_xlsx(tmp_path):
     assert len(values) == 3
     assert values[1][COLUMNS.index("my_deck")] == "스네이크아이"
     assert values[1][COLUMNS.index("opp_deck")] == "블루아이즈"
-    assert values[1][COLUMNS.index("score_after")] == 2600  # 정수 유지
+    assert values[1][COLUMNS.index("event_points_after")] == 2600  # 정수 유지
     assert values[2][COLUMNS.index("end_reason")] == "surrender"
 
 
@@ -128,7 +137,10 @@ def test_export_xlsx_escapes_formula(tmp_path):
             "opp_deck": "=1+1",
             "turns": 5,
             "end_reason": "regular",
-            "score_after": 2600,
+            "standing_kind": "event_points",
+            "play_context_id": "dc_cup_2026_08",
+            "event_points_before": 0,
+            "event_points_after": 2600,
             "note": "+danger",
         },
     )

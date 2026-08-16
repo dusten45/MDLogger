@@ -20,11 +20,10 @@ select lives_ok(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"create","id":"11111111-1111-4111-8111-111111111111",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                      "turn_order":"first","note":"A의 비밀 메모"}}]'::jsonb
+                      "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08","note":"A의 비밀 메모"}}]'::jsonb
     ) -> 'results' -> 0 ->> 'status',
     'applied',
     'A는 RPC로 자신의 게임을 만들 수 있다'
@@ -53,8 +52,7 @@ select results_eq(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"update","id":"11111111-1111-4111-8111-111111111111",
            "expected_change_version":1,"payload":{"note":"탈취됨"}}]'::jsonb
     ) -> 'results' -> 0 ->> 'status',
@@ -63,8 +61,7 @@ select is(
 );
 
 select ok(
-    (public.apply_game_changes(
-        1, 1,
+    (public.apply_game_changes(1, 2,
         '[{"op":"update","id":"11111111-1111-4111-8111-111111111111",
            "expected_change_version":1,"payload":{"note":"탈취됨"}}]'::jsonb
      ) -> 'results' -> 0 -> 'remote') = 'null'::jsonb,
@@ -123,11 +120,10 @@ select throws_ok(
 );
 
 select throws_ok(
-    $$ select public.apply_game_changes(
-           1, 1,
+    $$ select public.apply_game_changes(1, 2,
            '[{"op":"create","id":"22222222-2222-4222-8222-222222222222",
               "payload":{"played_at":"2026-08-07T10:00:00",
-                         "result":"win","turn_order":"first"}}]'::jsonb
+                         "result":"win","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
        ) $$,
     '42501',
     'permission denied for function apply_game_changes',

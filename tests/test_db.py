@@ -25,11 +25,18 @@ def sample(**over):
         opp_deck="블루아이즈",
         turns=5,
         end_reason="regular",
-        score_after=2600,
+        standing_kind="event_points",
+        play_context_id="dc_cup_2026_08",
+        event_points_before=0,
+        event_points_after=2600,
         note="",
     )
     base.update(over)
     return base
+
+
+def _score_mode_id() -> str:
+    return "dc-cup-2026-08"
 
 
 def _today_at(t: str) -> str:
@@ -57,10 +64,17 @@ def test_played_at_autofill():
 
 def test_last_score_prefill():
     conn = make_conn()
-    assert db.get_last_score(conn) == 0  # 빈 DB -> 0
-    db.insert_game(conn, sample(played_at="2026-06-19T10:00:00", score_after=2600))
-    db.insert_game(conn, sample(played_at="2026-06-19T10:05:00", score_after=1300))
-    assert db.get_last_score(conn) == 1300
+    mode = _score_mode_id()
+    assert db.get_last_score(conn, mode) == 0  # 빈 DB -> 0
+    db.insert_game(
+        conn, sample(played_at="2026-06-19T10:00:00", event_points_after=2600)
+    )
+    db.insert_game(
+        conn, sample(played_at="2026-06-19T10:05:00", event_points_after=1300)
+    )
+    assert db.get_last_score(conn, mode) == 1300
+    # 다른 모드(랭크)에는 점수 프리필을 하지 않는다 (spec §5.1)
+    assert db.get_last_score(conn, "rank-2026-08") == 0
 
 
 def test_today_record():
@@ -75,11 +89,11 @@ def test_update_game():
     conn = make_conn()
     gid = db.insert_game(conn, sample())
     db.update_game(
-        conn, gid, sample(opp_deck="엔디미온", score_after=5200, result="lose")
+        conn, gid, sample(opp_deck="엔디미온", event_points_after=5200, result="lose")
     )
     row = db.get_all_games(conn)[0]
     assert row["opp_deck"] == "엔디미온"
-    assert row["score_after"] == 5200
+    assert row["event_points_after"] == 5200
     assert row["result"] == "lose"
 
 

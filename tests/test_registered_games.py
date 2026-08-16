@@ -123,7 +123,7 @@ def test_apply_changes_uses_versioned_rpc_and_returns_applied_and_conflict():
     assert request["url"].endswith("/rest/v1/rpc/apply_game_changes")
     assert request["headers"]["Authorization"] == "Bearer access-token"
     assert request["body"]["sync_schema_version"] == 1
-    assert request["body"]["payload_version"] == 1
+    assert request["body"]["payload_version"] == 2
     assert request["body"]["changes"][1]["expected_change_version"] == 6
 
 

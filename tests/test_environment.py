@@ -40,7 +40,10 @@ def _sample() -> dict:
         opp_deck="블루아이즈",
         turns=5,
         end_reason="regular",
-        score_after=2600,
+        standing_kind="event_points",
+        play_context_id="dc_cup_2026_08",
+        event_points_before=0,
+        event_points_after=2600,
         note="",
     )
 
@@ -135,11 +138,11 @@ def test_update_game_does_not_change_environment(monkeypatch):
     db.init_db(conn)
     gid = db.insert_game(conn, _sample())
     monkeypatch.setattr(db, "_environment_id", lambda: "md-2026-09")
-    db.update_game(conn, gid, {**_sample(), "score_after": 5200})
+    db.update_game(conn, gid, {**_sample(), "event_points_after": 5200})
     row = db.get_game(conn, gid)
     assert row is not None
     assert row["environment_version_id"] == "md-2026-08"
-    assert row["score_after"] == 5200
+    assert row["event_points_after"] == 5200
 
 
 # ----- startup refresh -----

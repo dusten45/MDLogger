@@ -15,6 +15,7 @@ LATEST_TABLES = {
     "database_metadata",
     "games",
     "import_batches",
+    "play_modes",
     "sync_conflicts",
     "sync_outbox",
     "sync_state",
@@ -99,7 +100,7 @@ def test_supported_old_databases_migrate_without_data_loss(
     assert SYNC_COLUMNS <= _columns(conn, "games")
     row = conn.execute("SELECT * FROM games").fetchone()
     assert row["played_at"] == PLAYED_AT
-    assert row["score_after"] == 2600
+    assert "score_after" not in _columns(conn, "games")  # v6에서 완전 삭제 (B-a')
     assert row["note"] == "원본 메모"
     assert row["my_deck"] == ("스네이크아이" if with_my_deck else None)
     assert row["sync_id"]
@@ -107,6 +108,11 @@ def test_supported_old_databases_migrate_without_data_loss(
     assert row["event_points_after"] is None
     assert row["sync_status"] == "pending"
     assert conn.execute("SELECT COUNT(*) FROM sync_outbox").fetchone()[0] == 1
+    # play_modes 시드 4행 + metadata 컬럼 (spec §3.1)
+    assert "play_modes" in _tables(conn)
+    assert conn.execute("SELECT COUNT(*) FROM play_modes").fetchone()[0] == 4
+    assert "default_mode" in _columns(conn, "database_metadata")
+    assert "last_used_mode" in _columns(conn, "database_metadata")
 
 
 def test_migration_5_preserves_existing_null_environment(tmp_path: Path):

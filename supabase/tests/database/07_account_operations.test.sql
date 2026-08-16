@@ -30,15 +30,13 @@ select lives_ok(
     '테스트 프로필을 만든다'
 );
 
-select public.register_or_touch_device(
-    1, 1, '77777777-7777-4777-8777-777777777777', 'PC A', '0.2.0'
+select public.register_or_touch_device(1, 2, '77777777-7777-4777-8777-777777777777', 'PC A', '0.2.0'
 );
 
-select public.apply_game_changes(
-    1, 1,
+select public.apply_game_changes(1, 2,
     '[{"op":"create","id":"11111111-1111-4111-8111-111111111111",
        "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                  "turn_order":"first","note":"비밀 메모"}}]'::jsonb
+                  "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08","note":"비밀 메모"}}]'::jsonb
 );
 
 -- export_account_data: 개인 데이터만 반환하고 분석 데이터는 제외.
@@ -107,8 +105,7 @@ select results_eq(
 );
 
 select lives_ok(
-    $$ select public.register_or_touch_device(
-           1, 1, '88888888-8888-4888-8888-888888888888', 'PC B', '0.2.0') $$,
+    $$ select public.register_or_touch_device(1, 2, '88888888-8888-4888-8888-888888888888', 'PC B', '0.2.0') $$,
     '두 번째 장치를 다시 등록한다'
 );
 

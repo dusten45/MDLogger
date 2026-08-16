@@ -34,7 +34,10 @@ def _make_guest_db(path: Path, count: int = 3) -> list[str]:
                 "opp_deck": f"상대{index}",
                 "turns": 4 + index,
                 "end_reason": "regular",
-                "score_after": 1600 + index,
+                "standing_kind": "event_points",
+                "play_context_id": "dc_cup_2026_08",
+                "event_points_before": 0,
+                "event_points_after": 1600 + index,
                 "note": f"메모{index}",
             },
         )
@@ -90,7 +93,7 @@ def test_import_preserves_values_order_and_played_at(tmp_path: Path):
         f"2026-06-{19 + i:02d}T10:00:00" for i in range(3)
     ]
     assert [row["note"] for row in rows] == ["메모0", "메모1", "메모2"]
-    assert [row["score_after"] for row in rows] == [1600, 1601, 1602]
+    assert [row["event_points_after"] for row in rows] == [1600, 1601, 1602]
     assert [row["environment_version_id"] for row in rows] == [
         "env-0",
         "env-1",
@@ -128,8 +131,8 @@ def test_import_dedups_by_sync_id_when_target_already_has_records(tmp_path: Path
     db.init_db(conn)
     conn.execute(
         "INSERT INTO games (played_at, result, turn_order, opp_deck, turns,"
-        " end_reason, score_after, note, sync_id, sync_status)"
-        " VALUES (?, 'win', 'first', '기존', 4, 'regular', 100, '기존메모', ?, 'synced')",
+        " end_reason, note, sync_id, sync_status)"
+        " VALUES (?, 'win', 'first', '기존', 4, 'regular', '기존메모', ?, 'synced')",
         (PLAYED_AT, sync_ids[0]),
     )
     conn.commit()
@@ -177,7 +180,10 @@ def test_import_checksum_mismatch_creates_new_batch(tmp_path: Path):
             "opp_deck": "새상대",
             "turns": 3,
             "end_reason": "regular",
-            "score_after": 1900,
+            "standing_kind": "event_points",
+            "play_context_id": "dc_cup_2026_08",
+            "event_points_before": 0,
+            "event_points_after": 1900,
             "note": "추가",
         },
     )
@@ -268,7 +274,10 @@ def test_import_active_wal_source_preserves_uncommitted_data(tmp_path: Path):
             "opp_deck": "미커밋상대",
             "turns": 3,
             "end_reason": "regular",
-            "score_after": 1400,
+            "standing_kind": "event_points",
+            "play_context_id": "dc_cup_2026_08",
+            "event_points_before": 0,
+            "event_points_after": 1400,
             "note": "uncommitted",
         },
     )

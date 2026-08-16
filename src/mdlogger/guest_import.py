@@ -36,7 +36,6 @@ _IMPORTED_VALUE_FIELDS = (
     "opp_deck",
     "turns",
     "end_reason",
-    "score_after",
     "note",
     "sync_id",
     "play_context_id",
@@ -83,7 +82,7 @@ def _core_fields_signature(conn: sqlite3.Connection) -> str:
     """기록 수와 핵심 필드 순서를 포함하는 안정 checksum."""
     rows = conn.execute(
         "SELECT played_at, result, turn_order, my_deck, opp_deck, turns,"
-        " end_reason, score_after, note, sync_id"
+        " end_reason, note, sync_id"
         " FROM games WHERE deleted_at IS NULL ORDER BY id"
     ).fetchall()
     digest = hashlib.sha256()
@@ -248,10 +247,11 @@ def _insert_imported_game(
         """
         INSERT INTO sync_outbox
             (game_sync_id, operation, payload_version, payload, created_at)
-        VALUES (?, 'upsert', 1, ?, ?)
+        VALUES (?, 'upsert', ?, ?, ?)
         """,
         (
             sync_id,
+            db.PAYLOAD_VERSION,
             json.dumps(values, ensure_ascii=False, separators=(",", ":")),
             _now_iso(),
         ),

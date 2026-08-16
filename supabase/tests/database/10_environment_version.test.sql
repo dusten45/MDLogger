@@ -47,10 +47,10 @@ select is(
     (public.ingest_guest_batch(
         '99999999-9999-4999-8999-999999999999',
         '77777777-7777-4777-8777-777777777777',
-        '0.1.6', 1,
+        '0.1.6', 2,
         '[{"sync_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
            "played_at_local":"2026-08-07T10:00:00",
-           "result":"win","turn_order":"first",
+           "result":"win","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08",
            "environment_version_id":"unknown-env"}]'::jsonb
     )) ->> 'rejected',
     '1',
@@ -70,10 +70,10 @@ select is(
     (public.ingest_guest_batch(
         '88888888-8888-4888-8888-888888888888',
         '77777777-7777-4777-8777-777777777777',
-        '0.1.6', 1,
+        '0.1.6', 2,
         '[{"sync_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc",
            "played_at_local":"2026-08-07T10:00:00",
-           "result":"win","turn_order":"first",
+           "result":"win","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08",
            "environment_version_id":"md-2026-08"}]'::jsonb
     )) ->> 'accepted',
     '1',
@@ -89,12 +89,11 @@ set local role authenticated;
 set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 select is(
-    (public.apply_game_changes(
-        1, 1,
+    (public.apply_game_changes(1, 2,
         '[{"op":"create","id":"dddddddd-dddd-4ddd-8ddd-dddddddddddd",
            "client_version":"0.1.6",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                      "turn_order":"first",
+                      "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08",
                       "environment_version_id":"md-2026-08"}}]'::jsonb
     ) -> 'results' -> 0 ->> 'status'),
     'applied',
@@ -115,11 +114,10 @@ set local role authenticated;
 set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 select throws_ok(
-    $$ select public.apply_game_changes(
-           1, 1,
+    $$ select public.apply_game_changes(1, 2,
            '[{"op":"create","id":"eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
               "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                         "turn_order":"first",
+                         "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08",
                          "environment_version_id":"not-registered"}}]'::jsonb
        ) $$,
     NULL, NULL,

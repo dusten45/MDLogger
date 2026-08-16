@@ -95,10 +95,14 @@ def _open_window(
 
 
 def _fill_form(window: MainWindow, *, my_deck: str, opp_deck: str) -> None:
+    """점수(이벤트) 모드로 전환하고 폼을 채운다 (spec §6.2)."""
+    window.on_mode_changed("dc-cup-2026-08")
     form = window._detail_view.form
+    form.set_mode(window._current_mode())
     form._my_deck.setEditText(my_deck)
     form._deck.setEditText(opp_deck)
-    form._score.setText("1200")
+    form._score_before.setText("1200")
+    form._score_after.setText("1200")
     form._note.setText("통합 테스트 메모")
 
 
@@ -111,11 +115,20 @@ def _make_record(**overrides: str | int) -> dict:
         "opp_deck": "싱크로 덱",
         "turns": 3,
         "end_reason": "regular",
-        "score_after": 1200,
+        "standing_kind": "event_points",
+        "play_context_id": "dc_cup_2026_08",
+        "event_points_before": 0,
+        "event_points_after": 1200,
         "note": "",
     }
     record.update(overrides)
     return record
+
+
+def _select_score_mode(stats: StatsWindow) -> None:
+    """통계 창의 모드 필터를 점수(이벤트) 모드로 설정한다 (그래프 표시용)."""
+    stats._mode_filter.setValue("dc-cup-2026-08")
+    stats._on_mode_filter("dc-cup-2026-08")
 
 
 def _open_stats(window: MainWindow, qapp: QApplication) -> StatsWindow:
@@ -200,7 +213,7 @@ def test_save_flow_clicks_win_and_persists_record(
     assert row is not None
     assert row["result"] == "win"
     assert row["opp_deck"] == "싱크로 덱"
-    assert row["score_after"] == 1200
+    assert row["event_points_after"] == 1200
     assert row["note"] == "통합 테스트 메모"
     assert "1승 0패" in window._result_view._today.text()
 
@@ -260,6 +273,7 @@ def test_stats_empty_states_and_disabled_record_actions(
     window.refresh_header()
 
     stats = _open_stats(window, qapp)
+    _select_score_mode(stats)
 
     # 데이터 없음: 그래프는 빈 상태(2번 인덱스), 기록은 빈 상태(1번 인덱스)
     assert stats._plot_stack.currentIndex() == 2
@@ -330,6 +344,7 @@ def test_stats_plot_follows_app_theme_changed_signal(
 
     controller = apply_theme(qapp, ThemeMode.LIGHT)
     stats = StatsWindow(games, DECKS, theme=controller)
+    _select_score_mode(stats)
     stats.show()
     qapp.processEvents()
     assert stats._plot.backgroundBrush().color().name().upper() == "#FFFFFF"
@@ -355,6 +370,7 @@ def test_stats_plot_background_syncs_with_theme(
     window.refresh_header()
 
     stats = _open_stats(window, qapp)
+    _select_score_mode(stats)
     qapp.setProperty("themeMode", "dark")
     stats._apply_theme()
     assert stats._plot.backgroundBrush().color().name().upper() == "#191F28"
@@ -440,9 +456,10 @@ def test_stats_window_opens_and_renders_summary_and_records(
     assert stats._card_total._value.text() == "1판 1승 0패"
     assert stats._rtable.rowCount() == 1
     assert _cell_text(stats._rtable, 0, 2) == "승"  # 결과
-    assert _cell_text(stats._rtable, 0, 5) == "싱크로 덱"  # 상대 덱
-    assert _cell_text(stats._rtable, 0, 8) == "1200"  # 점수
-    assert _cell_text(stats._rtable, 0, 9) == "통계용 기록"  # 메모
+    assert _cell_text(stats._rtable, 0, 3) == "26.08 DC컵"  # 모드 배지
+    assert _cell_text(stats._rtable, 0, 6) == "싱크로 덱"  # 상대 덱
+    assert _cell_text(stats._rtable, 0, 9) == "1200 (+1,200)"  # 상태
+    assert _cell_text(stats._rtable, 0, 10) == "통계용 기록"  # 메모
 
     window.close_profile_windows()
     games.close()
@@ -475,7 +492,7 @@ def test_edit_dialog_saves_changes_and_toggles_result(
     assert updated["note"] == "수정된 메모"
     # 저장 쪽 실제 새로고침 경로(데이터_changed → refresh)를 통해 테이블 갱신 확인
     assert _cell_text(stats._rtable, 0, 2) == "패"
-    assert _cell_text(stats._rtable, 0, 9) == "수정된 메모"
+    assert _cell_text(stats._rtable, 0, 10) == "수정된 메모"
 
     window.close_profile_windows()
     games.close()
@@ -504,7 +521,7 @@ def test_edit_dialog_cancel_discards_changes(
     unchanged = games.get_game(gid)
     assert unchanged is not None
     assert unchanged["note"] == "원본 메모"
-    assert _cell_text(stats._rtable, 0, 9) == "원본 메모"
+    assert _cell_text(stats._rtable, 0, 10) == "원본 메모"
 
     window.close_profile_windows()
     games.close()

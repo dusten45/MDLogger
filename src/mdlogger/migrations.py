@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-LATEST_SCHEMA_VERSION = 5
+LATEST_SCHEMA_VERSION = 6
 
 # 마이그레이션 사전 백업 보존 정책(운영 결정, open-items 항목 3): 백업은 내부
 # 전용이며, 새 백업을 만들면 이전 백업을 최근 keep개만 남기고 정리한다.
@@ -327,6 +327,61 @@ def _migration_5(conn: sqlite3.Connection) -> None:
     _add_column(conn, "games", "environment_version_id TEXT")
 
 
+def _migration_6(conn: sqlite3.Connection) -> None:
+    """1단계: 모드/시즌(play_modes)과 기본·마지막 모드 메타데이터, score_after 삭제.
+
+    - ``play_modes`` 테이블 생성 + 최초 오프라인 캐시용 baseline 시드 (spec §3.1).
+    - ``database_metadata``에 ``default_mode``/``last_used_mode`` 컬럼 추가 (보조 ②).
+    - ``games.score_after`` 컬럼 완전 삭제 (정책 B-a', 레거시 없음, spec §3.3).
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS play_modes (
+            id              TEXT PRIMARY KEY,
+            standing_kind   TEXT NOT NULL
+                CHECK (standing_kind IN ('rank', 'rating', 'event_points')),
+            display_name    TEXT NOT NULL,
+            play_context_id TEXT,
+            sort_order      INTEGER,
+            is_active       INTEGER NOT NULL DEFAULT 1,
+            season_label    TEXT,
+            created_at      TEXT
+        )
+        """
+    )
+    _add_column(conn, "database_metadata", "default_mode TEXT")
+    _add_column(conn, "database_metadata", "last_used_mode TEXT")
+
+    now = _now_iso()
+    seed = (
+        ("rank-2026-08", "rank", "랭크", "rank_2026_08", 0, 1, "26.08", now),
+        ("rating-2026-08", "rating", "레이팅", "rating_2026_08", 1, 1, "26.08", now),
+        (
+            "dc-cup-2026-08",
+            "event_points",
+            "26.08 DC컵",
+            "dc_cup_2026_08",
+            2,
+            1,
+            "26.08",
+            now,
+        ),
+        ("wcq-2026", "event_points", "2026 WCQ", "wcq_2026", 3, 1, "2026", now),
+    )
+    conn.executemany(
+        """
+        INSERT OR IGNORE INTO play_modes
+            (id, standing_kind, display_name, play_context_id, sort_order,
+             is_active, season_label, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        seed,
+    )
+
+    if "score_after" in _column_names(conn, "games"):
+        conn.execute("ALTER TABLE games DROP COLUMN score_after")
+
+
 Migration = Callable[[sqlite3.Connection], None]
 MIGRATIONS: dict[int, Migration] = {
     1: _migration_1,
@@ -334,6 +389,7 @@ MIGRATIONS: dict[int, Migration] = {
     3: _migration_3,
     4: _migration_4,
     5: _migration_5,
+    6: _migration_6,
 }
 
 

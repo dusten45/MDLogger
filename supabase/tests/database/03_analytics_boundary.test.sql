@@ -26,11 +26,10 @@ set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"create","id":"11111111-1111-4111-8111-111111111111",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                      "turn_order":"first","note":"개인 메모",
+                      "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08","note":"개인 메모",
                       "timezone_offset_minutes":540}}]'::jsonb
     ) -> 'results' -> 0 ->> 'status',
     'applied',
@@ -55,7 +54,7 @@ select throws_ok(
 );
 select throws_ok(
     $$ select public.ingest_guest_batch(gen_random_uuid(), gen_random_uuid(),
-                                        null, 1, '[]'::jsonb) $$,
+                                        null, 2, '[]'::jsonb) $$,
     '42501',
     'permission denied for function ingest_guest_batch',
     'authenticated는 guest ingest 함수를 실행할 수 없다'
@@ -70,7 +69,7 @@ select throws_ok(
 );
 select throws_ok(
     $$ select public.ingest_guest_batch(gen_random_uuid(), gen_random_uuid(),
-                                        null, 1, '[]'::jsonb) $$,
+                                        null, 2, '[]'::jsonb) $$,
     '42501',
     'permission denied for function ingest_guest_batch',
     'anon은 guest ingest 함수를 실행할 수 없다'
@@ -97,8 +96,7 @@ set local role authenticated;
 set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         jsonb_build_array(jsonb_build_object(
             'op', 'delete',
             'id', '11111111-1111-4111-8111-111111111111',

@@ -13,7 +13,7 @@ from .config import RemoteConfig
 from .errors import NetworkError, RemoteError, ResponseFormatError
 
 SYNC_SCHEMA_VERSION = 1
-PAYLOAD_VERSION = 1
+PAYLOAD_VERSION = 2
 
 PRIVATE_GAME_FIELDS = (
     "played_at",
@@ -23,7 +23,6 @@ PRIVATE_GAME_FIELDS = (
     "opp_deck",
     "turns",
     "end_reason",
-    "score_after",
     "note",
     "play_context_id",
     "standing_kind",

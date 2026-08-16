@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from ..enums import RESULT_COLORS, RESULTS
 from ..game_service import GameService
+from ..models import GameMode, StandingKind
 from .detail_form import DetailForm
 from .theme import METRICS, FontRole, font_for_role, set_style_property
 from .widgets import SingleSelect
@@ -46,8 +47,15 @@ class EditDialog(QDialog):
         layout.addWidget(_caption("결과"))
         layout.addWidget(self._result)
 
-        # 입력 폼
+        # 현재 모드 표시 (spec §5.4: 저장된 모드를 확인)
+        mode = self._row_mode()
+        mode_label = QLabel(f"모드: {mode.display_name if mode else '알 수 없음'}")
+        set_style_property(mode_label, "tone", "muted")
+        layout.addWidget(mode_label)
+
+        # 입력 폼 (모드별 상태 입력 분기)
         self.form = DetailForm(decks)
+        self.form.set_mode(mode)
         self.form.set_values(row)
         layout.addWidget(self.form)
 
@@ -70,6 +78,24 @@ class EditDialog(QDialog):
         buttons.accepted.connect(self._on_save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+
+    def _row_mode(self) -> GameMode | None:
+        """기존 레코드의 standing_kind/play_context_id로 편집용 GameMode 구성 (spec §6.3)."""
+        kind = self._row["standing_kind"]
+        if not kind:
+            return None
+        ctx = self._row["play_context_id"]
+        display_name = ""
+        for mode in self._games.get_play_modes():
+            if mode["play_context_id"] == ctx:
+                display_name = str(mode["display_name"])
+                break
+        return GameMode(
+            id="",
+            standing_kind=StandingKind(str(kind)),
+            display_name=display_name,
+            play_context_id=ctx,
+        )
 
     def _on_save(self) -> None:
         values = self.form.values()

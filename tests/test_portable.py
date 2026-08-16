@@ -13,6 +13,7 @@ from mdlogger.checksum import sha256_file
 from mdlogger.portable import (
     CHECKSUMS_FILENAME,
     MANIFEST_FILENAME,
+    PAYLOAD_VERSION,
     PORTABLE_FORMAT_VERSION,
     RECORDS_FILENAME,
     PortableArchiveError,
@@ -41,7 +42,10 @@ def _make_source_db(path: Path, count: int = 3) -> list[str]:
                 "opp_deck": f"상대{index}",
                 "turns": 4 + index,
                 "end_reason": "regular",
-                "score_after": 1600 + index,
+                "standing_kind": "event_points",
+                "play_context_id": "dc_cup_2026_08",
+                "event_points_before": 0,
+                "event_points_after": 1600 + index,
                 "note": f"메모{index}",
             },
         )
@@ -143,7 +147,7 @@ def test_round_trip_preserves_fields_and_registers_outbox(tmp_path: Path):
         f"2026-06-{19 + i:02d}T10:00:00" for i in range(3)
     ]
     assert [row["note"] for row in rows] == ["메모0", "메모1", "메모2"]
-    assert [row["score_after"] for row in rows] == [1600, 1601, 1602]
+    assert [row["event_points_after"] for row in rows] == [1600, 1601, 1602]
     assert [row["environment_version_id"] for row in rows] == [
         "env-0",
         "env-1",
@@ -185,8 +189,8 @@ def test_import_dedups_by_sync_id_when_target_has_records(tmp_path: Path):
     db.init_db(conn)
     conn.execute(
         "INSERT INTO games (played_at, result, turn_order, opp_deck, turns,"
-        " end_reason, score_after, note, sync_id, sync_status)"
-        " VALUES (?, 'win', 'first', '기존', 4, 'regular', 100, '기존메모', ?, 'synced')",
+        " end_reason, note, sync_id, sync_status)"
+        " VALUES (?, 'win', 'first', '기존', 4, 'regular', '기존메모', ?, 'synced')",
         (PLAYED_AT, sync_ids[0]),
     )
     conn.commit()
@@ -257,6 +261,23 @@ def test_import_rejects_unsupported_format_version(tmp_path: Path):
     manifest_path = archive / MANIFEST_FILENAME
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["format_version"] = PORTABLE_FORMAT_VERSION + 1
+    manifest_path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+
+    with pytest.raises(PortableArchiveError):
+        import_portable_archive(archive, target)
+    assert not target.exists()
+
+
+def test_import_rejects_unsupported_payload_version(tmp_path: Path):
+    source = tmp_path / "source.db"
+    target = tmp_path / "registered.db"
+    _make_source_db(source, count=1)
+    archive = tmp_path / "out.mdlogger-export"
+    export_portable_archive(archive, db.get_all_games(db.connect(source)))
+
+    manifest_path = archive / MANIFEST_FILENAME
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["payload_version"] = PAYLOAD_VERSION - 1
     manifest_path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
 
     with pytest.raises(PortableArchiveError):

@@ -15,7 +15,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const MAX_BODY_BYTES = 256 * 1024;
 const MAX_BATCH_SIZE = 200;
-const PAYLOAD_VERSION = 1;
+// 1단계 payload v2 (spec §4.5): 클라이언트 GUEST_INGEST_PAYLOAD_VERSION와 정렬한다.
+const PAYLOAD_VERSION = 2;
 const RATE_WINDOW_MINUTES = 1;
 const RATE_MAX_PER_WINDOW = 10;
 

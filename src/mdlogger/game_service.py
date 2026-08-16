@@ -26,7 +26,11 @@ class GameRepository(Protocol):
 
     def get_last_game(self) -> sqlite3.Row | None: ...
 
-    def get_last_score(self) -> int: ...
+    def get_last_score(self, mode_id: str | None = None) -> int: ...
+
+    def get_last_standing(self, mode_id: str) -> tuple[str, int] | None: ...
+
+    def get_last_rating(self, mode_id: str) -> int | None: ...
 
     def get_last_my_deck(self) -> str: ...
 
@@ -36,11 +40,39 @@ class GameRepository(Protocol):
 
     def get_all_games(self) -> list[sqlite3.Row]: ...
 
-    def get_summary(self) -> dict: ...
+    def get_summary(self, mode_id: str | None = None) -> dict: ...
 
-    def get_score_series(self) -> list[sqlite3.Row]: ...
+    def get_score_series(self, mode_id: str | None = None) -> list[sqlite3.Row]: ...
 
-    def get_deck_matchups(self, turn_filter: str | None = None) -> list[dict]: ...
+    def get_rank_series(self, mode_id: str | None = None) -> list[sqlite3.Row]: ...
+
+    def get_rating_series(self, mode_id: str | None = None) -> list[sqlite3.Row]: ...
+
+    def get_deck_matchups(
+        self, turn_filter: str | None = None, mode_id: str | None = None
+    ) -> list[dict]: ...
+
+    def get_play_modes(self) -> list[sqlite3.Row]: ...
+
+    def get_active_play_modes(self) -> list[sqlite3.Row]: ...
+
+    def get_play_mode(self, mode_id: str) -> sqlite3.Row | None: ...
+
+    def insert_play_mode(self, data: dict) -> None: ...
+
+    def update_play_mode(self, mode_id: str, data: dict) -> None: ...
+
+    def delete_play_mode(self, mode_id: str) -> None: ...
+
+    def get_default_mode(self) -> str | None: ...
+
+    def set_default_mode(self, mode_id: str | None) -> None: ...
+
+    def get_last_used_mode(self) -> str | None: ...
+
+    def set_last_used_mode(self, mode_id: str | None) -> None: ...
+
+    def resolve_default_mode_id(self) -> str | None: ...
 
 
 class SqliteGameRepository:
@@ -77,8 +109,14 @@ class SqliteGameRepository:
     def get_last_game(self) -> sqlite3.Row | None:
         return db.get_last_game(self._connection)
 
-    def get_last_score(self) -> int:
-        return db.get_last_score(self._connection)
+    def get_last_score(self, mode_id: str | None = None) -> int:
+        return db.get_last_score(self._connection, mode_id)
+
+    def get_last_standing(self, mode_id: str) -> tuple[str, int] | None:
+        return db.get_last_standing(self._connection, mode_id)
+
+    def get_last_rating(self, mode_id: str) -> int | None:
+        return db.get_last_rating(self._connection, mode_id)
 
     def get_last_my_deck(self) -> str:
         return db.get_last_my_deck(self._connection)
@@ -92,14 +130,55 @@ class SqliteGameRepository:
     def get_all_games(self) -> list[sqlite3.Row]:
         return db.get_all_games(self._connection)
 
-    def get_summary(self) -> dict:
-        return db.get_summary(self._connection)
+    def get_summary(self, mode_id: str | None = None) -> dict:
+        return db.get_summary(self._connection, mode_id)
 
-    def get_score_series(self) -> list[sqlite3.Row]:
-        return db.get_score_series(self._connection)
+    def get_score_series(self, mode_id: str | None = None) -> list[sqlite3.Row]:
+        return db.get_score_series(self._connection, mode_id)
 
-    def get_deck_matchups(self, turn_filter: str | None = None) -> list[dict]:
-        return db.get_deck_matchups(self._connection, turn_filter)
+    def get_rank_series(self, mode_id: str | None = None) -> list[sqlite3.Row]:
+        return db.get_rank_series(self._connection, mode_id)
+
+    def get_rating_series(self, mode_id: str | None = None) -> list[sqlite3.Row]:
+        return db.get_rating_series(self._connection, mode_id)
+
+    def get_deck_matchups(
+        self, turn_filter: str | None = None, mode_id: str | None = None
+    ) -> list[dict]:
+        return db.get_deck_matchups(self._connection, turn_filter, mode_id)
+
+    def get_play_modes(self) -> list[sqlite3.Row]:
+        return db.get_play_modes(self._connection)
+
+    def get_active_play_modes(self) -> list[sqlite3.Row]:
+        return db.get_active_play_modes(self._connection)
+
+    def get_play_mode(self, mode_id: str) -> sqlite3.Row | None:
+        return db.get_play_mode(self._connection, mode_id)
+
+    def insert_play_mode(self, data: dict) -> None:
+        db.insert_play_mode(self._connection, data)
+
+    def update_play_mode(self, mode_id: str, data: dict) -> None:
+        db.update_play_mode(self._connection, mode_id, data)
+
+    def delete_play_mode(self, mode_id: str) -> None:
+        db.delete_play_mode(self._connection, mode_id)
+
+    def get_default_mode(self) -> str | None:
+        return db.get_default_mode(self._connection)
+
+    def set_default_mode(self, mode_id: str | None) -> None:
+        db.set_default_mode(self._connection, mode_id)
+
+    def get_last_used_mode(self) -> str | None:
+        return db.get_last_used_mode(self._connection)
+
+    def set_last_used_mode(self, mode_id: str | None) -> None:
+        db.set_last_used_mode(self._connection, mode_id)
+
+    def resolve_default_mode_id(self) -> str | None:
+        return db.resolve_default_mode_id(self._connection)
 
 
 class GameService:
@@ -130,8 +209,14 @@ class GameService:
     def get_last_game(self) -> sqlite3.Row | None:
         return self._repository.get_last_game()
 
-    def get_last_score(self) -> int:
-        return self._repository.get_last_score()
+    def get_last_score(self, mode_id: str | None = None) -> int:
+        return self._repository.get_last_score(mode_id)
+
+    def get_last_standing(self, mode_id: str) -> tuple[str, int] | None:
+        return self._repository.get_last_standing(mode_id)
+
+    def get_last_rating(self, mode_id: str) -> int | None:
+        return self._repository.get_last_rating(mode_id)
 
     def get_last_my_deck(self) -> str:
         return self._repository.get_last_my_deck()
@@ -145,14 +230,55 @@ class GameService:
     def get_all_games(self) -> list[sqlite3.Row]:
         return self._repository.get_all_games()
 
-    def get_summary(self) -> dict:
-        return self._repository.get_summary()
+    def get_summary(self, mode_id: str | None = None) -> dict:
+        return self._repository.get_summary(mode_id)
 
-    def get_score_series(self) -> list[sqlite3.Row]:
-        return self._repository.get_score_series()
+    def get_score_series(self, mode_id: str | None = None) -> list[sqlite3.Row]:
+        return self._repository.get_score_series(mode_id)
 
-    def get_deck_matchups(self, turn_filter: str | None = None) -> list[dict]:
-        return self._repository.get_deck_matchups(turn_filter)
+    def get_rank_series(self, mode_id: str | None = None) -> list[sqlite3.Row]:
+        return self._repository.get_rank_series(mode_id)
+
+    def get_rating_series(self, mode_id: str | None = None) -> list[sqlite3.Row]:
+        return self._repository.get_rating_series(mode_id)
+
+    def get_deck_matchups(
+        self, turn_filter: str | None = None, mode_id: str | None = None
+    ) -> list[dict]:
+        return self._repository.get_deck_matchups(turn_filter, mode_id)
+
+    def get_play_modes(self) -> list[sqlite3.Row]:
+        return self._repository.get_play_modes()
+
+    def get_active_play_modes(self) -> list[sqlite3.Row]:
+        return self._repository.get_active_play_modes()
+
+    def get_play_mode(self, mode_id: str) -> sqlite3.Row | None:
+        return self._repository.get_play_mode(mode_id)
+
+    def insert_play_mode(self, data: dict) -> None:
+        self._repository.insert_play_mode(data)
+
+    def update_play_mode(self, mode_id: str, data: dict) -> None:
+        self._repository.update_play_mode(mode_id, data)
+
+    def delete_play_mode(self, mode_id: str) -> None:
+        self._repository.delete_play_mode(mode_id)
+
+    def get_default_mode(self) -> str | None:
+        return self._repository.get_default_mode()
+
+    def set_default_mode(self, mode_id: str | None) -> None:
+        self._repository.set_default_mode(mode_id)
+
+    def get_last_used_mode(self) -> str | None:
+        return self._repository.get_last_used_mode()
+
+    def set_last_used_mode(self, mode_id: str | None) -> None:
+        self._repository.set_last_used_mode(mode_id)
+
+    def resolve_default_mode_id(self) -> str | None:
+        return self._repository.resolve_default_mode_id()
 
     def export_csv(self, path: str | Path) -> None:
         export.export_csv(path, self._repository.get_all_games())
