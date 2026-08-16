@@ -31,7 +31,10 @@ def sample(note: str) -> dict:
         "opp_deck": "상대 덱",
         "turns": 4,
         "end_reason": "regular",
-        "score_after": 1500,
+        "standing_kind": "event_points",
+        "play_context_id": "dc_cup_2026_08",
+        "event_points_before": 0,
+        "event_points_after": 1500,
         "note": note,
     }
 

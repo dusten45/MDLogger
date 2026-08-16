@@ -25,6 +25,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWi
 
 from .icons import load_icon
 from .theme import METRICS, FontRole, font_for_role, set_style_property
+from .widgets import SingleSelect
 
 _RESULT_ASPECT = 4 / 3  # 세로:가로 — 세로가 조금 더 길게
 _RESULT_GAP = 12
@@ -45,7 +46,7 @@ class _ResultButton(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFont(font_for_role(self.font(), FontRole.DISPLAY))
         # 키보드 전용 조작을 쓰지 않으므로 버튼에 포커스 링을 띄우지 않는다
-        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         set_style_property(self, "role", role)
 
         self._base_size = QSize(0, 0)
@@ -110,6 +111,11 @@ class _ResultButtons(QWidget):
         self._win.clicked.connect(lambda: self.result_chosen.emit("win"))
         self._lose.clicked.connect(lambda: self.result_chosen.emit("lose"))
 
+    def set_enabled(self, enabled: bool) -> None:
+        """승/패 버튼 활성화 상태. 활성 모드가 없으면 비활성화한다(spec §2.5-7)."""
+        self._win.setEnabled(enabled)
+        self._lose.setEnabled(enabled)
+
     def hasHeightForWidth(self) -> bool:
         return True
 
@@ -148,14 +154,17 @@ class _ResultButtons(QWidget):
 
 class ResultView(QWidget):
     result_chosen = Signal(str)  # 'win' | 'lose'
+    mode_changed = Signal(str)  # play_modes.id
     undo_requested = Signal()
     stats_requested = Signal()
+    settings_requested = Signal()
     account_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
         root = QVBoxLayout(self)
+        self._root_layout = root
         root.setContentsMargins(12, 10, 12, 10)
         root.setSpacing(10)
 
@@ -168,7 +177,7 @@ class ResultView(QWidget):
         account_button = QPushButton("계정")
         account_button.setCursor(Qt.CursorShape.PointingHandCursor)
         account_button.setAccessibleName("계정 및 동기화 상태 열기")
-        account_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        account_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         set_style_property(account_button, "role", "ghost")
         account_button.clicked.connect(self.account_requested)
         account_row.addWidget(self._account_status, 1)
@@ -182,6 +191,13 @@ class ResultView(QWidget):
         set_style_property(self._today, "role", "title")
         self._today.setFont(font_for_role(self._today.font(), FontRole.TITLE))
         root.addWidget(self._today)
+
+        # 활성 모드별 현재 상태 한 줄 (A5)
+        self._mode_status = QLabel("")
+        self._mode_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._mode_status.setWordWrap(True)
+        set_style_property(self._mode_status, "tone", "muted")
+        root.addWidget(self._mode_status)
         root.addStretch(1)
 
         # 안내문: 버튼 바로 위
@@ -189,6 +205,13 @@ class ResultView(QWidget):
         prompt.setAlignment(Qt.AlignmentFlag.AlignCenter)
         set_style_property(prompt, "tone", "muted")
         root.addWidget(prompt)
+
+        # 모드 선택기 (승/패보다 낮은 시각적 우선순위, spec §6.1)
+        self._mode_select = SingleSelect([])
+        self._mode_select.setAccessibleName("기록할 경기 모드 선택")
+        self._mode_select.changed.connect(self.mode_changed)
+        self._mode_select_index = root.count()
+        root.insertWidget(self._mode_select_index, self._mode_select)
 
         # 승/패 버튼 (하단 위, 안내문 아래)
         self._buttons = _ResultButtons()
@@ -205,20 +228,43 @@ class ResultView(QWidget):
             self._undo.setIconSize(QSize(METRICS.icon_medium, METRICS.icon_medium))
         self._undo.setCursor(Qt.CursorShape.PointingHandCursor)
         self._undo.setMinimumHeight(36)
-        self._undo.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._undo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._undo.setEnabled(False)
         self._undo.clicked.connect(self.undo_requested)
         stats_btn = QPushButton("통계 / 기록")
         stats_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         stats_btn.setMinimumHeight(36)
-        stats_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        stats_btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         stats_btn.clicked.connect(self.stats_requested)
+        settings_btn = QPushButton("설정")
+        settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        settings_btn.setMinimumHeight(36)
+        settings_btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        settings_btn.clicked.connect(self.settings_requested)
         bottom.addWidget(self._undo)
         bottom.addWidget(stats_btn)
+        bottom.addWidget(settings_btn)
         root.addLayout(bottom)
 
     def set_account_status(self, text: str) -> None:
         self._account_status.setText(text)
+
+    def set_modes(self, modes) -> None:
+        """활성 모드 목록을 선택기로 설정한다 (spec §6.1, A3)."""
+        options = [(mode["id"], mode["display_name"]) for mode in modes]
+        old = self._mode_select
+        self._mode_select = SingleSelect(options)
+        self._mode_select.setAccessibleName("기록할 경기 모드 선택")
+        self._mode_select.changed.connect(self.mode_changed)
+        self._root_layout.replaceWidget(old, self._mode_select)
+        old.deleteLater()
+        self._mode_select.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def set_mode(self, mode_id: str) -> None:
+        self._mode_select.setValue(mode_id)
+
+    def mode(self) -> str | None:
+        return self._mode_select.value()
 
     def set_today_record(self, wins: int, losses: int) -> None:
         total = wins + losses
@@ -227,5 +273,13 @@ class ResultView(QWidget):
             text += f"  ·  {total}전  승률 {wins / total * 100:.0f}%"
         self._today.setText(text)
 
+    def set_mode_status(self, text: str) -> None:
+        """활성 모드별 현재 상태 한 줄 (A5)."""
+        self._mode_status.setText(text)
+
     def set_undo_enabled(self, enabled: bool) -> None:
         self._undo.setEnabled(enabled)
+
+    def set_result_buttons_enabled(self, enabled: bool) -> None:
+        """승/패 버튼 활성화 상태. 활성 모드가 없으면 비활성화한다(spec §2.5-7)."""
+        self._buttons.set_enabled(enabled)

@@ -24,7 +24,7 @@ from .client import HttpResponse, JsonHttpClient
 from .config import RemoteConfig
 from .errors import NetworkError, RemoteError, ResponseFormatError
 
-GUEST_INGEST_PAYLOAD_VERSION = 1
+GUEST_INGEST_PAYLOAD_VERSION = 2
 MAX_BATCH_SIZE = 200
 
 # 로컬 games 행에서 그대로 옮기는 분석 허용 필드(로드맵 7.4).

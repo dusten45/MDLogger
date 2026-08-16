@@ -20,7 +20,10 @@ def sample(**over) -> dict:
         "opp_deck": "블루아이즈",
         "turns": 5,
         "end_reason": "regular",
-        "score_after": 2600,
+        "standing_kind": "event_points",
+        "play_context_id": "dc_cup_2026_08",
+        "event_points_before": 0,
+        "event_points_after": 2600,
         "note": "",
     }
     record.update(over)
@@ -44,13 +47,13 @@ def test_service_preserves_record_workflow_and_statistics():
             opp_deck="엑조디아",
             turns=8,
             end_reason="surrender",
-            score_after=1300,
+            event_points_after=1300,
         )
     )
 
     assert (first_id, second_id) == (1, 2)
     assert games.count_games() == 2
-    assert games.get_last_score() == 1300
+    assert games.get_last_score("dc-cup-2026-08") == 1300
     assert games.get_last_my_deck() == "티아라멘츠"
     last_game = games.get_last_game()
     assert last_game is not None
@@ -80,7 +83,7 @@ def test_service_preserves_record_workflow_and_statistics():
             played_at="2026-06-19T10:00:00",
             result="lose",
             opp_deck="엔디미온",
-            score_after=2000,
+            event_points_after=2000,
             note="편집됨",
         ),
     )

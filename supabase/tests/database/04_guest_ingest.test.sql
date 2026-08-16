@@ -15,14 +15,14 @@ select is(
         '99999999-9999-4999-8999-999999999999',
         '77777777-7777-4777-8777-777777777777',
         '0.1.0',
-        1,
+        2,
         '[{"sync_id":"33333333-3333-4333-8333-333333333333",
            "played_at_local":"2026-08-07T12:00:00",
-           "result":"win","turn_order":"second","turns":6,
+           "result":"win","turn_order":"second","standing_kind":"event_points","play_context_id":"dc_cup_2026_08","turns":6,
            "end_reason":"regular"},
           {"sync_id":"44444444-4444-4444-8444-444444444444",
            "played_at_local":"2026-08-07T12:10:00",
-           "result":"lose","turn_order":"first",
+           "result":"lose","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08",
            "note":"이건 들어가면 안 됨"}]'::jsonb
     )) - 'batch_id',
     '{"accepted":1,"skipped":0,"rejected":1,"replayed":false}'::jsonb,
@@ -68,10 +68,10 @@ select is(
         '99999999-9999-4999-8999-999999999999',
         '77777777-7777-4777-8777-777777777777',
         '0.1.0',
-        1,
+        2,
         '[{"sync_id":"33333333-3333-4333-8333-333333333333",
            "played_at_local":"2026-08-07T12:00:00",
-           "result":"win","turn_order":"second"}]'::jsonb
+           "result":"win","turn_order":"second","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}]'::jsonb
     )) ->> 'replayed',
     'true',
     '같은 batch 재전송은 저장된 요약으로 응답한다'
@@ -83,10 +83,10 @@ select is(
         '88888888-8888-4888-8888-888888888888',
         '77777777-7777-4777-8777-777777777777',
         '0.1.0',
-        1,
+        2,
         '[{"sync_id":"33333333-3333-4333-8333-333333333333",
            "played_at_local":"2026-08-07T12:00:00",
-           "result":"win","turn_order":"second"}]'::jsonb
+           "result":"win","turn_order":"second","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}]'::jsonb
     )) - 'batch_id',
     '{"accepted":0,"skipped":1,"rejected":0,"replayed":false}'::jsonb,
     '같은 sync_id observation은 중복 생성되지 않는다'
@@ -98,12 +98,12 @@ select is(
         '12121212-1212-4212-8212-121212121212',
         '77777777-7777-4777-8777-777777777777',
         '0.1.0',
-        1,
+        2,
         '[{"op":"upsert",
            "sync_id":"33333333-3333-4333-8333-333333333333",
            "played_at_local":"2026-08-07T12:00:00",
            "timezone_offset_minutes":540,
-           "result":"lose","turn_order":"first","turns":8}]'::jsonb
+           "result":"lose","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08","turns":8}]'::jsonb
     )) ->> 'accepted',
     '1',
     '게스트 upsert operation이 수락된다'
@@ -127,7 +127,7 @@ select is(
         '66666666-6666-4666-8666-666666666666',
         '77777777-7777-4777-8777-777777777777',
         '0.1.0',
-        1,
+        2,
         '[{"op":"withdraw",
            "sync_id":"33333333-3333-4333-8333-333333333333"}]'::jsonb
     )) ->> 'accepted',
@@ -151,12 +151,12 @@ select is(
         '23232323-2323-4232-8232-232323232323',
         '77777777-7777-4777-8777-777777777777',
         '0.1.0',
-        1,
+        2,
         '[{"op":"upsert",
            "sync_id":"33333333-3333-4333-8333-333333333333",
            "played_at_local":"2026-08-07T14:00:00",
            "timezone_offset_minutes":540,
-           "result":"win","turn_order":"second","turns":9}]'::jsonb
+           "result":"win","turn_order":"second","standing_kind":"event_points","play_context_id":"dc_cup_2026_08","turns":9}]'::jsonb
     )) ->> 'accepted',
     '1',
     '철회된 observation에 대한 upsert는 수락된다'
@@ -175,7 +175,7 @@ select is(
 set local role service_role;
 select throws_ok(
     $$ select public.ingest_guest_batch(gen_random_uuid(), gen_random_uuid(),
-                                        null, 1, '[]'::jsonb) $$,
+                                        null, 2, '[]'::jsonb) $$,
     '22023',
     'batch size must be between 1 and 200',
     '빈 batch는 거부된다'
@@ -190,11 +190,10 @@ set local role authenticated;
 set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 insert into public.profiles (id) values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
-select public.apply_game_changes(
-    1, 1,
+select public.apply_game_changes(1, 2,
     '[{"op":"create","id":"55555555-5555-4555-8555-555555555555",
        "payload":{"played_at":"2026-08-07T13:00:00","result":"win",
-                  "turn_order":"first","note":"지워질 개인 메모"}}]'::jsonb
+                  "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08","note":"지워질 개인 메모"}}]'::jsonb
 );
 set local role service_role;
 

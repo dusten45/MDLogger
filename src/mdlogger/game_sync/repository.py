@@ -222,6 +222,12 @@ class SyncRepository:
                 """
             )
 
+    def sync_modes(self, remote_modes: Iterable[Mapping[str, Any]]) -> int:
+        """서버 game_modes 목록으로 로컬 play_modes 캐시를 맞춘다 (spec §4.8)."""
+        from .modes import sync_play_modes
+
+        return sync_play_modes(self._connection, list(remote_modes))
+
     def list_conflicts(self) -> list[SyncConflict]:
         rows = self._connection.execute(
             """
@@ -597,11 +603,12 @@ class SyncRepository:
             """
             INSERT INTO sync_outbox
                 (game_sync_id, operation, payload_version, payload, created_at)
-            VALUES (?, ?, 1, ?, ?)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
                 sync_id,
                 operation,
+                db.PAYLOAD_VERSION,
                 json.dumps(dict(row), ensure_ascii=False, separators=(",", ":")),
                 datetime.now().isoformat(timespec="seconds"),
             ),

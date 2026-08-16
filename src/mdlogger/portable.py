@@ -42,7 +42,7 @@ CHECKSUMS_FILENAME = "checksums.sha256"
 # 이 구현이 쓰고 읽는 포맷 버전. 알 수 없는 버전은 거부한다.
 PORTABLE_FORMAT_VERSION = 1
 # sync_outbox 의 payload_version 과 별개로, 아카이브 records 의 페이로드 계약 버전.
-PAYLOAD_VERSION = 1
+PAYLOAD_VERSION = 2
 INCLUDED_SECTION_GAMES = "games"
 
 # 검증 한도(§10.2).
@@ -62,7 +62,6 @@ PORTABLE_RECORD_FIELDS = (
     "opp_deck",
     "turns",
     "end_reason",
-    "score_after",
     "note",
     "sync_id",
     "play_context_id",
@@ -316,6 +315,13 @@ def _read_manifest(archive_dir: Path) -> tuple[dict, ProfileKind]:
         raise PortableArchiveError(
             f"Unsupported archive format_version: {format_version!r}"
         )
+    # payload 계약 버전이 다르면(예: v1 score_after 아카이브) 필드가 조용히
+    # 유실되지 않도록 거부한다(정책 B-a', 레거시 없음).
+    payload_version = manifest.get("payload_version")
+    if payload_version != PAYLOAD_VERSION:
+        raise PortableArchiveError(
+            f"Unsupported archive payload_version: {payload_version!r}"
+        )
     archive_id = manifest.get("archive_id")
     if not isinstance(archive_id, str) or not archive_id:
         raise PortableArchiveError("manifest.json missing archive_id")
@@ -455,10 +461,11 @@ def _insert_record(conn: sqlite3.Connection, record: dict, batch_id: str) -> Non
         """
         INSERT INTO sync_outbox
             (game_sync_id, operation, payload_version, payload, created_at)
-        VALUES (?, 'upsert', 1, ?, ?)
+        VALUES (?, 'upsert', ?, ?, ?)
         """,
         (
             sync_id,
+            PAYLOAD_VERSION,
             json.dumps(values, ensure_ascii=False, separators=(",", ":")),
             _now_iso(),
         ),

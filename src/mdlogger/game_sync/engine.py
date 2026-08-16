@@ -23,6 +23,7 @@ from ..remote.guest_ingest import (
     build_withdrawal,
 )
 from .models import OutboxEntry, SyncConflict, SyncPhase, SyncStatus
+from .modes import GameModesClient, GameModesError
 from .repository import SyncRepository
 
 BATCH_SIZE = 100
@@ -39,6 +40,7 @@ class SyncEngine:
         *,
         registered_client: RegisteredGamesClient | None = None,
         guest_client: GuestIngestClient | None = None,
+        modes_client: GameModesClient | None = None,
         token_provider: TokenProvider | None = None,
         token_refresher: TokenRefresher | None = None,
         repository_factory: Callable[[Path], SyncRepository] = SyncRepository.open,
@@ -47,6 +49,7 @@ class SyncEngine:
         self._profile = profile
         self._registered_client = registered_client
         self._guest_client = guest_client
+        self._modes_client = modes_client
         self._token_provider = token_provider
         self._token_refresher = token_refresher
         self._repository_factory = repository_factory
@@ -101,11 +104,32 @@ class SyncEngine:
             entries = repository.fetch_due(limit=BATCH_SIZE, now=self._now())
             if self._profile.kind is ProfileKind.GUEST:
                 if not entries:
+                    self._sync_modes(repository)
                     return repository.status()
-                return self._push_guest(repository, entries)
-            return self._sync_registered(repository, entries)
+                result = self._push_guest(repository, entries)
+            else:
+                result = self._sync_registered(repository, entries)
+            self._sync_modes(repository)
+            return result
         finally:
             repository.close()
+
+    def _sync_modes(self, repository: SyncRepository) -> None:
+        """서버 game_modes 기준정보로 로컬 play_modes 캐시를 맞춘다 (B2).
+
+        실패(오프라인)면 기존 캐시로 동작한다(비차단 폴백, §10-2).
+        """
+        client = self._modes_client
+        if client is None:
+            return
+        try:
+            remote = client.fetch()
+        except GameModesError:
+            return
+        try:
+            repository.sync_modes(remote)
+        except Exception:  # noqa: BLE001 - 캐시 갱신 실패는 동기화를 막지 않는다
+            return
 
     def _push_guest(
         self, repository: SyncRepository, entries: list[OutboxEntry]

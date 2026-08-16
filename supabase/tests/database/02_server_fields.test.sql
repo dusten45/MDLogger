@@ -24,11 +24,10 @@ select throws_ok(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"create","id":"11111111-1111-4111-8111-111111111111",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                      "turn_order":"first"}}]'::jsonb
+                      "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
     ) -> 'results' -> 0 ->> 'status',
     'applied',
     'RPC create가 성공한다'
@@ -48,8 +47,7 @@ select ok(
 );
 
 select throws_ok(
-    $$ select public.apply_game_changes(
-           1, 1,
+    $$ select public.apply_game_changes(1, 2,
            '[{"op":"update","id":"11111111-1111-4111-8111-111111111111",
               "expected_change_version":1,
               "payload":{"user_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"}}]'::jsonb
@@ -60,8 +58,7 @@ select throws_ok(
 );
 
 select throws_ok(
-    $$ select public.apply_game_changes(
-           1, 1,
+    $$ select public.apply_game_changes(1, 2,
            '[{"op":"update","id":"11111111-1111-4111-8111-111111111111",
               "expected_change_version":1,
               "payload":{"created_at":"1970-01-01T00:00:00+00"}}]'::jsonb
@@ -72,8 +69,7 @@ select throws_ok(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         jsonb_build_array(jsonb_build_object(
             'op', 'update',
             'id', '11111111-1111-4111-8111-111111111111',
@@ -95,8 +91,7 @@ select results_eq(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         jsonb_build_array(jsonb_build_object(
             'op', 'delete',
             'id', '11111111-1111-4111-8111-111111111111',
@@ -119,10 +114,10 @@ select cmp_ok(
 
 select throws_ok(
     $$ select public.apply_game_changes(
-           1, 2,
+           1, 3,
            '[{"op":"create","id":"22222222-2222-4222-8222-222222222222",
               "payload":{"played_at":"2026-08-07T11:00:00",
-                         "result":"lose","turn_order":"second"}}]'::jsonb
+                         "result":"lose","turn_order":"second","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
        ) $$,
     '22023',
     'unsupported payload_version',

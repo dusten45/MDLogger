@@ -14,8 +14,7 @@ set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 
 select is(
-    public.register_or_touch_device(
-        1, 1, '77777777-7777-4777-8777-777777777777', 'PC A', '0.2.0'
+    public.register_or_touch_device(1, 2, '77777777-7777-4777-8777-777777777777', 'PC A', '0.2.0'
     ) ->> 'client_version',
     '0.2.0',
     '새 장치를 등록한다'
@@ -43,8 +42,7 @@ select throws_ok(
 );
 
 select is(
-    public.register_or_touch_device(
-        1, 1, '77777777-7777-4777-8777-777777777777', 'PC A 갱신', '0.2.1'
+    public.register_or_touch_device(1, 2, '77777777-7777-4777-8777-777777777777', 'PC A 갱신', '0.2.1'
     ) ->> 'display_name',
     'PC A 갱신',
     '같은 installation을 touch한다'
@@ -68,7 +66,7 @@ select results_eq(
     $$ select display_name, client_version, sync_schema_version, payload_version
        from public.devices
        where installation_id = '77777777-7777-4777-8777-777777777777' $$,
-    $$ values ('PC A 갱신', '0.2.1', 1, 1) $$,
+    $$ values ('PC A 갱신', '0.2.1', 1, 2) $$,
     'touch가 표시 이름과 client/schema/payload version을 기록한다'
 );
 
@@ -79,16 +77,14 @@ select ok(
     'touch가 server last_seen_at을 갱신한다'
 );
 
-select public.apply_game_changes(
-    1, 1,
+select public.apply_game_changes(1, 2,
     '[{"op":"create","id":"11111111-1111-4111-8111-111111111111",
        "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                  "turn_order":"first"}}]'::jsonb
+                  "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
 );
 
 select is(
-    (public.acknowledge_device_version(
-        1, 1, '77777777-7777-4777-8777-777777777777',
+    (public.acknowledge_device_version(1, 2, '77777777-7777-4777-8777-777777777777',
         (select change_version from public.games
          where id = '11111111-1111-4111-8111-111111111111')
     ) ->> 'last_acknowledged_version')::bigint,
@@ -98,8 +94,7 @@ select is(
 );
 
 select lives_ok(
-    $$ select public.acknowledge_device_version(
-           1, 1, '77777777-7777-4777-8777-777777777777',
+    $$ select public.acknowledge_device_version(1, 2, '77777777-7777-4777-8777-777777777777',
            (select last_acknowledged_version from public.devices
             where installation_id = '77777777-7777-4777-8777-777777777777')
        ) $$,
@@ -107,8 +102,7 @@ select lives_ok(
 );
 
 select throws_ok(
-    $$ select public.acknowledge_device_version(
-           1, 1, '77777777-7777-4777-8777-777777777777', 0
+    $$ select public.acknowledge_device_version(1, 2, '77777777-7777-4777-8777-777777777777', 0
        ) $$,
     '22023',
     'acknowledged_version cannot decrease',
@@ -116,8 +110,7 @@ select throws_ok(
 );
 
 select throws_ok(
-    $$ select public.acknowledge_device_version(
-           1, 1, '77777777-7777-4777-8777-777777777777', 999999
+    $$ select public.acknowledge_device_version(1, 2, '77777777-7777-4777-8777-777777777777', 999999
        ) $$,
     '22023',
     'acknowledged_version exceeds server version',
@@ -125,8 +118,7 @@ select throws_ok(
 );
 
 select throws_ok(
-    $$ select public.acknowledge_device_version(
-           1, 1, '88888888-8888-4888-8888-888888888888', 0
+    $$ select public.acknowledge_device_version(1, 2, '88888888-8888-4888-8888-888888888888', 0
        ) $$,
     '22023',
     'device is not registered',
@@ -134,8 +126,7 @@ select throws_ok(
 );
 
 select throws_ok(
-    $$ select public.register_or_touch_device(
-           0, 1, '88888888-8888-4888-8888-888888888888', 'old', '0.1.0'
+    $$ select public.register_or_touch_device(0, 2, '88888888-8888-4888-8888-888888888888', 'old', '0.1.0'
        ) $$,
     '22023',
     'unsupported sync_schema_version',
@@ -144,7 +135,7 @@ select throws_ok(
 
 select throws_ok(
     $$ select public.register_or_touch_device(
-           1, 2, '88888888-8888-4888-8888-888888888888', 'future', '9.0.0'
+           1, 3, '88888888-8888-4888-8888-888888888888', 'future', '9.0.0'
        ) $$,
     '22023',
     'unsupported payload_version',
@@ -168,8 +159,7 @@ select results_eq(
 );
 
 select throws_ok(
-    $$ select public.acknowledge_device_version(
-           1, 1, '77777777-7777-4777-8777-777777777777', 0
+    $$ select public.acknowledge_device_version(1, 2, '77777777-7777-4777-8777-777777777777', 0
        ) $$,
     '22023',
     'device is not registered',

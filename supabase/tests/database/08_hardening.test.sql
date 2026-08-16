@@ -79,10 +79,10 @@ select is(
     (public.ingest_guest_batch(
         '99999999-9999-4999-8999-999999999999',
         '77777777-7777-4777-8777-777777777777',
-        '0.1.0', 1,
+        '0.1.0', 2,
         '[{"sync_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
            "played_at_local":"2026-08-07T10:00:00",
-           "result":"win","turn_order":"first","turns":5}]'::jsonb
+           "result":"win","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08","turns":5}]'::jsonb
     )) ->> 'accepted',
     '1',
     '게스트 초기 observation이 수락된다'
@@ -92,7 +92,7 @@ select is(
     (public.ingest_guest_batch(
         '88888888-8888-4888-8888-888888888888',
         '77777777-7777-4777-8777-777777777777',
-        '0.1.0', 1,
+        '0.1.0', 2,
         '[{"op":"withdraw",
            "sync_id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"}]'::jsonb
     )) ->> 'accepted',
@@ -122,11 +122,10 @@ select lives_ok(
     '등록 사용자가 프로필을 만든다'
 );
 select is(
-    (public.apply_game_changes(
-        1, 1,
+    (public.apply_game_changes(1, 2,
         '[{"op":"create","id":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                      "turn_order":"first","turns":5}}]'::jsonb
+                      "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08","turns":5}}]'::jsonb
     ) -> 'results' -> 0 ->> 'status'),
     'applied',
     '게스트와 같은 sync_id로 등록 게임이 생성된다'

@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
     QComboBox,
@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLayout,
+    QLayoutItem,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -24,6 +26,77 @@ from PySide6.QtWidgets import (
 
 from .icons import load_icon
 from .theme import METRICS, FontRole, font_for_role, set_style_property
+
+
+class FlowLayout(QLayout):
+    """폭을 넘으면 다음 줄로 감싸는 flow 레이아웃 (칩/버튼 그룹용).
+
+    ``QHBoxLayout``과 달리 가용 폭을 넘는 항목을 자동으로 다음 줄로 내려
+    380px 최소 폭이나 글자 확대 시에도 가로 넘침이 생기지 않게 한다(spec §7.3).
+    """
+
+    def __init__(self, parent: QWidget | None = None, *, spacing: int = -1):
+        super().__init__(parent)
+        self._items: list[QLayoutItem] = []
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setSpacing(spacing)
+
+    def addItem(self, item: QLayoutItem) -> None:
+        self._items.append(item)
+
+    def count(self) -> int:
+        return len(self._items)
+
+    def itemAt(self, index: int) -> QLayoutItem | None:
+        if 0 <= index < len(self._items):
+            return self._items[index]
+        return None
+
+    def takeAt(self, index: int) -> QLayoutItem | None:
+        if 0 <= index < len(self._items):
+            return self._items.pop(index)
+        return None
+
+    def expandingDirections(self) -> Qt.Orientation:
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self) -> bool:
+        return True
+
+    def heightForWidth(self, width: int) -> int:
+        return self._do_layout(QRect(0, 0, width, 0), test_only=True)
+
+    def setGeometry(self, rect: QRect) -> None:
+        super().setGeometry(rect)
+        self._do_layout(rect, test_only=False)
+
+    def sizeHint(self) -> QSize:
+        return self.minimumSize()
+
+    def minimumSize(self) -> QSize:
+        size = QSize()
+        for item in self._items:
+            size = size.expandedTo(item.minimumSize())
+        return size
+
+    def _do_layout(self, rect: QRect, test_only: bool) -> int:
+        x = rect.x()
+        y = rect.y()
+        line_height = 0
+        spacing = self.spacing()
+        for item in self._items:
+            hint = item.sizeHint()
+            next_x = x + hint.width() + spacing
+            if next_x - spacing > rect.right() and line_height > 0:
+                x = rect.x()
+                y = y + line_height + spacing
+                next_x = x + hint.width() + spacing
+                line_height = 0
+            if not test_only:
+                item.setGeometry(QRect(QPoint(x, y), hint))
+            x = next_x
+            line_height = max(line_height, hint.height())
+        return y + line_height - rect.y()
 
 
 class SingleSelect(QWidget):
@@ -43,9 +116,12 @@ class SingleSelect(QWidget):
         self._group = QButtonGroup(self)
         self._group.setExclusive(True)
 
-        layout = QGridLayout(self) if columns > 0 else QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(METRICS.space_2)
+        if columns > 0:
+            layout: QLayout = QGridLayout(self)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(METRICS.space_2)
+        else:
+            layout = FlowLayout(self, spacing=METRICS.space_2)
 
         for i, (value, text) in enumerate(options):
             btn = QPushButton(text)
@@ -53,8 +129,8 @@ class SingleSelect(QWidget):
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setMinimumHeight(METRICS.control_height)
             btn.setAccessibleName(text)
-            # 키보드 전용 조작을 쓰지 않으므로 버튼에 포커스 링을 띄우지 않는다
-            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            # 키보드/스크린 리더 접근성을 위해 포커스를 허용한다(spec §6.1)
+            btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             set_style_property(btn, "role", "segment")
             btn.setFont(font_for_role(btn.font(), FontRole.LABEL))
             self._group.addButton(btn)
@@ -219,8 +295,8 @@ class Stepper(QWidget):
         btn = QPushButton(text)
         # 진행 정보 행에서 세그먼트 버튼과 높이를 맞춘다
         btn.setFixedSize(40, METRICS.control_height)
-        # 키보드 전용 조작을 쓰지 않으므로 버튼에 포커스 링을 띄우지 않는다
-        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        # 키보드 접근성을 위해 포커스를 허용한다(spec §6.1)
+        btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setAccessibleName(accessible_name)
         btn.setToolTip(accessible_name)

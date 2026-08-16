@@ -27,7 +27,7 @@ class DetailView(QWidget):
         self._banner.setCursor(Qt.CursorShape.PointingHandCursor)
         self._banner.setMinimumHeight(36)
         self._banner.setAccessibleName("현재 결과를 다시 고르기")
-        self._banner.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._banner.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         set_style_property(self._banner, "role", "secondary")
         self._banner.clicked.connect(self.back_requested)
         root.addWidget(self._banner)
@@ -48,7 +48,7 @@ class DetailView(QWidget):
         self._confirm = QPushButton("확인")
         self._confirm.setCursor(Qt.CursorShape.PointingHandCursor)
         self._confirm.setDefault(True)
-        self._confirm.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._confirm.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         set_style_property(self._confirm, "role", "primary")
         self._confirm.clicked.connect(self._on_confirm)
         root.addWidget(self._confirm)
@@ -58,6 +58,10 @@ class DetailView(QWidget):
         label = RESULT_LABELS.get(result, result)
         self._banner.setText(f"{label}  ·  결과 변경")
         self._status.clear()
+
+    def set_mode(self, mode) -> None:
+        """선택된 GameMode를 폼에 전달한다 (spec §6.2)."""
+        self.form.set_mode(mode)
 
     def result(self) -> str | None:
         return self._result

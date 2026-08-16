@@ -5,4 +5,4 @@ pyproject.toml은 hatchling dynamic version으로 이 파일의 ``__version__``�
 장치 등록·아카이브 manifest로 서버에 전송된다. 여기에서만 수정한다.
 """
 
-__version__ = "0.1.6"
+__version__ = "0.2.0"

@@ -13,25 +13,23 @@ set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"create","id":"11111111-1111-4111-8111-111111111111",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                      "turn_order":"first"}},
+                      "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}},
           {"op":"create","id":"22222222-2222-4222-8222-222222222222",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"lose",
-                      "turn_order":"second"}}]'::jsonb
+                      "turn_order":"second","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
     ) -> 'results' -> 0 ->> 'status',
     'applied',
     'batch의 첫 create가 적용된다'
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"create","id":"33333333-3333-4333-8333-333333333333",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                      "turn_order":"first"}}]'::jsonb
+                      "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
     ) -> 'results' -> 0 ->> 'status',
     'applied',
     '후속 create가 적용된다'
@@ -73,8 +71,7 @@ select results_eq(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         jsonb_build_array(jsonb_build_object(
             'op', 'update',
             'id', '11111111-1111-4111-8111-111111111111',
@@ -96,8 +93,7 @@ select results_eq(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"update","id":"11111111-1111-4111-8111-111111111111",
            "expected_change_version":1,
            "payload":{"result":"win","turns":99}}]'::jsonb
@@ -107,8 +103,7 @@ select is(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"update","id":"11111111-1111-4111-8111-111111111111",
            "expected_change_version":1,
            "payload":{"result":"win","turns":99}}]'::jsonb
@@ -125,8 +120,7 @@ select results_eq(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"delete","id":"11111111-1111-4111-8111-111111111111",
            "expected_change_version":1}]'::jsonb
     ) -> 'results' -> 0 ->> 'status',
@@ -141,8 +135,7 @@ select ok(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         jsonb_build_array(jsonb_build_object(
             'op', 'delete',
             'id', '11111111-1111-4111-8111-111111111111',
@@ -163,8 +156,7 @@ select results_eq(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"update","id":"11111111-1111-4111-8111-111111111111",
            "expected_change_version":4,
            "payload":{"result":"win"}}]'::jsonb
@@ -174,8 +166,7 @@ select is(
 );
 
 select ok(
-    (public.apply_game_changes(
-        1, 1,
+    (public.apply_game_changes(1, 2,
         '[{"op":"update","id":"11111111-1111-4111-8111-111111111111",
            "expected_change_version":4,
            "payload":{"result":"win"}}]'::jsonb
@@ -184,8 +175,7 @@ select ok(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         jsonb_build_array(jsonb_build_object(
             'op', 'update',
             'id', '11111111-1111-4111-8111-111111111111',
@@ -200,8 +190,7 @@ select is(
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         jsonb_build_array(jsonb_build_object(
             'op', 'restore',
             'id', '11111111-1111-4111-8111-111111111111',
@@ -239,11 +228,10 @@ set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"create","id":"11111111-1111-4111-8111-111111111111",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                      "turn_order":"first"}}]'::jsonb
+                      "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
     ) -> 'results' -> 0 ->> 'status',
     'conflict',
     '중복 create는 기존 행을 덮어쓰지 않고 conflict를 반환한다'
@@ -262,11 +250,10 @@ set local request.jwt.claims to
     '{"sub":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","role":"authenticated"}';
 
 select throws_ok(
-    $$ select public.apply_game_changes(
-           0, 1,
+    $$ select public.apply_game_changes(0, 2,
            '[{"op":"create","id":"44444444-4444-4444-8444-444444444444",
               "payload":{"played_at":"2026-08-07T10:00:00",
-                         "result":"win","turn_order":"first"}}]'::jsonb
+                         "result":"win","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
        ) $$,
     '22023',
     'unsupported sync_schema_version',
@@ -274,11 +261,10 @@ select throws_ok(
 );
 
 select throws_ok(
-    $$ select public.apply_game_changes(
-           2, 1,
+    $$ select public.apply_game_changes(2, 2,
            '[{"op":"create","id":"44444444-4444-4444-8444-444444444444",
               "payload":{"played_at":"2026-08-07T10:00:00",
-                         "result":"win","turn_order":"first"}}]'::jsonb
+                         "result":"win","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
        ) $$,
     '22023',
     'unsupported sync_schema_version',
@@ -290,7 +276,7 @@ select throws_ok(
            1, 0,
            '[{"op":"create","id":"44444444-4444-4444-8444-444444444444",
               "payload":{"played_at":"2026-08-07T10:00:00",
-                         "result":"win","turn_order":"first"}}]'::jsonb
+                         "result":"win","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
        ) $$,
     '22023',
     'unsupported payload_version',
@@ -298,12 +284,11 @@ select throws_ok(
 );
 
 select throws_ok(
-    $$ select public.apply_game_changes(
-           1, 1,
+    $$ select public.apply_game_changes(1, 2,
            '[{"op":"create","id":"44444444-4444-4444-8444-444444444444",
               "user_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
               "payload":{"played_at":"2026-08-07T10:00:00",
-                         "result":"win","turn_order":"first"}}]'::jsonb
+                         "result":"win","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
        ) $$,
     '22023',
     'disallowed change field: user_id',
@@ -311,11 +296,10 @@ select throws_ok(
 );
 
 select throws_ok(
-    $$ select public.apply_game_changes(
-           1, 1,
+    $$ select public.apply_game_changes(1, 2,
            '[{"op":"create","id":"44444444-4444-4444-8444-444444444444",
               "payload":{"played_at":"2026-08-07T10:00:00",
-                         "result":"win","turn_order":"first",
+                         "result":"win","turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08",
                          "change_version":999}}]'::jsonb
        ) $$,
     '22023',
@@ -332,19 +316,17 @@ select throws_ok(
 
 -- P0-1: delete-if-exists(0018). expected_change_version 없이도 삭제를 표현한다.
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"create","id":"b0000000-0000-4000-8000-000000000001",
            "payload":{"played_at":"2026-08-07T10:00:00","result":"win",
-                      "turn_order":"first"}}]'::jsonb
+                      "turn_order":"first","standing_kind":"event_points","play_context_id":"dc_cup_2026_08"}}]'::jsonb
     ) -> 'results' -> 0 ->> 'status',
     'applied',
     'delete-if-exists 준비용 create가 적용된다'
 );
 
 select is(
-    public.apply_game_changes(
-        1, 1,
+    public.apply_game_changes(1, 2,
         '[{"op":"delete","id":"b0000000-0000-4000-8000-000000000001"}]'::jsonb
     ) -> 'results' -> 0 ->> 'status',
     'applied',
@@ -358,24 +340,21 @@ select ok(
 );
 
 select ok(
-    (public.apply_game_changes(
-        1, 1,
+    (public.apply_game_changes(1, 2,
         '[{"op":"delete","id":"b0000000-0000-4000-8000-000000000001"}]'::jsonb
     ) -> 'results' -> 0 -> 'change_version') is null,
     '이미 삭제된 기록의 delete-if-exists는 멱등 성공(버전 null)이다'
 );
 
 select ok(
-    (public.apply_game_changes(
-        1, 1,
+    (public.apply_game_changes(1, 2,
         '[{"op":"delete","id":"b0000000-0000-4000-8000-000000000002"}]'::jsonb
     ) -> 'results' -> 0 -> 'change_version') is null,
     '존재하지 않는 기록의 delete-if-exists는 멱등 성공(버전 null)이다'
 );
 
 select throws_ok(
-    $$ select public.apply_game_changes(
-           1, 1,
+    $$ select public.apply_game_changes(1, 2,
            '[{"op":"delete","id":"b0000000-0000-4000-8000-000000000002",
               "payload":{"note":"x"}}]'::jsonb
        ) $$,
