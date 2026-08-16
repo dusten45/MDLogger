@@ -82,6 +82,7 @@ docs/*
 docs/operations/*
 !docs/operations/runbook.md
 !docs/deployment-guide.md
+!docs/product-development-roadmap.md
 
 # ---- OS / editor cruft ----
 Thumbs.db
