@@ -7,15 +7,30 @@ from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication, QWidget
 
 _FILTER_OBJECT_NAME = "pointerFocusOnlyFilter"
+_TAB_FOCUS_PROPERTY = "tabFocusEnabled"
+
+
+def allow_tab_focus(root: QWidget) -> None:
+    """지정한 위젯과 그 자식에서 Tab·Shift+Tab 포커스를 허용한다."""
+    root.setProperty(_TAB_FOCUS_PROPERTY, True)
+
+
+def _allows_tab_focus(watched: QObject) -> bool:
+    widget = watched if isinstance(watched, QWidget) else QApplication.focusWidget()
+    while widget is not None:
+        if bool(widget.property(_TAB_FOCUS_PROPERTY)):
+            return True
+        widget = widget.parentWidget()
+    return False
 
 
 class PointerFocusOnlyFilter(QObject):
-    """Tab과 Shift+Tab으로 위젯 포커스를 옮기지 못하게 한다."""
+    """허용한 입력 폼 외에는 Tab과 Shift+Tab 포커스 이동을 막는다."""
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         if isinstance(event, QKeyEvent) and event.type() == QEvent.Type.KeyPress:
             if event.key() in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab):
-                return True
+                return not _allows_tab_focus(watched)
         return super().eventFilter(watched, event)
 
 

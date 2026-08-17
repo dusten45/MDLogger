@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 
 from ..game_sync.models import SyncConflict
 from ..remote.games import PRIVATE_GAME_FIELDS
+from .focus import allow_tab_focus
 from .theme import METRICS, set_style_property
 
 
@@ -181,6 +182,7 @@ class AuthWindow(QWidget):
         layout.addWidget(self._guest)
         layout.addStretch(1)
 
+        allow_tab_focus(page)
         self._email.returnPressed.connect(self._submit_form)
         self._password.returnPressed.connect(self._submit_form)
         self._password_confirm.returnPressed.connect(self._submit_form)

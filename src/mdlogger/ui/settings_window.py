@@ -73,6 +73,19 @@ SCORE_INPUT_MODE_OPTIONS = [
     ("delta", "변동폭만 입력"),
     ("direct", "변화한 점수 직접 입력"),
 ]
+DEFAULT_MODE_LAST_USED_LABEL = "이전 모드 기억"
+
+
+def _default_mode_options(modes: list[Any]) -> list[tuple[str, str]]:
+    """예약된 이전 모드 항목과 중복되는 캐시 모드는 선택지에서 제외한다."""
+    options = [(DEFAULT_MODE_LAST_USED, DEFAULT_MODE_LAST_USED_LABEL)]
+    for mode in modes:
+        mode_id = str(mode["id"])
+        label = str(mode["display_name"])
+        if mode_id == DEFAULT_MODE_LAST_USED or label == DEFAULT_MODE_LAST_USED_LABEL:
+            continue
+        options.append((mode_id, label))
+    return options
 
 
 class SettingsWindow(QDialog):
@@ -255,10 +268,7 @@ class SettingsWindow(QDialog):
 
         if self._mode_settings is not None and self._games is not None:
             modes = self._games.get_active_play_modes()
-            options = [(DEFAULT_MODE_LAST_USED, "이전 모드 기억")] + [
-                (str(m["id"]), str(m["display_name"])) for m in modes
-            ]
-            self._default_mode = SingleSelect(options)
+            self._default_mode = SingleSelect(_default_mode_options(modes))
             current = self._mode_settings.default_mode
             if current is None or current == DEFAULT_MODE_LAST_USED:
                 self._default_mode.setValue(DEFAULT_MODE_LAST_USED)
