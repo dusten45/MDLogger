@@ -91,6 +91,7 @@ def test_current_colors_prefers_app_theme_mode() -> None:
     app = QApplication.instance()
     if not isinstance(app, QApplication):
         app = QApplication([])
+    app.setProperty("accentColor", None)
     app.setProperty("themeMode", "dark")
     assert current_colors(app) is DARK_COLORS
     app.setProperty("themeMode", "light")

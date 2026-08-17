@@ -30,6 +30,7 @@ _ICON_FILES: dict[str, str] = {
     "undo": "undo.svg",
     "minus": "minus.svg",
     "plus": "plus.svg",
+    "settings": "settings.svg",
 }
 
 # 앱 아이콘(번들 PNG). 루트 `icon/DuelistCup.png`와 같은 그림을 패키지에 번들해

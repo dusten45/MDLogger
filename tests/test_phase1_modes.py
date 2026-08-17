@@ -294,14 +294,22 @@ def qapp():
     yield application
 
 
-def test_settings_dialog_sets_default_mode(qapp):
+def test_settings_window_sets_default_mode(qapp):
+    from mdlogger.app_settings import MemorySettingsStore
     from mdlogger.game_service import GameService
-    from mdlogger.ui.settings_dialog import SettingsDialog
+    from mdlogger.ui.settings_window import SettingsWindow
 
     games = GameService.open(":memory:")
-    dlg = SettingsDialog(games)
-    dlg._default.setValue("wcq-2026")
-    dlg._on_save()
+    store = MemorySettingsStore()
+    win = SettingsWindow(
+        store,
+        None,
+        games,
+        profile_name="게스트",
+        status_text="게스트",
+        registered=False,
+    )
+    win._on_default_mode_changed("wcq-2026")
     assert games.get_default_mode() == "wcq-2026"
     games.close()
 

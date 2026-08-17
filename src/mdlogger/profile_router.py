@@ -14,6 +14,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QWidget
 
 from .app_controller import AppController
+from .app_settings import SettingsRepository, SettingsStore
 from .auth.credential_store import CredentialStoreError
 from .auth.models import AuthError, AuthErrorKind, AuthSession, SignUpResult
 from .auth.session_manager import SessionManager, SessionState
@@ -23,8 +24,8 @@ from .guest_import import (
     import_guest_records,
 )
 from .profiles import ProfileContext, ProfileError, ProfileKind, ProfileManager
+from .remote.settings_sync import SettingsSyncClient
 from .ui.account_views import (
-    AccountDialog,
     AuthWindow,
     ConflictDialog,
     GuestNoticeDialog,
@@ -32,6 +33,7 @@ from .ui.account_views import (
     GuestRecordChoiceDialog,
 )
 from .ui.main_window import MainWindow
+from .ui.settings_window import SettingsWindow
 
 CONSENT_VERSION = "duel-data-v1"
 ConsentPrompt = Callable[[bool, QWidget | None], bool]
@@ -84,6 +86,8 @@ class ProfileRouter:
         app_controller: AppController,
         sessions: SessionManager | None,
         *,
+        settings_store: SettingsStore | None = None,
+        settings_sync_client: SettingsSyncClient | None = None,
         auth_window: AuthWindow | None = None,
         consent_prompt: ConsentPrompt = _default_consent_prompt,
         guest_records_prompt: GuestRecordsPrompt = _default_guest_records_prompt,
@@ -92,6 +96,10 @@ class ProfileRouter:
         self._profiles = profiles
         self._app = app_controller
         self._sessions = sessions
+        self._settings_store = (
+            settings_store if settings_store is not None else SettingsRepository()
+        )
+        self._settings_sync_client = settings_sync_client
         self._auth = auth_window if auth_window is not None else AuthWindow()
         self._consent_prompt = consent_prompt
         self._guest_records_prompt = guest_records_prompt
@@ -219,7 +227,7 @@ class ProfileRouter:
             "계정이 존재하면 비밀번호 재설정 메일을 보냈습니다. 메일함을 확인해 주세요."
         )
 
-    def open_account_dialog(self) -> None:
+    def open_settings(self) -> None:
         profile = self._app.current_profile
         if profile is None:
             return
@@ -232,23 +240,44 @@ class ProfileRouter:
             if sync_status is not None
             else 0
         )
-        dialog = AccountDialog(
-            profile.display_name,
-            status,
+        window = SettingsWindow(
+            self._settings_store,
+            parent._theme if parent is not None else None,
+            parent._games if parent is not None else None,
+            sync_client=self._settings_sync_client,
+            access_token=self._settings_access_token,
+            profile_name=profile.display_name,
+            status_text=status,
             registered=registered,
             conflict_count=conflict_count,
             parent=parent,
         )
-        dialog.login_requested.connect(lambda: self._open_auth_from_account(dialog))
-        dialog.logout_requested.connect(lambda: self._logout_from_dialog(dialog))
-        dialog.sync_requested.connect(self._request_sync)
-        dialog.conflicts_requested.connect(lambda: self._open_conflicts(dialog))
-        dialog.export_requested.connect(lambda: self._export_account_data(dialog))
-        dialog.sign_out_all_requested.connect(
-            lambda: self._sign_out_all_devices(dialog)
+        window.login_requested.connect(lambda: self._open_auth_from_account(window))
+        window.logout_requested.connect(lambda: self._logout_from_dialog(window))
+        window.sync_requested.connect(self._request_sync)
+        window.conflicts_requested.connect(lambda: self._open_conflicts(window))
+        window.export_requested.connect(lambda: self._export_account_data(window))
+        window.sign_out_all_requested.connect(
+            lambda: self._sign_out_all_devices(window)
         )
-        dialog.delete_account_requested.connect(lambda: self._delete_account(dialog))
-        dialog.exec()
+        window.delete_account_requested.connect(lambda: self._delete_account(window))
+        window.memo_enabled_changed.connect(self._apply_memo_enabled)
+        window.exec()
+
+    def _settings_access_token(self) -> str | None:
+        sessions = self._sessions
+        profile = self._app.current_profile
+        if sessions is None or profile is None or profile.remote_user_id is None:
+            return None
+        session = sessions.session
+        if session is None or session.account.user_id != profile.remote_user_id:
+            return None
+        return session.tokens.access_token
+
+    def _apply_memo_enabled(self, enabled: bool) -> None:
+        window = self._main_window()
+        if window is not None:
+            window.set_memo_enabled(enabled)
 
     def _open_conflicts(self, account_dialog: QDialog) -> None:
         account_dialog.hide()
@@ -577,17 +606,17 @@ class ProfileRouter:
     def _connect_current_main_window(self) -> None:
         window = self._main_window()
         if window is not None:
-            window.account_requested.connect(self.open_account_dialog)
+            window.settings_requested.connect(self.open_settings)
 
     def _main_window(self) -> MainWindow | None:
         window = self._app.current_window
         return window if isinstance(window, MainWindow) else None
 
-    def _open_auth_from_account(self, dialog: AccountDialog) -> None:
+    def _open_auth_from_account(self, dialog: QDialog) -> None:
         dialog.accept()
         self.show_auth()
 
-    def _logout_from_dialog(self, dialog: AccountDialog) -> None:
+    def _logout_from_dialog(self, dialog: QDialog) -> None:
         profile = self._app.current_profile
         if profile is None or profile.remote_user_id is None:
             return
@@ -640,7 +669,7 @@ class ProfileRouter:
                     "자동으로 다시 시도됩니다.",
                 )
 
-    def _export_account_data(self, dialog: AccountDialog) -> None:
+    def _export_account_data(self, dialog: QDialog) -> None:
         """본인 개인 데이터를 파일로 내보낸다(로드맵 12.4)."""
         sessions = self._sessions
         if sessions is None:
@@ -698,7 +727,7 @@ class ProfileRouter:
             f"계정 개인 데이터를 저장했습니다.\n{path}",
         )
 
-    def _sign_out_all_devices(self, dialog: AccountDialog) -> None:
+    def _sign_out_all_devices(self, dialog: QDialog) -> None:
         """모든 장치에서 로그아웃한다(로드맵 단계 11)."""
         sessions = self._sessions
         if sessions is None:
@@ -747,7 +776,7 @@ class ProfileRouter:
             f"{count}대의 기기에서 로그아웃하였습니다.",
         )
 
-    def _delete_account(self, dialog: AccountDialog) -> None:
+    def _delete_account(self, dialog: QDialog) -> None:
         """계정 삭제를 서버에 요청한다(로드맵 단계 11, 결정 4)."""
         sessions = self._sessions
         if sessions is None:

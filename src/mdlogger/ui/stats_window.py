@@ -426,6 +426,13 @@ class StatsWindow(QWidget):
         self._refresh_matchups()
         self._refresh_records()
 
+    def set_memo_enabled(self, enabled: bool) -> None:
+        """기록 표의 메모 열 표시 여부 (P8, spec §5.4).
+
+        비활성화하면 메모 열을 숨긴다. 기존 메모 데이터는 삭제하지 않는다.
+        """
+        self._rtable.setColumnHidden(10, not enabled)
+
     def _mode_options(self) -> list[tuple[str, str]]:
         return [("all", "전체")] + [
             (str(m["id"]), str(m["display_name"])) for m in self._modes

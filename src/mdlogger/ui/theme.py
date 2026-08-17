@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from PySide6.QtCore import QObject, Qt, Signal, Slot
@@ -64,6 +64,16 @@ class ColorTokens:
 
 
 @dataclass(frozen=True, slots=True)
+class AccentTokens:
+    """강조색 프리셋의 라이트/다크 accent와 대비 검증된 text_on_accent."""
+
+    light: str
+    dark: str
+    light_text_on_accent: str
+    dark_text_on_accent: str
+
+
+@dataclass(frozen=True, slots=True)
 class MetricTokens:
     """플랫폼과 테마에 독립적인 크기·간격 토큰."""
 
@@ -88,6 +98,42 @@ class MetricTokens:
 
 
 METRICS = MetricTokens()
+
+# 검증된 강조색 프리셋 (spec §2.2, §5.1). 각 프리셋은 라이트/다크 accent hex와
+# WCAG 대비(accent vs text_on_accent ≥ 4.5:1, accent vs surface ≥ 3:1)를 통과하는
+# text_on_accent를 담는다.
+ACCENT_PRESETS: dict[str, AccentTokens] = {
+    "blue": AccentTokens(
+        light="#356AE6",
+        dark="#7EA2FF",
+        light_text_on_accent="#FFFFFF",
+        dark_text_on_accent="#11151B",
+    ),
+    "indigo": AccentTokens(
+        light="#4F46E5",
+        dark="#A5B4FC",
+        light_text_on_accent="#FFFFFF",
+        dark_text_on_accent="#11151B",
+    ),
+    "teal": AccentTokens(
+        light="#0F766E",
+        dark="#5EEAD4",
+        light_text_on_accent="#FFFFFF",
+        dark_text_on_accent="#11151B",
+    ),
+    "magenta": AccentTokens(
+        light="#A21CAF",
+        dark="#F0ABFC",
+        light_text_on_accent="#FFFFFF",
+        dark_text_on_accent="#11151B",
+    ),
+    "amber": AccentTokens(
+        light="#B45309",
+        dark="#FCD34D",
+        light_text_on_accent="#FFFFFF",
+        dark_text_on_accent="#11151B",
+    ),
+}
 
 LIGHT_COLORS = ColorTokens(
     background="#F5F7FA",
@@ -150,12 +196,19 @@ DARK_COLORS = ColorTokens(
 )
 
 
-def colors_for_mode(mode: ThemeMode) -> ColorTokens:
-    """명시적인 라이트·다크 모드의 색상 토큰을 반환한다."""
+def colors_for_mode(mode: ThemeMode, accent: str = "blue") -> ColorTokens:
+    """명시적인 라이트·다크 모드의 색상 토큰을 반환한다.
 
-    if mode is ThemeMode.DARK:
-        return DARK_COLORS
-    return LIGHT_COLORS
+    ``accent``은 ``ACCENT_PRESETS``의 강조색 id다. 기본 ``blue``는 기존 상수를
+    그대로 반환해 기존 동작과 객체 동일성을 보존한다. 미지 id는 ``blue``로 폴백.
+    """
+
+    dark = mode is ThemeMode.DARK
+    base = DARK_COLORS if dark else LIGHT_COLORS
+    preset = ACCENT_PRESETS.get(accent)
+    if preset is None or accent == "blue":
+        return base
+    return _with_accent(base, preset, dark=dark)
 
 
 def resolve_theme_mode(
@@ -190,12 +243,14 @@ def current_colors(app: QApplication | None = None) -> ColorTokens:
             return LIGHT_COLORS
         app = instance
     mode = app.property("themeMode")
+    accent = app.property("accentColor")
+    accent_id = accent if isinstance(accent, str) else "blue"
     if isinstance(mode, str):
         try:
-            return colors_for_mode(ThemeMode(mode))
+            return colors_for_mode(ThemeMode(mode), accent=accent_id)
         except ValueError:
             pass
-    return colors_for_mode(system_theme_mode(app))
+    return colors_for_mode(system_theme_mode(app), accent=accent_id)
 
 
 def relative_luminance(color: str) -> float:
@@ -238,8 +293,57 @@ def _shade(color: str, factor: float) -> str:
     return f"#{channel(0):02x}{channel(2):02x}{channel(4):02x}"
 
 
+def _mix(foreground: str, background: str, ratio: float) -> str:
+    """`foreground`를 `ratio` 비율로 `background`에 섞은 `#RRGGBB`를 만든다.
+
+    ``selection``처럼 accent의 미묘한 틴트를 만들 때 쓴다.
+    """
+
+    fg = foreground.removeprefix("#")
+    bg = background.removeprefix("#")
+    if len(fg) != 6 or len(bg) != 6:
+        return foreground
+
+    def channel(index: int) -> int:
+        f = int(fg[index : index + 2], 16)
+        b = int(bg[index : index + 2], 16)
+        return min(255, int(round(f * ratio + b * (1 - ratio))))
+
+    return f"#{channel(0):02x}{channel(2):02x}{channel(4):02x}"
+
+
+def _with_accent(
+    colors: ColorTokens, preset: AccentTokens, *, dark: bool
+) -> ColorTokens:
+    """기본 색상 토큰의 accent 관련 필드를 프리셋에서 파생해 교체한다 (spec §5.1)."""
+
+    accent = preset.dark if dark else preset.light
+    text_on_accent = preset.dark_text_on_accent if dark else preset.light_text_on_accent
+    if dark:
+        hover = _shade(accent, 1.15)
+        pressed = _shade(accent, 0.88)
+        selection = _mix(accent, colors.background, 0.28)
+    else:
+        hover = _shade(accent, 0.88)
+        pressed = _shade(accent, 0.72)
+        selection = _mix(accent, "#FFFFFF", 0.18)
+    return replace(
+        colors,
+        accent=accent,
+        accent_hover=hover,
+        accent_pressed=pressed,
+        focus_ring=accent,
+        selection=selection,
+        text_on_accent=text_on_accent,
+        chart_primary=accent,
+    )
+
+
 def font_for_role(base_font: QFont, role: FontRole) -> QFont:
-    """시스템 기본 글꼴을 보존하면서 역할에 맞는 크기와 굵기를 파생한다."""
+    """시스템 기본 글꼴을 보존하면서 역할에 맞는 크기와 굵기를 파생한다.
+
+    역할 배율에 전역 ``font_scale``(글자 크기 설정)을 곱한다(spec §5.2).
+    """
 
     font = QFont(base_font)
     base_size = base_font.pointSizeF()
@@ -255,9 +359,37 @@ def font_for_role(base_font: QFont, role: FontRole) -> QFont:
         FontRole.CAPTION: (0.92, QFont.Weight.Normal),
         FontRole.NUMERIC: (1.35, QFont.Weight.DemiBold),
     }[role]
-    font.setPointSizeF(max(9.0, base_size * scale))
+    font.setPointSizeF(max(9.0, base_size * scale * _font_scale))
     font.setWeight(weight)
     return font
+
+
+_font_scale = 1.0
+
+
+def current_font_scale() -> float:
+    """현재 전역 글자 크기 배율을 반환한다."""
+    return _font_scale
+
+
+def apply_font_scale(scale: float, app: QApplication | None = None) -> None:
+    """전역 글자 크기 배율을 갱신하고 열린 창을 최선 노력으로 re-polish한다.
+
+    글자 크기는 ``font_for_role``이 위젯 생성 시 적용하므로, 이미 만들어진 위젯은
+    재시작해야 완전히 반영될 수 있다(spec §5.2, §10-2).
+    """
+    global _font_scale
+    _font_scale = scale
+    if app is None:
+        instance = QApplication.instance()
+        app = instance if isinstance(instance, QApplication) else None
+    if app is not None:
+        for widget in app.topLevelWidgets():
+            style = widget.style()
+            if style is not None:
+                style.unpolish(widget)
+                style.polish(widget)
+            widget.update()
 
 
 def set_style_property(widget: QWidget, name: str, value: str | bool | None) -> None:
@@ -510,11 +642,18 @@ class ThemeController(QObject):
     """앱 테마를 적용하고 시스템 색상 체계 변경을 추적한다."""
 
     theme_changed = Signal(ThemeMode)
+    accent_changed = Signal(str)
 
-    def __init__(self, app: QApplication, mode: ThemeMode = ThemeMode.SYSTEM) -> None:
+    def __init__(
+        self,
+        app: QApplication,
+        mode: ThemeMode = ThemeMode.SYSTEM,
+        accent: str = "blue",
+    ) -> None:
         super().__init__(app)
         self._app = app
         self._mode = mode
+        self._accent = accent
         self._resolved_mode = ThemeMode.LIGHT
         app.styleHints().colorSchemeChanged.connect(self._on_color_scheme_changed)
         self.apply()
@@ -522,6 +661,10 @@ class ThemeController(QObject):
     @property
     def mode(self) -> ThemeMode:
         return self._mode
+
+    @property
+    def accent(self) -> str:
+        return self._accent
 
     @property
     def resolved_mode(self) -> ThemeMode:
@@ -533,16 +676,24 @@ class ThemeController(QObject):
         self._mode = mode
         self.apply()
 
+    def set_accent(self, accent: str) -> None:
+        if self._accent == accent:
+            return
+        self._accent = accent
+        self.apply()
+        self.accent_changed.emit(accent)
+
     def apply(self) -> None:
         resolved_mode = (
             system_theme_mode(self._app)
             if self._mode is ThemeMode.SYSTEM
             else self._mode
         )
-        colors = colors_for_mode(resolved_mode)
+        colors = colors_for_mode(resolved_mode, accent=self._accent)
         self._app.setPalette(build_palette(colors))
         self._app.setStyleSheet(build_stylesheet(colors))
         self._app.setProperty("themeMode", resolved_mode.value)
+        self._app.setProperty("accentColor", self._accent)
         changed = self._resolved_mode is not resolved_mode
         self._resolved_mode = resolved_mode
         if changed:
@@ -555,11 +706,15 @@ class ThemeController(QObject):
 
 
 def apply_theme(
-    app: QApplication, mode: ThemeMode = ThemeMode.SYSTEM
+    app: QApplication,
+    mode: ThemeMode = ThemeMode.SYSTEM,
+    accent: str = "blue",
+    font_scale: float = 1.0,
 ) -> ThemeController:
     """Fusion을 사용할 수 있으면 선택하고 앱 테마 제어기를 생성한다."""
 
     fusion_style = _fusion_style_name()
     if fusion_style is not None:
         app.setStyle(fusion_style)
-    return ThemeController(app, mode)
+    apply_font_scale(font_scale, app)
+    return ThemeController(app, mode, accent)

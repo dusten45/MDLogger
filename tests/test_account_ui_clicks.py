@@ -48,7 +48,7 @@ def _button_texts(dialog) -> list[str]:
     return [btn.text() for btn in dialog.findChildren(QPushButton)]
 
 
-def test_open_account_button_in_main_window_emits_request(
+def test_open_settings_button_in_main_window_emits_request(
     qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     monkeypatch.setattr("mdlogger.ui.main_window.load_decks", lambda: list(DECKS))
@@ -61,8 +61,8 @@ def test_open_account_button_in_main_window_emits_request(
     qapp.processEvents()
 
     fired = []
-    window.account_requested.connect(lambda: fired.append(True))
-    _click(_find_button(window._result_view, "계정"))
+    window.settings_requested.connect(lambda: fired.append(True))
+    _click(_find_button(window._result_view, "설정"))
     qapp.processEvents()
 
     assert fired == [True]
