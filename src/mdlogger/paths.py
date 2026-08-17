@@ -50,6 +50,7 @@ BASE_DIR = _base_dir()
 DATA_DIR = _resolve_data_dir()
 DB_PATH = DATA_DIR / "games.db"
 DECKS_PATH = DATA_DIR / "decks.json"
+SETTINGS_PATH = DATA_DIR / "settings.json"
 
 # 덱 목록 "원본"을 두는 온라인 위치(GitHub Gist 의 latest raw URL).
 # 비어 있으면 동기화를 끈다. 환경변수 ``MDLOGGER_DECKS_URL`` 로 덮어쓸 수 있다.
@@ -126,7 +127,7 @@ def _secure_data_permissions() -> None:
     if os.name == "nt":
         return
     DATA_DIR.chmod(_PRIVATE_DIR_MODE)
-    for path in (DB_PATH, DECKS_PATH, DECKS_SYNC_STATE_PATH):
+    for path in (DB_PATH, DECKS_PATH, DECKS_SYNC_STATE_PATH, SETTINGS_PATH):
         secure_data_file(path)
     secure_sidecars(DB_PATH)
 

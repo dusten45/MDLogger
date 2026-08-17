@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QDialog,
     QMainWindow,
     QMessageBox,
     QStackedWidget,
@@ -23,7 +22,7 @@ from .theme import ThemeController
 
 
 class MainWindow(QMainWindow):
-    account_requested = Signal()
+    settings_requested = Signal()
 
     def __init__(
         self,
@@ -41,6 +40,7 @@ class MainWindow(QMainWindow):
         self._stats = None  # 지연 생성되는 통계 창
         self._sync: SyncCoordinator | None = None
         self._sync_status: SyncStatus | None = None
+        self._memo_enabled = True
         self._modes: list = []
         self._mode_by_id: dict[str, GameMode] = {}
         self._current_mode_id: str | None = None
@@ -60,9 +60,8 @@ class MainWindow(QMainWindow):
         self._result_view.result_chosen.connect(self.show_detail)
         self._result_view.undo_requested.connect(self.on_undo)
         self._result_view.stats_requested.connect(self.open_stats)
-        self._result_view.account_requested.connect(self.account_requested)
         self._result_view.mode_changed.connect(self.on_mode_changed)
-        self._result_view.settings_requested.connect(self.open_settings)
+        self._result_view.settings_requested.connect(self.settings_requested)
         # 화면2 시그널
         self._detail_view.back_requested.connect(self.show_result)
         self._detail_view.confirmed.connect(self.on_confirm)
@@ -226,6 +225,7 @@ class MainWindow(QMainWindow):
             self._stats = StatsWindow(
                 self._games, self._decks, theme=self._theme, profile=self._profile
             )
+            self._stats.set_memo_enabled(self._memo_enabled)
             self._stats.data_changed.connect(self.refresh_header)
             # 휴대용 아카이브 가져오기 성공 시 즉시 동기화를 요청한다.
             self._stats.records_imported.connect(self.request_sync)
@@ -234,15 +234,12 @@ class MainWindow(QMainWindow):
         self._stats.raise_()
         self._stats.activateWindow()
 
-    def open_settings(self) -> None:
-        """기본 모드 설정 대화상자를 연다 (spec §6.4)."""
-        from .settings_dialog import SettingsDialog
-
-        dialog = SettingsDialog(self._games, self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-        self._load_modes()
-        self.refresh_header()
+    def set_memo_enabled(self, enabled: bool) -> None:
+        """메모 표시 여부를 상세 폼과 통계 표에 적용한다 (P8, spec §5.4)."""
+        self._memo_enabled = enabled
+        self._detail_view.form.set_memo_enabled(enabled)
+        if self._stats is not None:
+            self._stats.set_memo_enabled(enabled)
 
     def close_profile_windows(self) -> None:
         """프로필 전환 전에 이 범위의 보조 창과 메인 창을 닫고 삭제를 예약한다.

@@ -34,6 +34,15 @@ _RESULT_MOTION_MS = 140
 _RESULT_MARGIN = 4  # 성장 버튼이 컨테이너 상하 여백을 두고 맞도록
 _RESULT_UP = 4  # 수직 중심에서 살짝 위로 (아래로 성장해도 하단 버튼을 침범하지 않게)
 
+# 저사양 모드/애니메이션 감소 시 승/패 버튼 hover 확대 애니메이션을 끈다(spec §5.3).
+_motion_enabled = True
+
+
+def set_result_motion_enabled(enabled: bool) -> None:
+    """승/패 버튼 hover 확대 애니메이션 활성화 여부를 설정한다."""
+    global _motion_enabled
+    _motion_enabled = enabled
+
 
 class _ResultButton(QPushButton):
     """승/패 버튼. 호버 시 같은 비율로 배율(growScale)을 애니메이션한다."""
@@ -88,6 +97,10 @@ class _ResultButton(QPushButton):
         super().leaveEvent(event)
 
     def _animate(self, target: float) -> None:
+        if not _motion_enabled:
+            self._grow_scale = target
+            self._apply()
+            return
         self._anim.stop()
         self._anim.setStartValue(self._grow_scale)
         self._anim.setEndValue(target)
@@ -158,7 +171,6 @@ class ResultView(QWidget):
     undo_requested = Signal()
     stats_requested = Signal()
     settings_requested = Signal()
-    account_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -168,20 +180,25 @@ class ResultView(QWidget):
         root.setContentsMargins(12, 10, 12, 10)
         root.setSpacing(10)
 
-        # 낮은 우선순위의 계정/동기화 상태 (맨 위 텍스트)
+        # 낮은 우선순위의 계정/동기화 상태 (맨 위 텍스트) + 톱니바퀴 설정 버튼
         account_row = QHBoxLayout()
         account_row.setSpacing(8)
         self._account_status = QLabel("게스트 · 로컬 저장")
         set_style_property(self._account_status, "tone", "muted")
         self._account_status.setWordWrap(True)
-        account_button = QPushButton("계정")
-        account_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        account_button.setAccessibleName("계정 및 동기화 상태 열기")
-        account_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        set_style_property(account_button, "role", "ghost")
-        account_button.clicked.connect(self.account_requested)
+        settings_button = QPushButton("설정")
+        settings_icon = load_icon("settings")
+        if settings_icon is not None:
+            settings_button.setIcon(settings_icon)
+            settings_button.setIconSize(QSize(METRICS.icon_small, METRICS.icon_small))
+        settings_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        settings_button.setAccessibleName("설정")
+        settings_button.setToolTip("설정")
+        settings_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        set_style_property(settings_button, "role", "ghost")
+        settings_button.clicked.connect(self.settings_requested)
         account_row.addWidget(self._account_status, 1)
-        account_row.addWidget(account_button)
+        account_row.addWidget(settings_button)
         root.addLayout(account_row)
 
         # 오늘 전적: 맨 위 텍스트와 안내문 사이의 정확히 중앙에 배치
@@ -236,14 +253,8 @@ class ResultView(QWidget):
         stats_btn.setMinimumHeight(36)
         stats_btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         stats_btn.clicked.connect(self.stats_requested)
-        settings_btn = QPushButton("설정")
-        settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        settings_btn.setMinimumHeight(36)
-        settings_btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        settings_btn.clicked.connect(self.settings_requested)
         bottom.addWidget(self._undo)
         bottom.addWidget(stats_btn)
-        bottom.addWidget(settings_btn)
         root.addLayout(bottom)
 
     def set_account_status(self, text: str) -> None:

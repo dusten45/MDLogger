@@ -288,10 +288,12 @@ class DetailForm(QWidget):
 
         # 메모
         note_frame, note_col = _section("메모")
+        self._note_frame = note_frame
         self._note = QLineEdit()
         self._note.setPlaceholderText("메모 (선택)")
         note_col.addWidget(self._note)
         root.addWidget(note_frame)
+        self._memo_enabled = True
 
     # ----- 모드별 상태 패널 -----
     def _build_score_panel(self) -> QWidget:
@@ -338,6 +340,15 @@ class DetailForm(QWidget):
             self._standing_stack.setCurrentWidget(self._rating_panel)
         else:
             self._standing_stack.setCurrentWidget(self._score_panel)
+
+    def set_memo_enabled(self, enabled: bool) -> None:
+        """메모 입력 영역 표시 여부 (P8, spec §5.4).
+
+        비활성화하면 입력 위젯을 숨기고 저장 시 빈 메모를 기록한다. 기존 메모는
+        삭제하지 않는다.
+        """
+        self._memo_enabled = enabled
+        self._note_frame.setVisible(enabled)
 
     def mode(self):
         return self._mode
@@ -431,7 +442,7 @@ class DetailForm(QWidget):
             "opp_deck": opp_deck,
             "turns": self._turns.value(),
             "end_reason": self._reason.value(),
-            "note": self._note.text().strip(),
+            "note": "" if not self._memo_enabled else self._note.text().strip(),
             "standing_kind": (
                 self._mode.standing_kind.value if self._mode is not None else None
             ),

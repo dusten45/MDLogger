@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication
 
 from . import sync as deck_sync
 from .app_controller import AppController
+from .app_settings import SettingsRepository, effective_reduce_motion
 from .auth.credential_store import KeyringCredentialStore
 from .auth.session_manager import SessionManager
 from .auth.supabase_auth import SupabaseAccountService
@@ -24,8 +25,10 @@ from .release_policy import resolve_policy_for_startup
 from .remote.config import get_remote_config
 from .remote.games import RegisteredGamesClient
 from .remote.guest_ingest import GuestIngestClient
+from .remote.settings_sync import SettingsSyncClient
 from .ui.icons import application_icon
 from .ui.main_window import MainWindow
+from .ui.result_view import set_result_motion_enabled
 from .ui.theme import apply_theme
 
 
@@ -35,7 +38,18 @@ def main() -> None:
     _app_icon = application_icon()
     if _app_icon is not None:
         app.setWindowIcon(_app_icon)  # 모든 창의 타이틀바·태스크바 아이콘
-    _theme_controller = apply_theme(app)
+
+    # 설정을 창 생성 전에 로드해 테마·강조색·글자 크기를 먼저 적용한다(spec §6.4).
+    settings_repo = SettingsRepository()
+    settings = settings_repo.load()
+    _theme_controller = apply_theme(
+        app,
+        mode=settings.theme_mode,
+        accent=settings.accent_color,
+        font_scale=settings.font_scale,
+    )
+    # 저사양 모드/애니메이션 감소에 따라 승/패 버튼 애니메이션을 시작부터 적용한다.
+    set_result_motion_enabled(not effective_reduce_motion(settings))
 
     deck_sync.start_background_sync()  # 비차단; 다음 상세 진입에서 자동 반영
     decks = load_decks()
@@ -63,6 +77,10 @@ def main() -> None:
         SessionManager(SupabaseAccountService(remote_config), KeyringCredentialStore())
         if remote_config is not None
         else None
+    )
+
+    settings_sync_client = (
+        SettingsSyncClient(remote_config) if remote_config is not None else None
     )
 
     def sync_factory(profile):
@@ -99,15 +117,25 @@ def main() -> None:
         )
         return SyncCoordinator(engine)
 
+    def _build_window(games: GameService, profile) -> MainWindow:
+        window = MainWindow(games, decks, profile, theme=_theme_controller)
+        # 메모 설정은 설정 창에서 바뀔 수 있으므로 최신값을 다시 읽는다.
+        window.set_memo_enabled(settings_repo.load().memo_enabled)
+        return window
+
     controller = AppController(
         profiles,
         service_factory=lambda profile: GameService.open(profile.database_path),
-        window_factory=lambda games, profile: MainWindow(
-            games, decks, profile, theme=_theme_controller
-        ),
+        window_factory=_build_window,
         sync_factory=sync_factory,
     )
-    router = ProfileRouter(profiles, controller, sessions)
+    router = ProfileRouter(
+        profiles,
+        controller,
+        sessions,
+        settings_store=settings_repo,
+        settings_sync_client=settings_sync_client,
+    )
     try:
         router.start()
         exit_code = app.exec()
