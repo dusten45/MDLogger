@@ -13,11 +13,13 @@ from typing import Any
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QWidget
 
+from . import sync as deck_sync
 from .app_controller import AppController
-from .app_settings import ScoreInputMode, SettingsRepository, SettingsStore
-from .auth.credential_store import CredentialStoreError
+from .app_settings import AppSettings, ScoreInputMode, SettingsRepository, SettingsStore
+from .auth.credential_store import CredentialStore, CredentialStoreError
 from .auth.models import AuthError, AuthErrorKind, AuthSession, SignUpResult
 from .auth.session_manager import SessionManager, SessionState
+from .environment import reset_current_environment
 from .guest_import import (
     GuestImportError,
     GuestImportResult,
@@ -86,6 +88,7 @@ class ProfileRouter:
         app_controller: AppController,
         sessions: SessionManager | None,
         *,
+        credential_store: CredentialStore | None = None,
         settings_store: SettingsStore | None = None,
         settings_sync_client: SettingsSyncClient | None = None,
         auth_window: AuthWindow | None = None,
@@ -96,6 +99,7 @@ class ProfileRouter:
         self._profiles = profiles
         self._app = app_controller
         self._sessions = sessions
+        self._credential_store = credential_store
         self._settings_store = (
             settings_store if settings_store is not None else SettingsRepository()
         )
@@ -261,6 +265,7 @@ class ProfileRouter:
             lambda: self._sign_out_all_devices(window)
         )
         window.delete_account_requested.connect(lambda: self._delete_account(window))
+        window.app_reset_requested.connect(lambda: self._reset_application(window))
         window.memo_enabled_changed.connect(self._apply_memo_enabled)
         window.score_input_mode_changed.connect(self._apply_score_input_mode)
         window.exec()
@@ -621,6 +626,83 @@ class ProfileRouter:
     def _open_auth_from_account(self, dialog: QDialog) -> None:
         dialog.accept()
         self.show_auth()
+
+    def _reset_application(self, settings_window: SettingsWindow | None = None) -> None:
+        """활성 범위를 안전하게 닫고 이 설치의 관리 데이터를 초기화한다."""
+        profile = self._app.current_profile
+        credential_account_ids = set(self._profiles.credential_account_ids())
+        if profile is not None and profile.remote_user_id is not None:
+            credential_account_ids.add(profile.remote_user_id)
+
+        try:
+            if not self._app.close_for_data_reset():
+                QMessageBox.warning(
+                    self._auth,
+                    "앱 초기화 보류",
+                    "동기화 작업이 아직 종료되지 않았습니다. 잠시 후 다시 시도해 주세요.",
+                )
+                return
+        except Exception as error:  # noqa: BLE001 - 닫기 실패 뒤에도 복구 UI를 보장한다.
+            QMessageBox.critical(
+                self._auth,
+                "앱 초기화 실패",
+                f"동기화 또는 창을 안전하게 종료하지 못했습니다.\n{error}\n"
+                "동기화 상태를 확인한 뒤 다시 시도해 주세요.",
+            )
+            return
+
+        try:
+            self._clear_known_credentials(profile, credential_account_ids)
+        except CredentialStoreError as error:
+            QMessageBox.warning(
+                self._auth,
+                "앱 초기화 실패",
+                f"{error}\nOS 보안 저장소를 확인한 뒤 다시 시도해 주세요.",
+            )
+            self.show_auth()
+            return
+
+        try:
+            deck_sync.invalidate_background_sync()
+            self._profiles.reset_local_data()
+            reset_current_environment()
+            if settings_window is not None:
+                settings_window.reset_to_defaults()
+            else:
+                self._settings_store.save(AppSettings())
+        except (OSError, ProfileError) as error:
+            QMessageBox.critical(
+                self._auth,
+                "앱 초기화 실패",
+                f"이 기기의 앱 데이터를 초기화하지 못했습니다.\n{error}",
+            )
+            self.show_auth()
+            return
+
+        self.show_auth("이 설치의 앱 데이터를 초기화했습니다.")
+
+    def _clear_known_credentials(
+        self,
+        profile: ProfileContext | None,
+        credential_account_ids: set[str],
+    ) -> None:
+        """현재 및 이전에 저장한 계정의 refresh token을 모두 제거한다."""
+        active_account_id = profile.remote_user_id if profile is not None else None
+        credential_store = self._credential_store
+        inactive_account_ids = credential_account_ids - {active_account_id}
+        if inactive_account_ids and credential_store is None:
+            raise CredentialStoreError("저장된 로그인 정보를 모두 제거할 수 없습니다.")
+        if active_account_id is not None:
+            if self._sessions is not None:
+                self._sessions.sign_out(active_account_id)
+            elif credential_store is not None:
+                credential_store.delete_refresh_token(active_account_id)
+            else:
+                raise CredentialStoreError("저장된 로그인 정보를 제거할 수 없습니다.")
+            credential_account_ids.discard(active_account_id)
+        if credential_store is not None:
+            for account_id in credential_account_ids:
+                credential_store.delete_refresh_token(account_id)
 
     def _logout_from_dialog(self, dialog: QDialog) -> None:
         profile = self._app.current_profile

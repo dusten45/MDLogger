@@ -71,8 +71,9 @@ class FakeSync:
     ) -> None:
         pass
 
-    def stop(self, *, timeout_seconds: float = 5.0) -> None:
+    def stop(self, *, timeout_seconds: float = 5.0) -> bool:
         self.stopped = True
+        return True
 
 
 class TrackingWindow:
@@ -261,6 +262,29 @@ def test_profile_switch_stops_sync_before_closing_window(tmp_path: Path):
     controller.close()
 
 
+def test_data_reset_close_preserves_scope_when_sync_does_not_stop(tmp_path: Path):
+    manager = ProfileManager(tmp_path)
+    services: list[GameService] = []
+    windows: list[TrackingWindow] = []
+
+    class TimedOutSync(FakeSync):
+        def stop(self, *, timeout_seconds: float = 5.0) -> bool:
+            self.stopped = True
+            return False
+
+    controller = make_controller(manager, services, windows)
+    controller._sync_factory = lambda _profile: TimedOutSync()
+    controller.start_guest()
+    first_service = services[0]
+    first_window = windows[0]
+
+    assert not controller.close_for_data_reset()
+
+    assert not first_window.closed
+    assert first_service.count_games() == 0
+    assert controller.current_profile is not None
+
+
 def test_close_releases_all_resources_even_when_stop_raises(tmp_path: Path):
     """P1-9: sync.stop 예외가 나도 창과 DB 연결을 반드시 해제한다."""
     manager = ProfileManager(tmp_path)
@@ -268,7 +292,7 @@ def test_close_releases_all_resources_even_when_stop_raises(tmp_path: Path):
     windows: list[TrackingWindow] = []
 
     class ExplodingSync(FakeSync):
-        def stop(self, *, timeout_seconds: float = 5.0) -> None:
+        def stop(self, *, timeout_seconds: float = 5.0) -> bool:
             raise RuntimeError("stop 실패")
 
     def sync_factory(_profile: ProfileContext) -> ExplodingSync:

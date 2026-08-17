@@ -12,9 +12,11 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtCore import QEvent, QTimer
+from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton
 
 from mdlogger.app_controller import AppController
+from mdlogger.app_settings import AppSettings, MemorySettingsStore
 from mdlogger.auth.credential_store import InMemoryCredentialStore
 from mdlogger.auth.models import (
     AccountDeletionResult,
@@ -31,8 +33,11 @@ from mdlogger.game_service import GameService
 from mdlogger.profile_router import CONSENT_VERSION, ProfileRouter
 from mdlogger.profiles import ProfileContext, ProfileKind, ProfileManager
 from mdlogger.ui.account_views import AccountDialog, AuthWindow, GuestRecordChoice
+from mdlogger.ui.main_window import MainWindow
+from mdlogger.ui.settings_window import SettingsWindow
 
 USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+OTHER_USER_ID = "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb"
 
 
 @pytest.fixture(scope="module")
@@ -150,6 +155,8 @@ def make_router(tmp_path: Path, auth_window: AuthWindow | None = None):
         profiles,
         app_controller,
         sessions,
+        credential_store=store,
+        settings_store=MemorySettingsStore(),
         auth_window=auth_window,
         consent_prompt=lambda registered, parent: True,
         guest_records_prompt=lambda count, parent: GuestRecordChoice.KEEP,
@@ -216,6 +223,179 @@ def test_first_start_shows_choice_then_guest_consent_is_not_repeated(
     assert second_controller.current_profile.kind is ProfileKind.GUEST
     second_router.close()
     second_controller.close()
+
+
+def test_application_reset_clears_active_local_data_and_returns_to_start(
+    qapp: QApplication, tmp_path: Path
+):
+    values = make_router(tmp_path)
+    router, profiles, controller, _, store, _, windows = values
+    router.request_guest()
+    profile = controller.current_profile
+    assert profile is not None
+    assert profile.database_path.exists()
+    profile.database_path.with_suffix(".db-wal").touch()
+    (tmp_path / "settings.json").write_text("cached", encoding="utf-8")
+
+    router._reset_application()
+
+    assert controller.current_profile is None
+    assert windows[-1].closed
+    assert not profile.database_path.exists()
+    assert not profile.database_path.with_suffix(".db-wal").exists()
+    assert not (tmp_path / "settings.json").exists()
+    assert profiles.last_profile() is None
+    assert not profiles.has_data_consent(CONSENT_VERSION)
+    assert store.load_refresh_token(USER_ID) is None
+    assert router.auth_window.isVisible()
+
+
+def test_application_reset_removes_registered_refresh_token(
+    qapp: QApplication, tmp_path: Path
+):
+    values = make_router(tmp_path)
+    router, profiles, controller, _, store = values[:5]
+    profiles.accept_data_consent(CONSENT_VERSION)
+    store.save_refresh_token(USER_ID, "refresh-1")
+    assert router._open_profile(profiles.registered(USER_ID, "a@test.local"))
+
+    router._reset_application()
+
+    assert controller.current_profile is None
+    assert store.load_refresh_token(USER_ID) is None
+    assert router.auth_window.isVisible()
+
+
+def test_application_reset_removes_all_known_registered_refresh_tokens(
+    qapp: QApplication, tmp_path: Path
+):
+    values = make_router(tmp_path)
+    router, profiles, controller, _, store = values[:5]
+    account_a = profiles.registered(USER_ID, "a@test.local")
+    account_b = profiles.registered(OTHER_USER_ID, "b@test.local")
+    store.save_refresh_token(USER_ID, "refresh-a")
+    store.save_refresh_token(OTHER_USER_ID, "refresh-b")
+    assert router._open_profile(account_a)
+    assert router._open_profile(account_b)
+    assert profiles.credential_account_ids() == (USER_ID, OTHER_USER_ID)
+
+    router._reset_application()
+
+    assert controller.current_profile is None
+    assert store.load_refresh_token(USER_ID) is None
+    assert store.load_refresh_token(OTHER_USER_ID) is None
+    assert router.auth_window.isVisible()
+
+
+def test_application_reset_preserves_data_when_sync_does_not_stop(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    values = make_router(tmp_path)
+    router, _, controller, _, _, _, _ = values
+
+    class TimedOutSync:
+        status = None
+
+        def start(self) -> None:
+            pass
+
+        def stop(self, *, timeout_seconds: float = 5.0) -> bool:
+            return False
+
+        def request_sync(self, *, retry_failed: bool = False) -> None:
+            pass
+
+        def list_conflicts(self) -> list:
+            return []
+
+        def resolve_conflict(
+            self,
+            conflict_id: int,
+            resolution: str,
+            merged_payload: dict | None = None,
+            *,
+            expected_remote_version: int | None = None,
+        ) -> None:
+            pass
+
+    controller._sync_factory = lambda _profile: TimedOutSync()
+    router.request_guest()
+    profile = controller.current_profile
+    assert profile is not None
+    assert profile.database_path.exists()
+    messages: list[tuple] = []
+    monkeypatch.setattr(
+        QMessageBox,
+        "warning",
+        lambda *args: messages.append(args) or QMessageBox.StandardButton.Ok,
+    )
+
+    router._reset_application()
+
+    assert profile.database_path.exists()
+    assert controller.current_profile == profile
+    assert not router.auth_window.isVisible()
+    assert "아직 종료되지 않았습니다" in messages[0][2]
+
+
+def test_confirmed_settings_window_reset_closes_real_profile_scope(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    profiles = ProfileManager(tmp_path)
+    services: list[GameService] = []
+    settings_store = MemorySettingsStore(AppSettings(memo_enabled=False))
+
+    def service_factory(profile: ProfileContext) -> GameService:
+        games = GameService.open(profile.database_path)
+        services.append(games)
+        return games
+
+    def window_factory(games: GameService, profile: ProfileContext) -> MainWindow:
+        return MainWindow(games, ["테스트 덱"], profile)
+
+    controller = AppController(profiles, service_factory, window_factory)
+    store = InMemoryCredentialStore()
+    router = ProfileRouter(
+        profiles,
+        controller,
+        SessionManager(FakeAccountService(), store),
+        credential_store=store,
+        settings_store=settings_store,
+        consent_prompt=lambda registered, parent: True,
+        guest_records_prompt=lambda count, parent: GuestRecordChoice.KEEP,
+        import_result_prompt=lambda result, error, parent: True,
+    )
+    router.request_guest()
+    profile = controller.current_profile
+    assert profile is not None
+    monkeypatch.setattr(
+        QMessageBox,
+        "warning",
+        lambda *args: QMessageBox.StandardButton.Yes,
+    )
+
+    def confirm_reset() -> None:
+        dialogs = [
+            widget
+            for widget in qapp.topLevelWidgets()
+            if isinstance(widget, SettingsWindow) and widget.isVisible()
+        ]
+        assert len(dialogs) == 1
+        for button in dialogs[0].findChildren(QPushButton):
+            if button.text() == "앱 초기화":
+                button.click()
+                return
+        raise AssertionError("앱 초기화 버튼을 찾지 못함")
+
+    QTimer.singleShot(0, confirm_reset)
+    router.open_settings()
+    qapp.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+    assert controller.current_profile is None
+    assert not profile.database_path.exists()
+    assert settings_store.load() == AppSettings()
+    assert router.auth_window.isVisible()
+    router.close()
 
 
 def test_saved_registered_session_restores_without_login_window(

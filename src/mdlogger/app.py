@@ -54,7 +54,6 @@ def main() -> None:
     set_result_motion_enabled(not effective_reduce_motion(settings))
 
     deck_sync.start_background_sync()  # 비차단; 다음 상세 진입에서 자동 반영
-    decks = load_decks()
     profiles = ProfileManager()
     remote_config = get_remote_config()
 
@@ -75,8 +74,9 @@ def main() -> None:
     # 오프라인이거나 조회 실패시 NULL로 두고 소급 부여하지 않는다.
     refresh_from_server(remote_config)
 
+    credential_store = KeyringCredentialStore()
     sessions = (
-        SessionManager(SupabaseAccountService(remote_config), KeyringCredentialStore())
+        SessionManager(SupabaseAccountService(remote_config), credential_store)
         if remote_config is not None
         else None
     )
@@ -120,7 +120,7 @@ def main() -> None:
         return SyncCoordinator(engine)
 
     def _build_window(games: GameService, profile) -> MainWindow:
-        window = MainWindow(games, decks, profile, theme=_theme_controller)
+        window = MainWindow(games, load_decks(), profile, theme=_theme_controller)
         # 메모 설정은 설정 창에서 바뀔 수 있으므로 최신값을 다시 읽는다.
         window.set_memo_enabled(settings_repo.load().memo_enabled)
         window.set_score_input_mode(settings_repo.load().score_input_mode)
@@ -136,6 +136,7 @@ def main() -> None:
         profiles,
         controller,
         sessions,
+        credential_store=credential_store,
         settings_store=settings_repo,
         settings_sync_client=settings_sync_client,
     )

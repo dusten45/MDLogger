@@ -9,8 +9,14 @@ from pathlib import Path
 
 import pytest
 
+from mdlogger import profiles as profiles_module
 from mdlogger.game_service import GameService
-from mdlogger.profiles import ProfileKind, ProfileManager, ProfileOwnershipError
+from mdlogger.profiles import (
+    ProfileError,
+    ProfileKind,
+    ProfileManager,
+    ProfileOwnershipError,
+)
 
 ACCOUNT_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 ACCOUNT_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
@@ -144,6 +150,127 @@ def test_failed_consent_write_does_not_accept_only_in_memory(
         manager.accept_data_consent("duel-data-v1")
 
     assert not manager.has_data_consent("duel-data-v1")
+
+
+def test_reset_local_data_removes_all_app_data_and_creates_a_new_profile(
+    tmp_path: Path,
+):
+    manager = ProfileManager(tmp_path)
+    guest = manager.guest()
+    registered = manager.registered(ACCOUNT_A, "계정 A")
+    guest_games = open_profile(manager, guest)
+    guest_games.insert_game(sample("guest"))
+    guest_games.close()
+    registered_games = open_profile(manager, registered)
+    registered_games.insert_game(sample("registered"))
+    registered_games.close()
+
+    manager.accept_data_consent("duel-data-v1")
+    manager.remember_profile(registered)
+    for filename in (
+        "settings.json",
+        "decks.json",
+        "decks_sync.json",
+        "environment_version_cache.json",
+        "release_policy_cache.json",
+    ):
+        (tmp_path / filename).write_text("cached", encoding="utf-8")
+    migration_marker = tmp_path / ".legacy-data-migrated"
+    migration_marker.touch()
+    unrelated_file = tmp_path / "다른 앱 파일.txt"
+    unrelated_file.write_text("보존", encoding="utf-8")
+    unrelated_dir = tmp_path / "다른 앱 폴더"
+    unrelated_dir.mkdir()
+    (unrelated_dir / "보존.txt").write_text("보존", encoding="utf-8")
+
+    manager.reset_local_data()
+
+    new_guest = manager.guest()
+    assert new_guest.local_profile_id != guest.local_profile_id
+    assert new_guest.installation_id != guest.installation_id
+    assert manager.last_profile() is None
+    assert not manager.has_data_consent("duel-data-v1")
+    assert not guest.database_path.exists()
+    assert not registered.database_path.exists()
+    assert migration_marker.exists()
+    assert unrelated_file.read_text(encoding="utf-8") == "보존"
+    assert (unrelated_dir / "보존.txt").read_text(encoding="utf-8") == "보존"
+    for filename in (
+        "settings.json",
+        "decks.json",
+        "decks_sync.json",
+        "environment_version_cache.json",
+        "release_policy_cache.json",
+    ):
+        assert not (tmp_path / filename).exists()
+
+
+def test_reset_local_data_restores_previous_data_when_fresh_state_creation_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    manager = ProfileManager(tmp_path)
+    guest = manager.guest()
+    games = open_profile(manager, guest)
+    games.insert_game(sample("기존 기록"))
+    games.close()
+    original_state = (tmp_path / "global" / "profiles.json").read_text(encoding="utf-8")
+
+    def fail_state_creation():
+        raise ProfileError("상태 생성 실패")
+
+    monkeypatch.setattr(manager, "_load_or_create_state", fail_state_creation)
+    with pytest.raises(ProfileError, match="앱 데이터를 초기화할 수 없습니다"):
+        manager.reset_local_data()
+
+    assert guest.database_path.exists()
+    assert (tmp_path / "global" / "profiles.json").read_text(
+        encoding="utf-8"
+    ) == original_state
+
+
+def test_reset_retries_stale_staging_cleanup_before_reporting_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    manager = ProfileManager(tmp_path)
+    guest = manager.guest()
+    games = open_profile(manager, guest)
+    games.insert_game(sample("기존 기록"))
+    games.close()
+    original_rmtree = profiles_module.shutil.rmtree
+    failed_once = False
+
+    def fail_first_staging_cleanup(path, *args, **kwargs):
+        nonlocal failed_once
+        if Path(path).name.startswith(".mdlogger-reset-") and not failed_once:
+            failed_once = True
+            raise OSError("격리 데이터 잠김")
+        return original_rmtree(path, *args, **kwargs)
+
+    monkeypatch.setattr(profiles_module.shutil, "rmtree", fail_first_staging_cleanup)
+    with pytest.raises(ProfileError, match="완전히 제거할 수 없습니다"):
+        manager.reset_local_data()
+
+    stale_staging = list(tmp_path.glob(".mdlogger-reset-*"))
+    assert len(stale_staging) == 1
+    assert (stale_staging[0] / "guest" / "games.db").exists()
+
+    monkeypatch.setattr(profiles_module.shutil, "rmtree", original_rmtree)
+    manager.reset_local_data()
+
+    assert not list(tmp_path.glob(".mdlogger-reset-*"))
+    assert not guest.database_path.exists()
+
+
+def test_remembered_registered_profiles_track_known_credential_accounts(tmp_path: Path):
+    manager = ProfileManager(tmp_path)
+    account_a = manager.registered(ACCOUNT_A, "계정 A")
+    account_b = manager.registered(ACCOUNT_B, "계정 B")
+
+    manager.remember_profile(account_a)
+    manager.remember_profile(account_b)
+
+    assert manager.credential_account_ids() == (ACCOUNT_A, ACCOUNT_B)
+    assert ProfileManager(tmp_path).credential_account_ids() == (ACCOUNT_A, ACCOUNT_B)
 
 
 def test_guest_and_two_registered_profiles_are_fully_isolated(tmp_path: Path):

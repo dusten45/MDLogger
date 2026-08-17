@@ -120,6 +120,10 @@ class EnvironmentVersionProvider:
         self._current = None if not env_id else str(env_id).strip()
         self._save(self._cache_path, self._current)
 
+    def reset(self) -> None:
+        """데이터 파일을 다시 만들지 않고 메모리의 캐시 값을 비운다."""
+        self._current = None
+
 
 _PROVIDER = EnvironmentVersionProvider()
 
@@ -127,6 +131,11 @@ _PROVIDER = EnvironmentVersionProvider()
 def current_environment_id() -> str | None:
     """신규 기록에 부여할 현재 환경 version id(없으면 None)."""
     return _PROVIDER.current()
+
+
+def reset_current_environment() -> None:
+    """앱 초기화 후 이전 실행의 환경 캐시를 새 기록에 쓰지 않게 한다."""
+    _PROVIDER.reset()
 
 
 def refresh_from_server(remote_config: RemoteConfig | None) -> str | None:
