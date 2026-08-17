@@ -72,7 +72,7 @@ def test_login_form_has_visible_labels_password_toggle_and_enter_submit(
     window.close()
 
 
-def test_form_validation_is_next_to_the_field_and_tab_does_not_move_focus(
+def test_login_form_validation_is_next_to_the_field_and_tab_moves_focus(
     qapp: QApplication,
 ):
     window = AuthWindow()
@@ -88,7 +88,40 @@ def test_form_validation_is_next_to_the_field_and_tab_does_not_move_focus(
     assert window._email.property("invalid") is True
     window._email.setFocus()
     QTest.keyClick(window._email, Qt.Key.Key_Tab)
-    assert window.focusWidget() is window._email
+    assert window.focusWidget() is window._password
+    window.close()
+
+
+def test_signup_form_tab_moves_from_email_to_password_confirmation(
+    qapp: QApplication,
+):
+    window = AuthWindow()
+    window.show_signup()
+    window.show()
+    qapp.processEvents()
+
+    window._email.setFocus()
+    QTest.keyClick(window._email, Qt.Key.Key_Tab)
+    assert window.focusWidget() is window._password
+    QTest.keyClick(window._password, Qt.Key.Key_Tab)
+    assert window.focusWidget() is window._password_confirm
+    window.close()
+
+
+def test_verification_page_keeps_tab_focus_blocked(qapp: QApplication):
+    window = AuthWindow()
+    window.show_verification("a@test.local")
+    window.show()
+    qapp.processEvents()
+
+    back = next(
+        button
+        for button in window._verification_page.findChildren(QPushButton)
+        if button.text() == "로그인으로 돌아가기"
+    )
+    back.setFocus()
+    QTest.keyClick(back, Qt.Key.Key_Tab)
+    assert window.focusWidget() is back
     window.close()
 
 

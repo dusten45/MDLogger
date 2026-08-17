@@ -171,3 +171,38 @@ def test_guest_settings_sync_buttons_disabled(qapp) -> None:
     win = _window(MemorySettingsStore(), registered=False)
     assert not win._settings_upload_btn.isEnabled()
     assert not win._settings_download_btn.isEnabled()
+
+
+def test_last_used_mode_option_does_not_duplicate_after_reopen(qapp, tmp_path) -> None:
+    database_path = tmp_path / "games.db"
+    games = GameService.open(database_path)
+    try:
+        games.insert_play_mode(
+            {
+                "id": "last-used-cache",
+                "standing_kind": "rank",
+                "display_name": "이전 모드 기억",
+                "play_context_id": "last_used_cache",
+                "sort_order": 99,
+                "is_active": True,
+                "season_label": None,
+            }
+        )
+        first_window = _window(MemorySettingsStore(), games=games)
+        first_window._on_default_mode_changed("last_used")
+        first_window.close()
+    finally:
+        games.close()
+
+    reopened_games = GameService.open(database_path)
+    try:
+        reopened_window = _window(MemorySettingsStore(), games=reopened_games)
+        labels = [
+            button.text()
+            for button in reopened_window._default_mode.findChildren(QPushButton)
+        ]
+
+        assert labels.count("이전 모드 기억") == 1
+        assert reopened_window._default_mode.value() == "last_used"
+    finally:
+        reopened_games.close()
