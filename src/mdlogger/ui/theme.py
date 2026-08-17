@@ -490,6 +490,11 @@ QDoubleSpinBox[invalid="true"], QTextEdit[invalid="true"], QPlainTextEdit[invali
     border-color: {colors.danger};
     background-color: {colors.danger_subtle};
 }}
+QLineEdit[warning="true"], QComboBox[warning="true"], QSpinBox[warning="true"],
+QDoubleSpinBox[warning="true"], QTextEdit[warning="true"], QPlainTextEdit[warning="true"] {{
+    border-color: {colors.warning};
+    background-color: {colors.warning_subtle};
+}}
 QPushButton {{
     min-height: {metrics.control_height_small}px;
     background-color: {colors.surface_subtle};
@@ -567,6 +572,10 @@ QPushButton[role="result-win"]:checked, QPushButton[role="result-loss"]:checked 
 }}
 QPushButton[role="result-win"]:focus, QPushButton[role="result-loss"]:focus {{
     border-color: {colors.focus_ring};
+}}
+QPushButton[role="result-win"][compact="true"],
+QPushButton[role="result-loss"][compact="true"] {{
+    min-height: {metrics.control_height}px;
 }}
 QPushButton[role="segment"] {{
     background-color: {colors.surface};

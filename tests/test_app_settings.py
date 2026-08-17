@@ -11,6 +11,7 @@ from mdlogger.app_settings import (
     AppSettings,
     MemorySettingsStore,
     ReduceMotion,
+    ScoreInputMode,
     SettingsRepository,
 )
 from mdlogger.ui.theme import ThemeMode
@@ -75,6 +76,30 @@ def test_sync_allowlists_are_disjoint() -> None:
     assert "font_scale" in DEVICE_KEYS
     assert "theme_mode" in PREFERENCE_KEYS
     assert "default_mode" in PREFERENCE_KEYS
+    assert "score_input_mode" in PREFERENCE_KEYS
+
+
+def test_score_input_mode_default_and_roundtrip() -> None:
+    assert AppSettings().score_input_mode is ScoreInputMode.DELTA
+    settings = AppSettings(score_input_mode=ScoreInputMode.DIRECT)
+    data = settings.to_dict()
+    assert data["score_input_mode"] == "direct"
+    assert AppSettings.from_dict(data).score_input_mode is ScoreInputMode.DIRECT
+
+
+def test_score_input_mode_invalid_falls_back_to_delta() -> None:
+    assert (
+        AppSettings.from_dict({"score_input_mode": "bogus"}).score_input_mode
+        is ScoreInputMode.DELTA
+    )
+    assert (
+        AppSettings.from_dict({"score_input_mode": 7}).score_input_mode
+        is ScoreInputMode.DELTA
+    )
+    assert (
+        AppSettings.from_dict({"score_input_mode": "direct"}).score_input_mode
+        is ScoreInputMode.DIRECT
+    )
 
 
 def test_repository_roundtrip(tmp_path: Path) -> None:

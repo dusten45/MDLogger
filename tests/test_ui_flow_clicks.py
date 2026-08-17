@@ -101,8 +101,7 @@ def _fill_form(window: MainWindow, *, my_deck: str, opp_deck: str) -> None:
     form.set_mode(window._current_mode())
     form._my_deck.setEditText(my_deck)
     form._deck.setEditText(opp_deck)
-    form._score_before.setText("1200")
-    form._score_after.setText("1200")
+    form._score_delta_input.setText("1200")
     form._note.setText("통합 테스트 메모")
 
 
@@ -195,11 +194,14 @@ def test_save_flow_clicks_win_and_persists_record(
     assert window._stack.currentWidget() is window._result_view
     assert "0승 0패" in window._result_view._today.text()
 
-    # '승' 결과 버튼 실제 클릭 → 화면2(상세 입력)로 이동
-    _click(_find_button(window._result_view, "승"))
+    # '전적 입력' 버튼 실제 클릭 → 화면2(상세 입력)로 이동
+    _click(_find_button(window._result_view, "전적 입력"))
     qapp.processEvents()
     assert window._stack.currentWidget() is window._detail_view
-    assert window._current_result == "win"
+
+    # 승/패 선택 (상세 화면의 승/패 선택 컨트롤)
+    _click(_find_button(window._detail_view, "승"))
+    qapp.processEvents()
 
     # 상세를 채우고 '확인' 실제 클릭 → 저장 후 화면1 복귀
     _fill_form(window, my_deck="융합 덱", opp_deck="싱크로 덱")
@@ -227,16 +229,14 @@ def test_cancel_flow_returns_to_result_without_saving(
     window, games, _ = _open_window(tmp_path, monkeypatch)
     qapp.processEvents()
 
-    # '패' 결과 선택 → 상세로 이동 후, 아무 입력 없이 결과 배너(뒤로) 클릭
-    _click(_find_button(window._result_view, "패"))
+    # '전적 입력' → 상세로 이동 후, 아무 입력 없이 '전적 입력 취소' 배너 클릭
+    _click(_find_button(window._result_view, "전적 입력"))
     qapp.processEvents()
     assert window._stack.currentWidget() is window._detail_view
-    assert window._current_result == "lose"
 
     _click(window._detail_view._banner)
     qapp.processEvents()
     assert window._stack.currentWidget() is window._result_view
-    assert window._current_result is None
     assert games.count_games() == 0
 
     window.close_profile_windows()
@@ -249,11 +249,13 @@ def test_confirm_without_deck_selection_shows_validation_and_does_not_save(
     window, games, _ = _open_window(tmp_path, monkeypatch)
     qapp.processEvents()
 
-    _click(_find_button(window._result_view, "승"))
+    _click(_find_button(window._result_view, "전적 입력"))
     qapp.processEvents()
     assert window._stack.currentWidget() is window._detail_view
 
-    # 내 덱/상대 덱을 선택하지 않은 채 확인 클릭 → 유효성 메시지, 저장 안 됨
+    # 승/패 선택 후 내 덱/상대 덱을 선택하지 않은 채 확인 클릭 → 유효성 메시지
+    _click(_find_button(window._detail_view, "승"))
+    qapp.processEvents()
     _click(_find_button(window._detail_view, "확인"))
     qapp.processEvents()
 
@@ -591,7 +593,9 @@ def test_startup_migrates_old_db_and_retains_backup(
     qapp.processEvents()
 
     # 실제 클릭으로 신규 기록 추가 → 마이그레이션된 DB에 저장
-    _click(_find_button(window._result_view, "승"))
+    _click(_find_button(window._result_view, "전적 입력"))
+    qapp.processEvents()
+    _click(_find_button(window._detail_view, "승"))
     qapp.processEvents()
     _fill_form(window, my_deck="융합 덱", opp_deck="싱크로 덱")
     qapp.processEvents()

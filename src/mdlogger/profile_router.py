@@ -14,7 +14,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QWidget
 
 from .app_controller import AppController
-from .app_settings import SettingsRepository, SettingsStore
+from .app_settings import ScoreInputMode, SettingsRepository, SettingsStore
 from .auth.credential_store import CredentialStoreError
 from .auth.models import AuthError, AuthErrorKind, AuthSession, SignUpResult
 from .auth.session_manager import SessionManager, SessionState
@@ -262,6 +262,7 @@ class ProfileRouter:
         )
         window.delete_account_requested.connect(lambda: self._delete_account(window))
         window.memo_enabled_changed.connect(self._apply_memo_enabled)
+        window.score_input_mode_changed.connect(self._apply_score_input_mode)
         window.exec()
 
     def _settings_access_token(self) -> str | None:
@@ -278,6 +279,11 @@ class ProfileRouter:
         window = self._main_window()
         if window is not None:
             window.set_memo_enabled(enabled)
+
+    def _apply_score_input_mode(self, mode: str) -> None:
+        window = self._main_window()
+        if window is not None:
+            window.set_score_input_mode(ScoreInputMode(mode))
 
     def _open_conflicts(self, account_dialog: QDialog) -> None:
         account_dialog.hide()

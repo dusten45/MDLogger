@@ -97,8 +97,8 @@ def test_result_motion_flag_toggles(qapp) -> None:
 
 def test_result_button_applies_scale_immediately_when_motion_disabled(qapp) -> None:
     result_view.set_result_motion_enabled(False)
-    buttons = result_view._ResultButtons()
-    btn = buttons._win
+    buttons = result_view._RecordButton()
+    btn = buttons._button
     btn.set_base_size(QSize(100, 75))
     btn._animate(1.05)
     assert btn.growScale == pytest.approx(1.05)

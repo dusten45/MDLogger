@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..app_settings import ScoreInputMode
 from ..enums import (
     END_REASONS,
     RANK_DIVISION_MAX,
@@ -240,6 +241,11 @@ class DetailForm(QWidget):
         self._decks = list(decks)
         self._mode: GameMode | None = None
         self._score_base = 0
+        self._rating_base: int | None = None
+        self._score_input_mode = ScoreInputMode.DELTA
+        self._editing = False
+        self._result: str | None = None
+        self._validation_error: str | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -301,20 +307,45 @@ class DetailForm(QWidget):
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(METRICS.space_2)
+
+        # 경기 전 점수: 읽기 전용 레이블(신규 입력) / 편집 입력(편집 다이얼로그)
+        self._score_before_label = QLabel("")
+        self._score_before_label.setAccessibleName("경기 전 점수")
+        self._score_before_label.setMinimumHeight(METRICS.control_height_small)
         self._score_before = _int_line("경기 전 점수")
-        layout.addLayout(_field_row("경기 전 점수", self._score_before))
-        score_row = QHBoxLayout()
-        score_row.setContentsMargins(0, 0, 0, 0)
-        score_row.setSpacing(METRICS.space_2)
+        before_row = QHBoxLayout()
+        before_row.setSpacing(METRICS.space_2)
+        before_row.addWidget(self._score_before_label, 1)
+        before_row.addWidget(self._score_before, 1)
+        layout.addLayout(_field_layout_row("경기 전 점수", before_row))
+
+        # 점수 변동폭 (DELTA 전용)
+        self._score_delta_caption = _caption("점수 변동폭")
+        self._score_delta_caption.setWordWrap(False)
+        self._score_delta_caption.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
+        )
+        self._score_delta_input = _int_line("점수 변동폭")
+        self._score_delta_input.setAccessibleName("점수 변동폭")
+        self._score_delta_input.textChanged.connect(self._update_delta)
+        delta_row = QHBoxLayout()
+        delta_row.setSpacing(METRICS.space_2)
+        delta_row.addWidget(self._score_delta_caption)
+        delta_row.addWidget(self._score_delta_input, 1)
+        layout.addLayout(delta_row)
+
+        # 경기 후 점수 (DIRECT/편집) + 미리보기/변화량 라벨
         self._score_after = _int_line("경기 후 점수")
         self._delta = QLabel("")
         self._delta.setMinimumWidth(84)
         self._delta.setAlignment(
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
         )
-        score_row.addWidget(self._score_after, 1)
-        score_row.addWidget(self._delta)
-        layout.addLayout(_field_layout_row("경기 후 점수", score_row))
+        after_row = QHBoxLayout()
+        after_row.setSpacing(METRICS.space_2)
+        after_row.addWidget(self._score_after, 1)
+        after_row.addWidget(self._delta)
+        layout.addLayout(_field_layout_row("경기 후 점수", after_row))
         self._score_after.textChanged.connect(self._update_delta)
         self._score_before.textChanged.connect(self._update_delta)
         return panel
@@ -324,10 +355,47 @@ class DetailForm(QWidget):
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(METRICS.space_2)
+
+        # 경기 전 레이팅: 읽기 전용 레이블(신규 입력) / 편집 입력(편집 다이얼로그)
+        self._rating_before_label = QLabel("")
+        self._rating_before_label.setAccessibleName("경기 전 레이팅")
+        self._rating_before_label.setMinimumHeight(METRICS.control_height_small)
         self._rating_before = _int_line("경기 전 레이팅")
-        layout.addLayout(_field_row("경기 전 레이팅", self._rating_before))
+        before_row = QHBoxLayout()
+        before_row.setSpacing(METRICS.space_2)
+        before_row.addWidget(self._rating_before_label, 1)
+        before_row.addWidget(self._rating_before, 1)
+        layout.addLayout(_field_layout_row("경기 전 레이팅", before_row))
+
+        # 레이팅 변동폭 (DELTA 전용)
+        self._rating_delta_caption = _caption("레이팅 변동폭")
+        self._rating_delta_caption.setWordWrap(False)
+        self._rating_delta_caption.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred
+        )
+        self._rating_delta_input = _int_line("레이팅 변동폭")
+        self._rating_delta_input.setAccessibleName("레이팅 변동폭")
+        self._rating_delta_input.textChanged.connect(self._update_delta)
+        delta_row = QHBoxLayout()
+        delta_row.setSpacing(METRICS.space_2)
+        delta_row.addWidget(self._rating_delta_caption)
+        delta_row.addWidget(self._rating_delta_input, 1)
+        layout.addLayout(delta_row)
+
+        # 경기 후 레이팅 (DIRECT/편집) + 미리보기/변화량 라벨
         self._rating_after = _int_line("경기 후 레이팅")
-        layout.addLayout(_field_row("경기 후 레이팅", self._rating_after))
+        self._rating_delta = QLabel("")
+        self._rating_delta.setMinimumWidth(84)
+        self._rating_delta.setAlignment(
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
+        )
+        after_row = QHBoxLayout()
+        after_row.setSpacing(METRICS.space_2)
+        after_row.addWidget(self._rating_after, 1)
+        after_row.addWidget(self._rating_delta)
+        layout.addLayout(_field_layout_row("경기 후 레이팅", after_row))
+        self._rating_after.textChanged.connect(self._update_delta)
+        self._rating_before.textChanged.connect(self._update_delta)
         return panel
 
     def set_mode(self, mode) -> None:
@@ -350,27 +418,83 @@ class DetailForm(QWidget):
         self._memo_enabled = enabled
         self._note_frame.setVisible(enabled)
 
+    def set_score_input_mode(self, mode: ScoreInputMode) -> None:
+        """점수/레이팅 입력 방식을 전환한다 (spec §4.5)."""
+        self._score_input_mode = mode
+        self._apply_input_mode()
+
+    def set_result(self, result: str | None) -> None:
+        """선택된 승/패를 반영해 변동폭 모드의 부호/미리보기를 갱신한다."""
+        self._result = result
+        self._update_delta()
+
+    def _apply_input_mode(self) -> None:
+        """편집 여부와 입력 방식에 따라 점수/레이팅 패널 표시를 전환한다."""
+        editing = self._editing
+        delta = not editing and self._score_input_mode is ScoreInputMode.DELTA
+        # 레이팅 "경기 전"은 직전 레이팅이 없을 때(첫 경기) 편집 가능하게 한다(Q1-a).
+        rating_before_editable = editing or self._rating_base is None
+
+        self._score_before_label.setVisible(not editing)
+        self._score_before.setVisible(editing)
+        self._score_delta_caption.setVisible(delta)
+        self._score_delta_input.setVisible(delta)
+        self._score_after.setVisible(not delta)
+
+        self._rating_before_label.setVisible(not rating_before_editable)
+        self._rating_before.setVisible(rating_before_editable)
+        self._rating_delta_caption.setVisible(delta)
+        self._rating_delta_input.setVisible(delta)
+        self._rating_after.setVisible(not delta)
+
+        self._update_delta()
+
     def mode(self):
         return self._mode
 
     # ----- 점수/델타 -----
-    def score_before(self) -> int:
-        t = self._score_before.text().strip()
-        return int(t) if t else 0
+    def _score_before_value(self) -> int:
+        """현재 '경기 전 점수' 값(편집이면 입력값, 신규면 직전 값)."""
+        if self._editing:
+            text = self._score_before.text().strip()
+            return int(text) if text else 0
+        return self._score_base
 
-    def score_after(self) -> int:
-        t = self._score_after.text().strip()
-        return int(t) if t else 0
+    def _score_after_value(self) -> int:
+        text = self._score_after.text().strip()
+        return int(text) if text else 0
+
+    def _score_delta_value(self) -> int:
+        text = self._score_delta_input.text().strip()
+        return int(text) if text else 0
+
+    def _rating_before_value(self) -> int | None:
+        if self._editing or self._rating_base is None:
+            text = self._rating_before.text().strip()
+            return int(text) if text else None
+        return self._rating_base
+
+    def _rating_after_value(self) -> int | None:
+        text = self._rating_after.text().strip()
+        return int(text) if text else None
+
+    def _rating_delta_value(self) -> int:
+        text = self._rating_delta_input.text().strip()
+        return int(text) if text else 0
+
+    def _set_delta_warning(self, line: QLineEdit, after: int | None) -> None:
+        """변동폭으로 계산된 '경기 후' 값이 음수면 경고 테두리를 표시한다(Q2)."""
+        set_style_property(line, "warning", after is not None and after < 0)
 
     def set_score_base(self, base: int) -> None:
-        """직전 점수로 경기 전을 프리필하고 델타 기준값 설정."""
+        """직전 점수로 '경기 전'을 표시하고 입력창을 비운다 (spec §4.5)."""
         self._score_base = int(base)
+        self._score_before_label.setText(str(self._score_base))
         self._score_before.blockSignals(True)
         self._score_before.setText(str(self._score_base))
         self._score_before.blockSignals(False)
-        self._score_after.blockSignals(True)
-        self._score_after.setText(str(self._score_base))
-        self._score_after.blockSignals(False)
+        self._score_delta_input.clear()
+        self._score_after.clear()
         self._update_delta()
 
     def set_rank_before(self, tier: str, division: int) -> None:
@@ -378,21 +502,91 @@ class DetailForm(QWidget):
         self._rank_panel.set_before(tier, division)
 
     def set_rating_before(self, rating: int) -> None:
-        """레이팅 모드 경기 전 프리필 (get_last_rating, spec §5.3)."""
-        self._rating_before.setText(str(rating))
+        """직전 레이팅으로 '경기 전'을 표시하고 입력창을 비운다 (spec §4.5)."""
+        self._rating_base = int(rating)
+        self._rating_before_label.setText(str(self._rating_base))
+        self._rating_before.blockSignals(True)
+        self._rating_before.setText(str(self._rating_base))
+        self._rating_before.blockSignals(False)
+        self._rating_delta_input.clear()
+        self._rating_after.clear()
+        self._apply_input_mode()
 
     def _update_delta(self) -> None:
-        # 변화량은 현재 입력된 경기 전/후 점수 차이다. 사용자가 경기 전 점수를
-        # 수정해도 프리필 기준값(_score_base)이 아니라 실제 입력값을 따른다.
-        delta = self.score_after() - self.score_before()
-        if delta == 0:
-            self._delta.setText("")
-            set_style_property(self._delta, "tone", None)
+        kind = self._mode.standing_kind.value if self._mode is not None else None
+        if kind == StandingKind.RATING.value:
+            self._update_rating_delta()
         else:
-            set_style_property(
-                self._delta, "tone", "success" if delta > 0 else "danger"
-            )
-            self._delta.setText(f"{delta:+,}")
+            self._update_score_delta()
+
+    def _update_score_delta(self) -> None:
+        if self._editing or self._score_input_mode is ScoreInputMode.DIRECT:
+            # 변화량 표시 (after - before)
+            delta = self._score_after_value() - self._score_before_value()
+            if delta == 0:
+                self._delta.setText("")
+                set_style_property(self._delta, "tone", None)
+            else:
+                set_style_property(
+                    self._delta, "tone", "success" if delta > 0 else "danger"
+                )
+                self._delta.setText(f"{delta:+,}")
+        else:
+            # DELTA: 계산된 '경기 후 점수' 미리보기 (부호는 승/패에 따름)
+            before = self._score_base
+            delta = self._score_delta_value()
+            if self._result == "win":
+                after = before + delta
+            elif self._result == "lose":
+                after = before - delta
+            else:
+                after = None
+            if after is None:
+                self._delta.setText("")
+                set_style_property(self._delta, "tone", None)
+            else:
+                self._delta.setText(f"{after:,}점")
+                set_style_property(self._delta, "tone", None)
+            self._set_delta_warning(self._score_delta_input, after)
+
+    def _update_rating_delta(self) -> None:
+        if self._editing or self._score_input_mode is ScoreInputMode.DIRECT:
+            before = self._rating_before_value()
+            after = self._rating_after_value()
+            if before is None or after is None:
+                self._rating_delta.setText("")
+                set_style_property(self._rating_delta, "tone", None)
+                return
+            delta = after - before
+            if delta == 0:
+                self._rating_delta.setText("")
+                set_style_property(self._rating_delta, "tone", None)
+            else:
+                set_style_property(
+                    self._rating_delta,
+                    "tone",
+                    "success" if delta > 0 else "danger",
+                )
+                self._rating_delta.setText(f"{delta:+,}")
+        else:
+            # DELTA: 계산된 '경기 후 레이팅' 미리보기 (부호는 승/패에 따름)
+            before = self._rating_before_value()
+            delta = self._rating_delta_value()
+            if before is None:
+                after = None
+            elif self._result == "win":
+                after = before + delta
+            elif self._result == "lose":
+                after = before - delta
+            else:
+                after = None
+            if after is None:
+                self._rating_delta.setText("")
+                set_style_property(self._rating_delta, "tone", None)
+            else:
+                self._rating_delta.setText(f"{after:,}")
+                set_style_property(self._rating_delta, "tone", None)
+            self._set_delta_warning(self._rating_delta_input, after)
 
     # ----- 덱 목록 -----
     def set_decks(self, decks: list[str]) -> None:
@@ -418,13 +612,22 @@ class DetailForm(QWidget):
             self._mode is not None
             and self._mode.standing_kind.value == StandingKind.RATING.value
         ):
-            self._rating_after.setFocus()
+            if self._rating_before_value() is None:
+                self._rating_before.setFocus()
+            elif self._editing or self._score_input_mode is ScoreInputMode.DIRECT:
+                self._rating_after.setFocus()
+            else:
+                self._rating_delta_input.setFocus()
         else:
-            self._score_after.setFocus()
+            if self._editing or self._score_input_mode is ScoreInputMode.DIRECT:
+                self._score_after.setFocus()
+            else:
+                self._score_delta_input.setFocus()
 
     # ----- 값 입출력 -----
     def values(self) -> dict | None:
-        """검증된 입력값 dict. 내 덱/상대 덱이 모호하거나 모드 필수값이 없으면 None."""
+        """검증된 입력값 dict. 검증 실패 시 None (구체적 메시지는 validation_error())."""
+        self._validation_error = None
         my_deck = self._my_deck.resolve()
         opp_deck = self._deck.resolve()
 
@@ -434,6 +637,7 @@ class DetailForm(QWidget):
             else:
                 combo.clear_invalid()
         if my_deck is None or opp_deck is None:
+            self._validation_error = "내 덱 / 상대 덱을 후보에서 정확히 선택하세요"
             return None
 
         values = {
@@ -455,30 +659,87 @@ class DetailForm(QWidget):
 
         kind = self._mode.standing_kind.value
         if kind == StandingKind.EVENT_POINTS.value:
-            before = self._score_before.text().strip()
-            after = self._score_after.text().strip()
-            if not before or not after:
-                return None
-            values["event_points_before"] = int(before)
-            values["event_points_after"] = int(after)
+            if self._editing:
+                before_text = self._score_before.text().strip()
+                after_text = self._score_after.text().strip()
+                if not before_text or not after_text:
+                    self._validation_error = "경기 전/후 점수를 입력하세요"
+                    return None
+                values["event_points_before"] = int(before_text)
+                values["event_points_after"] = int(after_text)
+            elif self._score_input_mode is ScoreInputMode.DELTA:
+                delta_text = self._score_delta_input.text().strip()
+                if not delta_text:
+                    self._validation_error = "점수 변동폭을 입력하세요"
+                    return None
+                if self._result is None:
+                    self._validation_error = "승/패를 선택하세요"
+                    return None
+                delta = int(delta_text)
+                before = self._score_base
+                after = before + delta if self._result == "win" else before - delta
+                values["event_points_before"] = before
+                values["event_points_after"] = after
+            else:  # DIRECT
+                after_text = self._score_after.text().strip()
+                if not after_text:
+                    self._validation_error = "경기 후 점수를 입력하세요"
+                    return None
+                values["event_points_before"] = self._score_base
+                values["event_points_after"] = int(after_text)
         elif kind == StandingKind.RANK.value:
             before = self._rank_panel.before_values()
             after = self._rank_panel.after_values()
             if before is None or after is None:
+                self._validation_error = "랭크를 선택하세요"
                 return None
             values["rank_tier_before"], values["rank_division_before"] = before
             values["rank_tier_after"], values["rank_division_after"] = after
         elif kind == StandingKind.RATING.value:
-            before = self._rating_before.text().strip()
-            after = self._rating_after.text().strip()
-            if not before or not after:
-                return None
-            values["rating_before"] = int(before)
-            values["rating_after"] = int(after)
+            if self._editing:
+                before_text = self._rating_before.text().strip()
+                after_text = self._rating_after.text().strip()
+                if not before_text or not after_text:
+                    self._validation_error = "경기 전/후 레이팅을 입력하세요"
+                    return None
+                values["rating_before"] = int(before_text)
+                values["rating_after"] = int(after_text)
+            elif self._score_input_mode is ScoreInputMode.DELTA:
+                before = self._rating_before_value()
+                if before is None:
+                    self._validation_error = "경기 전 레이팅을 입력하세요"
+                    return None
+                delta_text = self._rating_delta_input.text().strip()
+                if not delta_text:
+                    self._validation_error = "레이팅 변동폭을 입력하세요"
+                    return None
+                if self._result is None:
+                    self._validation_error = "승/패를 선택하세요"
+                    return None
+                delta = int(delta_text)
+                after = before + delta if self._result == "win" else before - delta
+                values["rating_before"] = before
+                values["rating_after"] = after
+            else:  # DIRECT
+                before = self._rating_before_value()
+                if before is None:
+                    self._validation_error = "경기 전 레이팅을 입력하세요"
+                    return None
+                after_text = self._rating_after.text().strip()
+                if not after_text:
+                    self._validation_error = "경기 후 레이팅을 입력하세요"
+                    return None
+                values["rating_before"] = before
+                values["rating_after"] = int(after_text)
         return values
+
+    def validation_error(self) -> str | None:
+        """마지막 values() 호출의 검증 실패 메시지. 없으면 None."""
+        return self._validation_error
 
     def set_values(self, row) -> None:
         """편집용: 기존 레코드로 폼 채우기 (모드별 상태 포함)."""
+        self._editing = True
         self._turn.setValue(row["turn_order"])
         self._reason.setValue(row["end_reason"])
         self._turns.set_value(int(row["turns"]) if row["turns"] else 1)
@@ -502,6 +763,12 @@ class DetailForm(QWidget):
             )
             self._rank_panel.set_values(before, after)
         elif kind == StandingKind.RATING.value:
+            self._rating_base = (
+                int(row["rating_before"]) if row["rating_before"] is not None else None
+            )
+            self._rating_before_label.setText(
+                str(row["rating_before"]) if row["rating_before"] is not None else ""
+            )
             self._rating_before.setText(
                 str(row["rating_before"]) if row["rating_before"] is not None else ""
             )
@@ -517,10 +784,12 @@ class DetailForm(QWidget):
             self.set_score_base(base)
             if row["event_points_after"] is not None:
                 self._score_after.setText(str(row["event_points_after"]))
-                self._update_delta()
+        self._apply_input_mode()
 
     def reset(self, score_base: int = 0, my_deck: str = "") -> None:
         """저장 후 신규 입력용 기본값으로 초기화. 내 덱은 직전값으로 프리필."""
+        self._editing = False
+        self._result = None
         self._turn.setValue("first")
         self._reason.setValue("regular")
         self._turns.set_value(1)
@@ -530,6 +799,10 @@ class DetailForm(QWidget):
         self._deck.setEditText("")
         self._note.clear()
         self.set_score_base(score_base)
+        self._rating_base = None
+        self._rating_before_label.clear()
         self._rating_before.clear()
+        self._rating_delta_input.clear()
         self._rating_after.clear()
         self._rank_panel.reset()
+        self._apply_input_mode()

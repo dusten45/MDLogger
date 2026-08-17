@@ -121,6 +121,7 @@ def main() -> None:
         window = MainWindow(games, decks, profile, theme=_theme_controller)
         # 메모 설정은 설정 창에서 바뀔 수 있으므로 최신값을 다시 읽는다.
         window.set_memo_enabled(settings_repo.load().memo_enabled)
+        window.set_score_input_mode(settings_repo.load().score_input_mode)
         return window
 
     controller = AppController(

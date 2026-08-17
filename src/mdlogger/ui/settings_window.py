@@ -30,6 +30,7 @@ from ..app_settings import (
     AccentPreset,
     AppSettings,
     ReduceMotion,
+    ScoreInputMode,
     SettingsStore,
     effective_reduce_motion,
 )
@@ -65,6 +66,10 @@ FONT_SCALE_OPTIONS = [
     ("1.5", "150%"),
 ]
 REDUCE_MOTION_OPTIONS = [("system", "시스템"), ("off", "끔"), ("on", "켬")]
+SCORE_INPUT_MODE_OPTIONS = [
+    ("delta", "변동폭만 입력"),
+    ("direct", "변화한 점수 직접 입력"),
+]
 
 
 class SettingsWindow(QDialog):
@@ -80,6 +85,8 @@ class SettingsWindow(QDialog):
     delete_account_requested = Signal()
     # 메모 표시 여부를 메인 창(상세 폼/통계 표)에 전달한다.
     memo_enabled_changed = Signal(bool)
+    # 점수/레이팅 입력 방식을 메인 창(상세 폼)에 전달한다.
+    score_input_mode_changed = Signal(str)
 
     def __init__(
         self,
@@ -193,7 +200,7 @@ class SettingsWindow(QDialog):
         layout.addLayout(
             self._option(
                 "애니메이션 감소",
-                "승/패 버튼의 확대 애니메이션을 줄입니다.",
+                "전적 입력 버튼의 확대 애니메이션을 줄입니다.",
                 self._motion_select,
             )
         )
@@ -256,6 +263,18 @@ class SettingsWindow(QDialog):
                     self._default_mode,
                 )
             )
+
+        self._score_input_mode_select = SingleSelect(SCORE_INPUT_MODE_OPTIONS)
+        self._score_input_mode_select.setValue(self._settings.score_input_mode.value)
+        self._score_input_mode_select.changed.connect(self._on_score_input_mode_changed)
+        layout.addLayout(
+            self._option(
+                "점수 입력 방식",
+                "변동폭만 입력: 점수 변화의 절댓값만 입력하면 승/패에 따라 자동으로 "
+                "더하거나 뺍니다. 변화한 점수 직접 입력: 경기 후 점수를 직접 입력합니다.",
+                self._score_input_mode_select,
+            )
+        )
 
         layout.addStretch(1)
         return page
@@ -369,12 +388,19 @@ class SettingsWindow(QDialog):
         if self._mode_settings is not None:
             self._mode_settings.set_default_mode(value)
 
+    def _on_score_input_mode_changed(self, value: str) -> None:
+        self._settings = _replace(
+            self._settings, score_input_mode=ScoreInputMode(value)
+        )
+        self._commit()
+
     def _commit(self) -> None:
         self._store.save(self._settings)
         self._apply_theme()
         self._apply_font()
         self._apply_motion()
         self.memo_enabled_changed.emit(self._settings.memo_enabled)
+        self.score_input_mode_changed.emit(self._settings.score_input_mode.value)
 
     def _apply_theme(self) -> None:
         if self._theme is not None:
@@ -401,6 +427,7 @@ class SettingsWindow(QDialog):
         self._motion_select.setValue(self._settings.reduce_motion.value)
         self._low_spec.setChecked(self._settings.low_spec_mode)
         self._memo_check.setChecked(self._settings.memo_enabled)
+        self._score_input_mode_select.setValue(self._settings.score_input_mode.value)
 
     # ----- 설정 동기화 -----
     def _upload_settings(self) -> None:
@@ -442,6 +469,7 @@ class SettingsWindow(QDialog):
                 if self._mode_settings is not None
                 else DEFAULT_MODE_LAST_USED
             ),
+            "score_input_mode": self._settings.score_input_mode.value,
         }
 
     def _apply_downloaded_preferences(self, preferences: dict[str, Any]) -> None:
@@ -449,6 +477,7 @@ class SettingsWindow(QDialog):
         accent = preferences.get("accent_color")
         memo_enabled = preferences.get("memo_enabled")
         default_mode = preferences.get("default_mode")
+        score_input_mode = preferences.get("score_input_mode")
 
         updates: dict[str, Any] = {}
         if isinstance(theme_mode, str):
@@ -460,6 +489,10 @@ class SettingsWindow(QDialog):
             updates["accent_color"] = accent
         if isinstance(memo_enabled, bool):
             updates["memo_enabled"] = memo_enabled
+        if isinstance(score_input_mode, str) and score_input_mode in {
+            m.value for m in ScoreInputMode
+        }:
+            updates["score_input_mode"] = ScoreInputMode(score_input_mode)
         if updates:
             self._settings = _replace(self._settings, **updates)
             self._store.save(self._settings)
@@ -506,6 +539,7 @@ def _replace(settings: AppSettings, **updates: Any) -> AppSettings:
         "low_spec_mode": settings.low_spec_mode,
         "reduce_motion": settings.reduce_motion,
         "memo_enabled": settings.memo_enabled,
+        "score_input_mode": settings.score_input_mode,
     }
     values.update(updates)
     return AppSettings(**values)

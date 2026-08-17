@@ -47,6 +47,7 @@ def test_upload_strips_device_keys_and_sends_only_preferences() -> None:
             "accent_color": "teal",
             "memo_enabled": False,
             "default_mode": "rank-2026-08",
+            "score_input_mode": "delta",
             "font_scale": 1.5,
             "low_spec_mode": True,
             "reduce_motion": "on",
