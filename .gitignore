@@ -78,11 +78,7 @@ supabase/functions/**/.env.local
 # 아래 negate 항목은 거버넌스/운영 문서라서 추적을 유지한다(운영 runbook·하드닝
 # 로드맵[단계 12 진입 게이트]·원본 로드맵[제품 사양/결정]·UI 사양·배포 가이드).
 docs/*
-!docs/operations/
-docs/operations/*
-!docs/operations/runbook.md
-!docs/deployment-guide.md
-!docs/product-development-roadmap.md
+!docs/release.md
 
 # ---- OS / editor cruft ----
 Thumbs.db
