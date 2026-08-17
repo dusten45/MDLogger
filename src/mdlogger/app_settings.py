@@ -29,7 +29,13 @@ SCHEMA_VERSION = 1
 
 # 동기화(취향 설정) allowlist. ``default_mode``는 프로필 DB에 저장되지만 취향
 # 설정으로 동기화에 포함한다(spec §1.2, §4.1).
-PREFERENCE_KEYS = ("theme_mode", "accent_color", "memo_enabled", "default_mode")
+PREFERENCE_KEYS = (
+    "theme_mode",
+    "accent_color",
+    "memo_enabled",
+    "default_mode",
+    "score_input_mode",
+)
 # 기기 특성 설정. 어떤 경로로도 직렬화·전송하지 않는다(클라이언트/서버 하드 차단).
 DEVICE_KEYS = ("font_scale", "low_spec_mode", "reduce_motion")
 
@@ -52,6 +58,13 @@ class ReduceMotion(StrEnum):
     ON = "on"
 
 
+class ScoreInputMode(StrEnum):
+    """점수/레이팅 입력 방식 (spec §4.1)."""
+
+    DELTA = "delta"  # 변동폭만 입력 (프로그램이 부호 결정)
+    DIRECT = "direct"  # 변화한 점수 직접 입력
+
+
 @dataclass(frozen=True, slots=True)
 class AppSettings:
     """기기 전역 설정 값 (spec §2.1)."""
@@ -62,6 +75,7 @@ class AppSettings:
     low_spec_mode: bool = False
     reduce_motion: ReduceMotion = ReduceMotion.SYSTEM
     memo_enabled: bool = True
+    score_input_mode: ScoreInputMode = ScoreInputMode.DELTA
 
     def to_dict(self) -> dict[str, Any]:
         """버전 있는 JSON 직렬화 형식으로 변환한다(spec §3.1)."""
@@ -73,6 +87,7 @@ class AppSettings:
             "low_spec_mode": self.low_spec_mode,
             "reduce_motion": self.reduce_motion.value,
             "memo_enabled": self.memo_enabled,
+            "score_input_mode": self.score_input_mode.value,
         }
 
     @classmethod
@@ -85,6 +100,7 @@ class AppSettings:
             low_spec_mode=_parse_bool(data.get("low_spec_mode"), False),
             reduce_motion=_parse_reduce_motion(data.get("reduce_motion")),
             memo_enabled=_parse_bool(data.get("memo_enabled"), True),
+            score_input_mode=_parse_score_input_mode(data.get("score_input_mode")),
         )
 
 
@@ -120,6 +136,15 @@ def _parse_reduce_motion(value: Any) -> ReduceMotion:
         except ValueError:
             pass
     return ReduceMotion.SYSTEM
+
+
+def _parse_score_input_mode(value: Any) -> ScoreInputMode:
+    if isinstance(value, str):
+        try:
+            return ScoreInputMode(value)
+        except ValueError:
+            pass
+    return ScoreInputMode.DELTA
 
 
 def _parse_bool(value: Any, default: bool) -> bool:

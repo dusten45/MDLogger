@@ -100,7 +100,7 @@ class EditDialog(QDialog):
     def _on_save(self) -> None:
         values = self.form.values()
         if values is None:
-            self._status.setText("상대 덱을 후보에서 선택하세요 (부분 입력이 모호함)")
+            self._status.setText(self.form.validation_error() or "입력값을 확인하세요")
             return
         record = {
             **values,

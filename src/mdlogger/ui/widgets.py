@@ -163,6 +163,67 @@ class SingleSelect(QWidget):
                 self._group.setExclusive(True)
 
 
+class ResultSelect(QWidget):
+    """승/패 선택 (초록/빨강 legacy 유지, `result-win`/`result-loss` 역할).
+
+    `SingleSelect`는 `segment` 역할을 강제하므로 쓰지 않고, 초록(승)/빨강(패)
+    색상을 유지하는 소형 전용 위젯이다(spec §3.2). 라벨("승"/"패")이 항상
+    표시되어 색상만으로 구분하지 않는다.
+    """
+
+    changed = Signal(str)
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setAccessibleName("이번 듀얼의 결과 선택")
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(METRICS.space_2)
+
+        self._group = QButtonGroup(self)
+        self._group.setExclusive(True)
+        self._buttons: dict[str, QPushButton] = {}
+        self._values: dict[QPushButton, str] = {}
+        for value, text, role in (
+            ("win", "승", "result-win"),
+            ("lose", "패", "result-loss"),
+        ):
+            btn = QPushButton(text)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setMinimumHeight(METRICS.control_height)
+            btn.setAccessibleName(text)
+            btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            set_style_property(btn, "role", role)
+            set_style_property(btn, "compact", True)
+            btn.setFont(font_for_role(btn.font(), FontRole.LABEL))
+            self._group.addButton(btn)
+            self._buttons[value] = btn
+            self._values[btn] = value
+            layout.addWidget(btn)
+
+        self._group.buttonClicked.connect(self._on_clicked)
+
+    def _on_clicked(self, btn: QPushButton) -> None:
+        self.changed.emit(self._values[btn])
+
+    def value(self) -> str | None:
+        checked = self._group.checkedButton()
+        return self._values.get(checked) if checked is not None else None
+
+    def setValue(self, value: str | None) -> None:
+        """프로그램적 선택 (changed 시그널은 발생하지 않음)."""
+        btn = self._buttons.get(value)
+        if btn is not None:
+            btn.setChecked(True)
+        else:
+            checked = self._group.checkedButton()
+            if checked is not None:
+                self._group.setExclusive(False)
+                checked.setChecked(False)
+                self._group.setExclusive(True)
+
+
 class SearchableDeckCombo(QComboBox):
     """타이핑하면 부분일치로 필터링되는 덱 콤보박스.
 

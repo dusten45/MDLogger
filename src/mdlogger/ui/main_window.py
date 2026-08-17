@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QStackedWidget,
 )
 
+from ..app_settings import ScoreInputMode
 from ..decks import load_decks
 from ..enums import RESULT_LABELS
 from ..game_service import GameService
@@ -36,11 +37,11 @@ class MainWindow(QMainWindow):
         self._profile = profile
         self._decks = list(decks)
         self._theme = theme
-        self._current_result: str | None = None
         self._stats = None  # 지연 생성되는 통계 창
         self._sync: SyncCoordinator | None = None
         self._sync_status: SyncStatus | None = None
         self._memo_enabled = True
+        self._score_input_mode = ScoreInputMode.DELTA
         self._modes: list = []
         self._mode_by_id: dict[str, GameMode] = {}
         self._current_mode_id: str | None = None
@@ -57,7 +58,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self._stack)
 
         # 화면1 시그널
-        self._result_view.result_chosen.connect(self.show_detail)
+        self._result_view.record_requested.connect(self.show_detail)
         self._result_view.undo_requested.connect(self.on_undo)
         self._result_view.stats_requested.connect(self.open_stats)
         self._result_view.mode_changed.connect(self.on_mode_changed)
@@ -90,7 +91,6 @@ class MainWindow(QMainWindow):
 
     # ----- 화면 전환 -----
     def show_result(self) -> None:
-        self._current_result = None
         self._stack.setCurrentWidget(self._result_view)
 
     def _load_modes(self) -> None:
@@ -112,8 +112,8 @@ class MainWindow(QMainWindow):
         self._current_mode_id = self._games.resolve_default_mode_id()
         if self._current_mode_id is not None:
             self._result_view.set_mode(self._current_mode_id)
-        # 활성 모드가 없으면 승/패를 비활성화해 무모드 저장을 막는다(spec §2.5-7).
-        self._result_view.set_result_buttons_enabled(self._current_mode_id is not None)
+        # 활성 모드가 없으면 전적 입력을 비활성화해 무모드 저장을 막는다(spec §2.5-7).
+        self._result_view.set_record_button_enabled(self._current_mode_id is not None)
 
     def _current_mode(self) -> GameMode | None:
         if self._current_mode_id is None:
@@ -123,14 +123,13 @@ class MainWindow(QMainWindow):
     def on_mode_changed(self, mode_id: str) -> None:
         self._current_mode_id = mode_id
 
-    def show_detail(self, result: str) -> None:
-        self._current_result = result
+    def show_detail(self) -> None:
         # decks.json 편집 사항을 매 입력마다 반영
         self._decks = load_decks()
         self._detail_view.form.set_decks(self._decks)
         mode = self._current_mode()
         self._detail_view.set_mode(mode)
-        self._detail_view.set_result(result)
+        self._detail_view.reset_result()
         self._detail_view.form.reset(
             score_base=0, my_deck=self._games.get_last_my_deck()
         )
@@ -153,10 +152,8 @@ class MainWindow(QMainWindow):
 
     # ----- 동작 -----
     def on_confirm(self, values: dict) -> None:
-        if self._current_result is None:
-            return
         mode = self._current_mode()
-        record = {**values, "result": self._current_result}
+        record = dict(values)
         if mode is not None:
             record["standing_kind"] = mode.standing_kind.value
             record["play_context_id"] = mode.play_context_id
@@ -240,6 +237,11 @@ class MainWindow(QMainWindow):
         self._detail_view.form.set_memo_enabled(enabled)
         if self._stats is not None:
             self._stats.set_memo_enabled(enabled)
+
+    def set_score_input_mode(self, mode: ScoreInputMode) -> None:
+        """점수/레이팅 입력 방식을 상세 폼에 적용한다 (spec §4.6)."""
+        self._score_input_mode = mode
+        self._detail_view.form.set_score_input_mode(mode)
 
     def close_profile_windows(self) -> None:
         """프로필 전환 전에 이 범위의 보조 창과 메인 창을 닫고 삭제를 예약한다.

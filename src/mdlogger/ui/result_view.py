@@ -1,10 +1,9 @@
-"""화면1 (결과 선택): 계정/오늘 전적/안내문 + 승/패 버튼 + 되돌리기/통계.
+"""화면1 (기록 시작): 계정/오늘 전적/모드 상태 + "전적 입력" 버튼 + 되돌리기/통계.
 
-승/패 버튼 레이아웃 규칙:
-- 4:3 비율(세로:가로 = 4:3, 세로가 조금 더 길게), 가용 영역에 contain-fit.
-- 버튼은 메인 창 하단(되돌리기/통계 줄) 바로 위에 붙고, 남는 공백은 버튼 위쪽
-  (안내문과 버튼 사이)에 위치한다.
-- hover 시 호버된 버튼만 가로·세로 같은 비율로 부드럽게 커진다.
+"전적 입력" 버튼 레이아웃 규칙:
+- 기존 승/패 두 버튼이 차지하던 영역을 전체 폭으로 채운다(같은 높이 영역).
+- 버튼은 메인 창 하단(되돌리기/통계 줄) 바로 위에 붙는다.
+- hover 시 같은 비율로 부드럽게 커진다(5% 확대).
 - 성장 시 잘리지 않도록 컨테이너는 "성장 후 크기"로 두고, 휴지 버튼은 그 안에서
   성장 여유를 남긴다(버튼이 컨테이너를 벗어나 클리핑되지 않게).
 """
@@ -39,13 +38,13 @@ _motion_enabled = True
 
 
 def set_result_motion_enabled(enabled: bool) -> None:
-    """승/패 버튼 hover 확대 애니메이션 활성화 여부를 설정한다."""
+    """전적 입력 버튼 hover 확대 애니메이션 활성화 여부를 설정한다."""
     global _motion_enabled
     _motion_enabled = enabled
 
 
 class _ResultButton(QPushButton):
-    """승/패 버튼. 호버 시 같은 비율로 배율(growScale)을 애니메이션한다."""
+    """전적 입력 버튼. 호버 시 같은 비율로 배율(growScale)을 애니메이션한다."""
 
     def __init__(
         self, text: str, role: str, accessible_name: str, parent: QWidget | None = None
@@ -76,7 +75,7 @@ class _ResultButton(QPushButton):
 
     def _apply(self) -> None:
         parent = self.parentWidget()
-        if isinstance(parent, _ResultButtons):
+        if isinstance(parent, _RecordButton):
             parent.place(self, self._scaled_size())
 
     @Property(float)
@@ -107,58 +106,46 @@ class _ResultButton(QPushButton):
         self._anim.start()
 
 
-class _ResultButtons(QWidget):
-    """승/패 버튼을 4:3으로 배치하고, 각 버튼을 독립적으로 크기 조절한다.
+class _RecordButton(QWidget):
+    """전적 입력 단일 버튼. 기존 승/패 버튼 영역을 전체 폭으로 채운다.
 
-    컨테이너 높이는 "성장 후(contain-fit)" 크기로 잡아, 휴지 버튼은 그 안에서
+    컨테이너 높이는 기존 두 버튼 영역과 동일하게 유지하고, 휴지 버튼은 그 안에서
     5% 여유를 남기고 성장한다. 버튼이 컨테이너를 벗어나지 않아 잘리지 않는다.
     """
 
-    result_chosen = Signal(str)
+    record_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self._gap = _RESULT_GAP
-        self._win = _ResultButton("승", "result-win", "승리 기록", self)
-        self._lose = _ResultButton("패", "result-loss", "패배 기록", self)
-        self._win.clicked.connect(lambda: self.result_chosen.emit("win"))
-        self._lose.clicked.connect(lambda: self.result_chosen.emit("lose"))
+        self._button = _ResultButton("전적 입력", "primary", "전적 입력", self)
+        self._button.clicked.connect(self.record_requested)
 
     def set_enabled(self, enabled: bool) -> None:
-        """승/패 버튼 활성화 상태. 활성 모드가 없으면 비활성화한다(spec §2.5-7)."""
-        self._win.setEnabled(enabled)
-        self._lose.setEnabled(enabled)
+        """전적 입력 버튼 활성화 상태. 활성 모드가 없으면 비활성화한다(spec §2.5-7)."""
+        self._button.setEnabled(enabled)
 
     def hasHeightForWidth(self) -> bool:
         return True
 
     def heightForWidth(self, width: int) -> int:
-        per = max(0.0, (width - self._gap) / 2)
+        per = max(0.0, (width - _RESULT_GAP) / 2)
         return int(per * _RESULT_ASPECT) + 2 * _RESULT_MARGIN
 
     def resizeEvent(self, event: QResizeEvent) -> None:
-        self._layout_buttons()
+        self._layout_button()
         super().resizeEvent(event)
 
-    def _layout_buttons(self) -> None:
+    def _layout_button(self) -> None:
         r = self.rect()
-        per_w = (r.width() - self._gap) / 2
-        # 성장 후(contain-fit) 크기: 세로/가로 중 먼저 닿는 쪽 기준 (상하 여백 제외)
-        grown_w = min(
-            max(0.0, per_w), (r.height() - 2 * _RESULT_MARGIN) / _RESULT_ASPECT
-        )
-        # 휴지 크기는 5% 여유를 남겨 성장 때 잘리지 않게 한다
-        base_w = grown_w / (1.0 + _RESULT_GROW)
-        base = QSize(int(base_w), int(base_w * _RESULT_ASPECT))
-        self._win.set_base_size(base)
-        self._lose.set_base_size(base)
+        # 휴지 크기는 5% 여유를 남겨 성장 때 잘리지 않게 한다.
+        base_w = r.width() / (1.0 + _RESULT_GROW)
+        base_h = (r.height() - 2 * _RESULT_MARGIN) / (1.0 + _RESULT_GROW)
+        self._button.set_base_size(QSize(int(base_w), int(base_h)))
 
     def place(self, btn: _ResultButton, size: QSize) -> None:
         r = self.rect()
-        half_w = (r.width() - self._gap) / 2
-        left = r.left() if btn is self._win else r.left() + half_w + self._gap
         # 중심을 기준으로 성장 → 위·아래·양옆 모두 커진다. 수직 중심은 살짝 위로.
-        cx = left + half_w / 2
+        cx = r.left() + r.width() / 2
         cy = r.top() + r.height() / 2 - _RESULT_UP
         x = int(cx - size.width() / 2)
         y = int(cy - size.height() / 2)
@@ -166,7 +153,7 @@ class _ResultButtons(QWidget):
 
 
 class ResultView(QWidget):
-    result_chosen = Signal(str)  # 'win' | 'lose'
+    record_requested = Signal()
     mode_changed = Signal(str)  # play_modes.id
     undo_requested = Signal()
     stats_requested = Signal()
@@ -217,22 +204,16 @@ class ResultView(QWidget):
         root.addWidget(self._mode_status)
         root.addStretch(1)
 
-        # 안내문: 버튼 바로 위
-        prompt = QLabel("이번 듀얼의 결과를 기록하세요")
-        prompt.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        set_style_property(prompt, "tone", "muted")
-        root.addWidget(prompt)
-
-        # 모드 선택기 (승/패보다 낮은 시각적 우선순위, spec §6.1)
+        # 모드 선택기 (전적 입력보다 낮은 시각적 우선순위, spec §6.1)
         self._mode_select = SingleSelect([])
         self._mode_select.setAccessibleName("기록할 경기 모드 선택")
         self._mode_select.changed.connect(self.mode_changed)
         self._mode_select_index = root.count()
         root.insertWidget(self._mode_select_index, self._mode_select)
 
-        # 승/패 버튼 (하단 위, 안내문 아래)
-        self._buttons = _ResultButtons()
-        self._buttons.result_chosen.connect(self.result_chosen)
+        # 전적 입력 버튼 (하단 위, 모드 선택기 아래)
+        self._buttons = _RecordButton()
+        self._buttons.record_requested.connect(self.record_requested)
         root.addWidget(self._buttons)
 
         # 하단: 되돌리기 / 통계
@@ -291,6 +272,6 @@ class ResultView(QWidget):
     def set_undo_enabled(self, enabled: bool) -> None:
         self._undo.setEnabled(enabled)
 
-    def set_result_buttons_enabled(self, enabled: bool) -> None:
-        """승/패 버튼 활성화 상태. 활성 모드가 없으면 비활성화한다(spec §2.5-7)."""
+    def set_record_button_enabled(self, enabled: bool) -> None:
+        """전적 입력 버튼 활성화 상태. 활성 모드가 없으면 비활성화한다(spec §2.5-7)."""
         self._buttons.set_enabled(enabled)

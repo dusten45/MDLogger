@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public;
 
-select plan(8);
+select plan(9);
 
 insert into auth.users (id, email) values
     ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'user-a@test.local'),
@@ -63,6 +63,14 @@ select is(
     (public.upsert_user_settings('{"accent_color":"teal"}'::jsonb) ->> 'accent_color'),
     'teal',
     '기존 행을 갱신한다'
+);
+
+-- score_input_mode는 allowlist에 포함되어 허용된다.
+select is(
+    (public.upsert_user_settings('{"score_input_mode":"direct"}'::jsonb)
+     ->> 'score_input_mode'),
+    'direct',
+    'score_input_mode를 upsert한다'
 );
 
 -- RLS 격리: 다른 사용자는 A의 행을 볼 수 없다.
