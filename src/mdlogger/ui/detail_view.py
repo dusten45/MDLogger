@@ -81,7 +81,6 @@ class DetailView(QWidget):
         values = self.form.values()
         if values is None:
             self._status.setText(self.form.validation_error() or "입력값을 확인하세요")
-            self.form.focus_first_invalid()
             return
         values["result"] = result
         self._status.clear()

@@ -223,6 +223,35 @@ def test_save_flow_clicks_win_and_persists_record(
     games.close()
 
 
+def test_detail_entry_keeps_deck_popups_closed(
+    qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    window, games, _ = _open_window(tmp_path, monkeypatch)
+    qapp.processEvents()
+
+    for _ in range(2):
+        _click(_find_button(window._result_view, "전적 입력"))
+        qapp.processEvents()
+        assert window._stack.currentWidget() is window._detail_view
+
+        for combo in (
+            window._detail_view.form._my_deck,
+            window._detail_view.form._deck,
+        ):
+            completer = combo.completer()
+            assert completer is not None
+            popup = completer.popup()
+            assert popup is not None
+            assert not popup.isVisible()
+
+        _click(window._detail_view._banner)
+        qapp.processEvents()
+        assert window._stack.currentWidget() is window._result_view
+
+    window.close_profile_windows()
+    games.close()
+
+
 def test_cancel_flow_returns_to_result_without_saving(
     qapp: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):

@@ -594,36 +594,6 @@ class DetailForm(QWidget):
         self._my_deck.set_decks(self._decks)
         self._deck.set_decks(self._decks)
 
-    def focus_deck(self) -> None:
-        self._deck.setFocus()
-
-    def focus_first_invalid(self) -> None:
-        """저장 오류 후 첫 번째(시각적으로 위에 있는) 검증 실패 필드로 포커스를 옮긴다."""
-        if self._my_deck.resolve() is None:
-            self._my_deck.setFocus()
-        elif self._deck.resolve() is None:
-            self._deck.setFocus()
-        elif (
-            self._mode is not None
-            and self._mode.standing_kind.value == StandingKind.RANK.value
-        ):
-            self._rank_panel._after_tier.setFocus()
-        elif (
-            self._mode is not None
-            and self._mode.standing_kind.value == StandingKind.RATING.value
-        ):
-            if self._rating_before_value() is None:
-                self._rating_before.setFocus()
-            elif self._editing or self._score_input_mode is ScoreInputMode.DIRECT:
-                self._rating_after.setFocus()
-            else:
-                self._rating_delta_input.setFocus()
-        else:
-            if self._editing or self._score_input_mode is ScoreInputMode.DIRECT:
-                self._score_after.setFocus()
-            else:
-                self._score_delta_input.setFocus()
-
     # ----- 값 입출력 -----
     def values(self) -> dict | None:
         """검증된 입력값 dict. 검증 실패 시 None (구체적 메시지는 validation_error())."""

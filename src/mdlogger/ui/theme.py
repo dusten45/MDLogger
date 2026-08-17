@@ -465,6 +465,9 @@ QLabel[role="section"] {{ font-weight: 600; }}
 QLabel[tone="muted"] {{ color: {colors.text_secondary}; }}
 QLabel[tone="success"] {{ color: {colors.success}; }}
 QLabel[tone="danger"] {{ color: {colors.danger}; }}
+QFrame[role="danger-divider"] {{
+    background-color: {colors.danger};
+}}
 QFrame[surface="card"], QFrame[surface="summary-card"], QFrame[surface="section"] {{
     background-color: {colors.surface};
     border: {metrics.border_width}px solid {colors.border};
@@ -566,12 +569,24 @@ QPushButton[role="result-loss"]:hover {{
     background-color: {_shade(colors.danger_subtle, 0.97)};
     border-color: {_shade(colors.danger, 0.9)};
 }}
-QPushButton[role="result-win"]:pressed, QPushButton[role="result-loss"]:pressed,
-QPushButton[role="result-win"]:checked, QPushButton[role="result-loss"]:checked {{
+QPushButton[role="result-win"]:checked {{
+    background-color: {colors.success};
+    color: {colors.text_on_accent};
+    border-color: {colors.success};
+}}
+QPushButton[role="result-loss"]:checked {{
+    background-color: {colors.danger};
+    color: {colors.text_on_accent};
+    border-color: {colors.danger};
+}}
+QPushButton[role="result-win"]:pressed, QPushButton[role="result-loss"]:pressed {{
     border-color: {colors.focus_ring};
 }}
 QPushButton[role="result-win"]:focus, QPushButton[role="result-loss"]:focus {{
     border-color: {colors.focus_ring};
+}}
+QPushButton[role="result-win"]:checked:focus, QPushButton[role="result-loss"]:checked:focus {{
+    border-color: {colors.text_on_accent};
 }}
 QPushButton[role="result-win"][compact="true"],
 QPushButton[role="result-loss"][compact="true"] {{
