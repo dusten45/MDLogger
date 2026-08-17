@@ -37,6 +37,26 @@ def _send_input_method(line_edit, preedit: str, commit: str | None = None) -> No
     QApplication.sendEvent(line_edit, event)
 
 
+def test_programmatic_deck_updates_do_not_open_the_completer(
+    qapp: QApplication,
+) -> None:
+    combo = SearchableDeckCombo()
+    combo.set_decks(_DECKS)
+    combo.show()
+    qapp.processEvents()
+
+    completer = combo.completer()
+    assert completer is not None
+    popup = completer.popup()
+    assert popup is not None
+    assert not popup.isVisible()
+
+    combo.setEditText("테")
+    qapp.processEvents()
+    assert not popup.isVisible()
+    combo.close()
+
+
 def test_completer_filters_on_commit(qapp: QApplication) -> None:
     combo = _make_combo(qapp)
     line_edit = combo.lineEdit()

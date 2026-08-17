@@ -32,6 +32,7 @@ from mdlogger.ui.account_views import (
     GuestRecordChoice,
     GuestRecordChoiceDialog,
 )
+from mdlogger.ui.focus import install_pointer_focus_only
 from mdlogger.ui.main_window import MainWindow
 from mdlogger.ui.theme import DARK_COLORS, build_palette
 
@@ -40,7 +41,10 @@ USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 
 @pytest.fixture(scope="module")
 def qapp():
-    application = QApplication.instance() or QApplication([])
+    application = QApplication.instance()
+    if not isinstance(application, QApplication):
+        application = QApplication([])
+    install_pointer_focus_only(application)
     yield application
 
 
@@ -68,7 +72,7 @@ def test_login_form_has_visible_labels_password_toggle_and_enter_submit(
     window.close()
 
 
-def test_form_validation_is_next_to_the_field_and_focus_order_matches_layout(
+def test_form_validation_is_next_to_the_field_and_tab_does_not_move_focus(
     qapp: QApplication,
 ):
     window = AuthWindow()
@@ -84,7 +88,7 @@ def test_form_validation_is_next_to_the_field_and_focus_order_matches_layout(
     assert window._email.property("invalid") is True
     window._email.setFocus()
     QTest.keyClick(window._email, Qt.Key.Key_Tab)
-    assert window.focusWidget() is window._password
+    assert window.focusWidget() is window._email
     window.close()
 
 

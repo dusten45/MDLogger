@@ -184,6 +184,7 @@ class ResultSelect(QWidget):
         self._group.setExclusive(True)
         self._buttons: dict[str, QPushButton] = {}
         self._values: dict[QPushButton, str] = {}
+        self._labels: dict[str, str] = {}
         for value, text, role in (
             ("win", "승", "result-win"),
             ("lose", "패", "result-loss"),
@@ -200,12 +201,23 @@ class ResultSelect(QWidget):
             self._group.addButton(btn)
             self._buttons[value] = btn
             self._values[btn] = value
-            layout.addWidget(btn)
+            self._labels[value] = text
+            btn.toggled.connect(self._on_toggled)
+            # 두 버튼이 항상 같은 폭을 유지해 체크 표시가 레이아웃을 밀지 않게 한다.
+            layout.addWidget(btn, 1)
 
         self._group.buttonClicked.connect(self._on_clicked)
 
     def _on_clicked(self, btn: QPushButton) -> None:
         self.changed.emit(self._values[btn])
+
+    def _on_toggled(self, checked: bool) -> None:
+        """선택 상태를 색상만으로 전달하지 않도록 체크 표시(✓)를 덧붙인다."""
+        btn = self.sender()
+        if not isinstance(btn, QPushButton):
+            return
+        label = self._labels[self._values[btn]]
+        btn.setText(f"✓ {label}" if checked else label)
 
     def value(self) -> str | None:
         checked = self._group.checkedButton()
@@ -282,13 +294,40 @@ class SearchableDeckCombo(QComboBox):
         else:
             popup.hide()
 
+    def _hide_completer_popup(self) -> None:
+        completer = self.completer()
+        if completer is not None and (popup := completer.popup()) is not None:
+            popup.hide()
+
+    def setEditText(self, text: str) -> None:
+        """프로그램이 넣는 기본값에서는 자동완성 팝업을 열지 않는다."""
+        line_edit = self.lineEdit()
+        if line_edit is None:
+            super().setEditText(text)
+        else:
+            signals_blocked = line_edit.blockSignals(True)
+            try:
+                super().setEditText(text)
+            finally:
+                line_edit.blockSignals(signals_blocked)
+        self._hide_completer_popup()
+
     def set_decks(self, decks: list[str]) -> None:
         self._decks = list(decks)
-        self.blockSignals(True)
-        self.clear()
-        self.addItems(self._decks)
-        self.setEditText("")
-        self.blockSignals(False)
+        line_edit = self.lineEdit()
+        combo_signals_blocked = self.blockSignals(True)
+        line_signals_blocked = (
+            line_edit.blockSignals(True) if line_edit is not None else False
+        )
+        try:
+            self.clear()
+            self.addItems(self._decks)
+            self.setEditText("")
+        finally:
+            self.blockSignals(combo_signals_blocked)
+            if line_edit is not None:
+                line_edit.blockSignals(line_signals_blocked)
+        self._hide_completer_popup()
 
     def current_deck(self) -> str:
         return self.currentText().strip()

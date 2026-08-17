@@ -18,6 +18,7 @@ from ..game_sync.models import SyncStatus
 from ..models import GameMode, RankStanding, StandingKind
 from ..profiles import ProfileContext, ProfileKind
 from .detail_view import DetailView
+from .focus import restrict_focus_to_pointer
 from .result_view import ResultView
 from .theme import ThemeController
 
@@ -70,6 +71,7 @@ class MainWindow(QMainWindow):
         self._load_modes()
         self.refresh_header()
         self.show_result()
+        restrict_focus_to_pointer(self)
 
     @property
     def profile(self) -> ProfileContext | None:
@@ -147,7 +149,6 @@ class MainWindow(QMainWindow):
                 rating = self._games.get_last_rating(mode.id)
                 if rating is not None:
                     self._detail_view.form.set_rating_before(rating)
-        self._detail_view.form.focus_deck()
         self._stack.setCurrentWidget(self._detail_view)
 
     # ----- 동작 -----

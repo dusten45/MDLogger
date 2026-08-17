@@ -8,7 +8,8 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QPushButton
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton, QScrollArea
 
 from mdlogger.app_settings import AppSettings, MemorySettingsStore, ReduceMotion
 from mdlogger.game_service import GameService
@@ -49,11 +50,51 @@ def _window(store, theme=None, games=None, registered=False) -> SettingsWindow:
 
 def test_category_navigation(qapp) -> None:
     win = _window(MemorySettingsStore())
+    win.show()
+    qapp.processEvents()
+
+    assert win.focusWidget() is None
     assert win._nav.count() == 4
     win._nav.setCurrentRow(1)
     assert win._stack.currentIndex() == 1
     win._nav.setCurrentRow(3)
     assert win._stack.currentIndex() == 3
+
+
+def test_settings_pages_scroll_without_overlapping_the_footer(qapp) -> None:
+    win = _window(MemorySettingsStore(), registered=True)
+
+    assert win.size().width() >= 680
+    assert win.size().height() >= 620
+    assert isinstance(win._page_scroll, QScrollArea)
+    assert win._page_scroll.widgetResizable()
+    assert win._page_scroll.widget() is win._stack
+
+    win.resize(win.minimumSize())
+    win.show()
+    qapp.processEvents()
+    win._nav.setCurrentRow(3)
+    qapp.processEvents()
+
+    assert win._page_scroll.verticalScrollBar().maximum() > 0
+    win.close()
+
+
+def test_registered_account_has_prominent_danger_zone_heading(qapp) -> None:
+    win = _window(MemorySettingsStore(), registered=True)
+    headings = [
+        label for label in win.findChildren(QLabel) if label.text() == "위험 구역"
+    ]
+    dividers = [
+        frame
+        for frame in win.findChildren(QFrame)
+        if frame.property("role") == "danger-divider"
+    ]
+
+    assert len(headings) == 1
+    assert headings[0].property("tone") == "danger"
+    assert headings[0].font().weight() == QFont.Weight.DemiBold
+    assert len(dividers) == 2
 
 
 def test_theme_and_accent_apply_immediately(qapp) -> None:

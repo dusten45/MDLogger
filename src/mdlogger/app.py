@@ -26,6 +26,7 @@ from .remote.config import get_remote_config
 from .remote.games import RegisteredGamesClient
 from .remote.guest_ingest import GuestIngestClient
 from .remote.settings_sync import SettingsSyncClient
+from .ui.focus import install_pointer_focus_only
 from .ui.icons import application_icon
 from .ui.main_window import MainWindow
 from .ui.result_view import set_result_motion_enabled
@@ -34,6 +35,7 @@ from .ui.theme import apply_theme
 
 def main() -> None:
     app = QApplication(sys.argv)
+    install_pointer_focus_only(app)
     app.setApplicationName("MDLogger")
     _app_icon = application_icon()
     if _app_icon is not None:

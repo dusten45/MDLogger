@@ -60,6 +60,7 @@ def test_open_settings_button_in_main_window_emits_request(
     window.show()
     qapp.processEvents()
 
+    assert window.focusWidget() is None
     fired = []
     window.settings_requested.connect(lambda: fired.append(True))
     _click(_find_button(window._result_view, "설정"))

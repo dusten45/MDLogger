@@ -15,12 +15,14 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -37,6 +39,7 @@ from ..app_settings import (
 from ..game_service import GameService
 from ..remote.settings_sync import SettingsSyncClient, SettingsSyncError
 from ..settings import DEFAULT_MODE_LAST_USED, ModeSettings
+from .focus import restrict_focus_to_pointer
 from .result_view import set_result_motion_enabled
 from .theme import (
     METRICS,
@@ -114,7 +117,8 @@ class SettingsWindow(QDialog):
         self._mode_settings = ModeSettings(games) if games is not None else None
 
         self.setWindowTitle("설정")
-        self.setMinimumSize(560, 480)
+        self.setMinimumSize(620, 520)
+        self.resize(680, 620)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(
@@ -130,8 +134,12 @@ class SettingsWindow(QDialog):
         self._nav.currentRowChanged.connect(self._on_nav_changed)
         body.addWidget(self._nav)
 
+        self._page_scroll = QScrollArea()
+        self._page_scroll.setWidgetResizable(True)
+        self._page_scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._stack = QStackedWidget()
-        body.addWidget(self._stack, 1)
+        self._page_scroll.setWidget(self._stack)
+        body.addWidget(self._page_scroll, 1)
         root.addLayout(body, 1)
 
         self._pages: list[tuple[str, QWidget]] = [
@@ -158,6 +166,7 @@ class SettingsWindow(QDialog):
         root.addLayout(footer)
 
         self._nav.setCurrentRow(0)
+        restrict_focus_to_pointer(self)
 
     # ----- 페이지 구성 -----
     def _build_appearance_page(self) -> QWidget:
@@ -333,9 +342,25 @@ class SettingsWindow(QDialog):
             layout.addWidget(logout_btn)
 
             layout.addSpacing(METRICS.space_2)
+            danger_header = QHBoxLayout()
+            danger_header.setSpacing(METRICS.space_2)
+
+            left_divider = QFrame()
+            left_divider.setFixedHeight(METRICS.focus_width)
+            set_style_property(left_divider, "role", "danger-divider")
+            danger_header.addWidget(left_divider, 1)
+
             danger_title = QLabel("위험 구역")
+            danger_title.setFont(font_for_role(danger_title.font(), FontRole.TITLE))
+            set_style_property(danger_title, "role", "title")
             set_style_property(danger_title, "tone", "danger")
-            layout.addWidget(danger_title)
+            danger_header.addWidget(danger_title)
+
+            right_divider = QFrame()
+            right_divider.setFixedHeight(METRICS.focus_width)
+            set_style_property(right_divider, "role", "danger-divider")
+            danger_header.addWidget(right_divider, 1)
+            layout.addLayout(danger_header)
 
             sign_out_all_btn = QPushButton("모든 기기에서 로그아웃")
             sign_out_all_btn.setProperty("role", "danger")
