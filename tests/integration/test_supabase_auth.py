@@ -64,16 +64,16 @@ def test_sign_in_refresh_and_sign_out_round_trip():
 
 
 @requires_supabase
+@requires_test_account
 def test_registered_games_uuid_upsert_round_trip():
     config = _config()
     assert config is not None
     auth = SupabaseAccountService(config)
-    signup = auth.sign_up(
-        f"sync-{uuid.uuid4().hex}@test.local", "local-test-password-123"
+    # 가입(sign_up) 대신 이미 인증된 테스트 계정으로 로그인한다. 가입은 존재하지
+    # 않는 주소로 확인 메일을 발송해 반송 메일이 쌓이므로 사용하지 않는다.
+    session = auth.sign_in(
+        os.environ["MDLOGGER_TEST_EMAIL"], os.environ["MDLOGGER_TEST_PASSWORD"]
     )
-    if signup.session is None:
-        pytest.skip("local Supabase가 이메일 인증을 요구함")
-    session = signup.session
     sync_id = str(uuid.uuid4())
     payload = {
         "played_at": "2026-08-07T12:00:00",
