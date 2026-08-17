@@ -9,7 +9,14 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton, QScrollArea
+from PySide6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+)
 
 from mdlogger.app_settings import AppSettings, MemorySettingsStore, ReduceMotion
 from mdlogger.game_service import GameService
@@ -142,6 +149,43 @@ def test_reset_settings_restores_defaults_without_touching_games(qapp) -> None:
         assert store.load().memo_enabled is True
     finally:
         games.close()
+
+
+def test_application_reset_requires_confirmation(qapp, monkeypatch) -> None:
+    store = MemorySettingsStore(AppSettings(memo_enabled=False))
+    win = _window(store)
+    emitted: list[None] = []
+    win.app_reset_requested.connect(lambda: emitted.append(None))
+    button = _find_button(win, "앱 초기화")
+
+    assert button.property("role") == "danger"
+    assert button.accessibleName() == "설정과 이 기기에 저장된 모든 앱 데이터 삭제하기"
+
+    confirmation: list[tuple] = []
+
+    def reject(*args):
+        confirmation.append(args)
+        return QMessageBox.StandardButton.No
+
+    monkeypatch.setattr(QMessageBox, "warning", reject)
+    button.click()
+    assert emitted == []
+    assert store.load().memo_enabled is False
+    assert "서버에 저장된 계정과 데이터" in confirmation[0][2]
+    assert confirmation[0][3] == (
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+    )
+    assert confirmation[0][4] == QMessageBox.StandardButton.No
+
+    monkeypatch.setattr(
+        QMessageBox,
+        "warning",
+        lambda *args: QMessageBox.StandardButton.Yes,
+    )
+    button.click()
+    assert emitted == [None]
+    # 전체 초기화의 실제 저장소 변경은 ProfileRouter가 성공한 뒤 처리한다.
+    assert store.load().memo_enabled is False
 
 
 def test_low_spec_preserves_reduce_motion_individual_value(qapp) -> None:

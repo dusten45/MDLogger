@@ -84,16 +84,20 @@ class SyncCoordinator(QObject):
             expected_remote_version=expected_remote_version,
         )
 
-    def stop(self, *, timeout_seconds: float = 5.0) -> None:
+    def stop(self, *, timeout_seconds: float = 5.0) -> bool:
+        """worker가 종료됐는지 반환한다. 타임아웃이면 False로 알린다."""
         self._stop.set()
         self._wake.set()
         thread = self._thread
-        if thread is not None:
-            thread.join(timeout_seconds)
-            # join이 타임아웃되면 worker가 아직 떠나는 중이므로 _thread를
-            # 유지해 start()가 중복 실행되는 것을 막는다(P1-3).
-            if not thread.is_alive():
-                self._thread = None
+        if thread is None:
+            return True
+        thread.join(timeout_seconds)
+        # join이 타임아웃되면 worker가 아직 떠나는 중이므로 _thread를
+        # 유지해 start()가 중복 실행되는 것을 막는다(P1-3).
+        if thread.is_alive():
+            return False
+        self._thread = None
+        return True
 
     def _set_status(self, status: SyncStatus) -> None:
         if self._stop.is_set():

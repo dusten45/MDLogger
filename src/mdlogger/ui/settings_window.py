@@ -99,6 +99,7 @@ class SettingsWindow(QDialog):
     export_requested = Signal()
     sign_out_all_requested = Signal()
     delete_account_requested = Signal()
+    app_reset_requested = Signal()
     # 메모 표시 여부를 메인 창(상세 폼/통계 표)에 전달한다.
     memo_enabled_changed = Signal(bool)
     # 점수/레이팅 입력 방식을 메인 창(상세 폼)에 전달한다.
@@ -171,6 +172,14 @@ class SettingsWindow(QDialog):
         reset_btn.setAccessibleName("앱 설정을 기본값으로 되돌리기")
         reset_btn.clicked.connect(self._reset_settings)
         footer.addWidget(reset_btn)
+
+        app_reset_btn = QPushButton("앱 초기화")
+        app_reset_btn.setProperty("role", "danger")
+        app_reset_btn.setAccessibleName(
+            "설정과 이 기기에 저장된 모든 앱 데이터 삭제하기"
+        )
+        app_reset_btn.clicked.connect(self._request_application_reset)
+        footer.addWidget(app_reset_btn)
         footer.addStretch(1)
         close_btn = QPushButton("닫기")
         close_btn.setProperty("role", "primary")
@@ -449,11 +458,29 @@ class SettingsWindow(QDialog):
         set_result_motion_enabled(not effective_reduce_motion(self._settings))
 
     # ----- 설정 초기화 -----
-    def _reset_settings(self) -> None:
+    def reset_to_defaults(self) -> None:
+        """설정을 기본값으로 저장하고 현재 UI에 즉시 적용한다."""
         self._settings = AppSettings()
         self._store.save(self._settings)
         self._sync_widgets()
         self._commit()
+
+    def _reset_settings(self) -> None:
+        self.reset_to_defaults()
+
+    def _request_application_reset(self) -> None:
+        confirmed = QMessageBox.warning(
+            self,
+            "앱 초기화",
+            "이 앱이 관리하는 설정, 경기 기록, 프로필, 동기화 및 덱 캐시를 모두 삭제합니다.\n\n"
+            "현재 및 앱이 기억하는 로그인 정보도 제거되며 시작 화면으로 돌아갑니다.\n"
+            "서버에 저장된 계정과 데이터, 현재 데이터 폴더 외부 파일은 삭제되지 않습니다.\n\n"
+            "계속하시겠습니까?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if confirmed == QMessageBox.StandardButton.Yes:
+            self.app_reset_requested.emit()
 
     def _sync_widgets(self) -> None:
         self._theme_select.setValue(self._settings.theme_mode.value)

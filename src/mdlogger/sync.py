@@ -40,6 +40,10 @@ _TIMEOUT = 4
 # 일부 GitHub 엔드포인트는 User-Agent 누락 요청을 거부하므로 명시한다.
 _USER_AGENT = "mdlogger-decks-sync"
 
+# 초기화 중에는 진행 중인 동기화가 이전 덱 캐시를 다시 쓰지 못하게 세대를 올린다.
+_BACKGROUND_SYNC_LOCK = threading.Lock()
+_BACKGROUND_SYNC_GENERATION = 0
+
 
 def _require_https(url: str) -> None:
     """원격 덱 목록과 리디렉션 대상은 유효한 HTTPS URL이어야 한다."""
@@ -112,6 +116,8 @@ def sync_decks(
     url: str = DECKS_REMOTE_URL,
     decks_path: Path = DECKS_PATH,
     state_path: Path = DECKS_SYNC_STATE_PATH,
+    *,
+    generation: int | None = None,
 ) -> None:
     """원격을 확인해 필요 시 로컬 decks.json 을 병합·갱신한다.
 
@@ -127,17 +133,34 @@ def sync_decks(
         if remote is None:  # 304 Not Modified
             return
 
-        local = load_decks(decks_path)
-        merged = merge_decks(remote, local)
-        if merged != local:
-            save_decks(merged, decks_path)
-        _save_state(state_path, new_etag)
+        with _BACKGROUND_SYNC_LOCK:
+            if generation is not None and generation != _BACKGROUND_SYNC_GENERATION:
+                return
+            local = load_decks(decks_path)
+            merged = merge_decks(remote, local)
+            if merged != local:
+                save_decks(merged, decks_path)
+            _save_state(state_path, new_etag)
     except Exception as e:  # noqa: BLE001 - 동기화는 best-effort, 절대 앱을 막지 않음
         print(f"[decks-sync] 동기화 건너뜀: {e}", file=sys.stderr)
+
+
+def invalidate_background_sync() -> None:
+    """진행 중인 동기화가 초기화 뒤 캐시를 다시 쓰지 못하게 한다."""
+    global _BACKGROUND_SYNC_GENERATION
+    with _BACKGROUND_SYNC_LOCK:
+        _BACKGROUND_SYNC_GENERATION += 1
 
 
 def start_background_sync() -> None:
     """동기화를 데몬 스레드로 시작한다(비차단). 실패해도 앱에 영향이 없다."""
     if not DECKS_REMOTE_URL:
         return
-    threading.Thread(target=sync_decks, name="decks-sync", daemon=True).start()
+    with _BACKGROUND_SYNC_LOCK:
+        generation = _BACKGROUND_SYNC_GENERATION
+    threading.Thread(
+        target=sync_decks,
+        kwargs={"generation": generation},
+        name="decks-sync",
+        daemon=True,
+    ).start()

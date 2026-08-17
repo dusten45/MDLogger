@@ -8,6 +8,7 @@ from mdlogger.environment import (
     EnvironmentVersionProvider,
     load_env_id,
     refresh_from_server,
+    reset_current_environment,
     save_env_id,
 )
 from mdlogger.remote.client import HttpResponse, JsonHttpClient
@@ -74,6 +75,21 @@ def test_environment_provider_set_and_reload(tmp_path):
     assert provider.current() == "md-2026-08"
     reloaded = EnvironmentVersionProvider(cache_path=cache)
     assert reloaded.current() == "md-2026-08"
+
+
+def test_reset_current_environment_clears_memory_without_recreating_cache(
+    monkeypatch, tmp_path
+):
+    cache = tmp_path / "env_cache.json"
+    provider = EnvironmentVersionProvider(cache_path=cache)
+    provider.set_current("cached-env")
+    cache.unlink()
+    monkeypatch.setattr("mdlogger.environment._PROVIDER", provider)
+
+    reset_current_environment()
+
+    assert provider.current() is None
+    assert not cache.exists()
 
 
 # ----- 조회 -----

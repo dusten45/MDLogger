@@ -41,7 +41,7 @@ class SyncScope(Protocol):
         expected_remote_version: int | None = None,
     ) -> None: ...
 
-    def stop(self, *, timeout_seconds: float = 5.0) -> None: ...
+    def stop(self, *, timeout_seconds: float = 5.0) -> bool: ...
 
 
 SyncFactory = Callable[[ProfileContext], SyncScope | None]
@@ -161,7 +161,15 @@ class AppController:
     def close(self) -> None:
         self._close_current_scope()
 
-    def _close_current_scope(self) -> None:
+    def close_for_data_reset(self) -> bool:
+        """동기화 worker가 완전히 멈춘 경우에만 초기화용으로 범위를 닫는다."""
+        sync = self._sync
+        if sync is not None and sync.stop() is False:
+            return False
+        self._close_current_scope(sync_already_stopped=sync is not None)
+        return True
+
+    def _close_current_scope(self, *, sync_already_stopped: bool = False) -> None:
         sync = self._sync
         window = self._window
         games = self._games
@@ -171,7 +179,7 @@ class AppController:
         self._current_profile = None
 
         try:
-            if sync is not None:
+            if sync is not None and not sync_already_stopped:
                 sync.stop()
         finally:
             try:

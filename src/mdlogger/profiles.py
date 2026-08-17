@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -37,6 +38,7 @@ class _ProfileState(TypedDict):
     last_registered_display_name: NotRequired[str]
     # 마지막 등록 세션의 상태(표시·다음 시작 라우팅 힌트). 로그인/로그아웃 시 갱신된다.
     session_state: NotRequired[str]
+    credential_account_ids: NotRequired[list[str]]
 
 
 class ProfileKind(StrEnum):
@@ -87,6 +89,96 @@ class ProfileManager:
             ensure_data_dir()
         self._ensure_directories()
         self._state = self._load_or_create_state()
+
+    def reset_local_data(self) -> None:
+        """앱이 관리하는 로컬 데이터를 새 상태로 교체한다.
+
+        사용자 지정 ``MDLOGGER_DATA_DIR`` 안의 알 수 없는 파일은 보존한다. 기존
+        앱 데이터는 같은 파일 시스템의 격리 디렉터리로 먼저 옮기므로, 새 프로필
+        상태를 만들지 못하면 원래 위치로 복원할 수 있다. 레거시 마이그레이션 완료
+        표식은 보존해 초기화 뒤 이전 데이터가 다시 가져와지지 않게 한다.
+        """
+        try:
+            self._remove_stale_reset_staging()
+        except OSError as error:
+            raise ProfileError("이전 초기화 데이터를 제거할 수 없습니다.") from error
+
+        staging_dir = self.data_dir / f".mdlogger-reset-{uuid.uuid4().hex}"
+        staging_marker = staging_dir / ".managed-by-mdlogger"
+        moved_paths: list[tuple[Path, Path]] = []
+        try:
+            self._ensure_private_directory(staging_dir)
+            staging_marker.touch(mode=_PRIVATE_FILE_MODE)
+            secure_data_file(staging_marker)
+            for path in self._managed_reset_paths():
+                if not (path.exists() or path.is_symlink()):
+                    continue
+                staged_path = staging_dir / path.name
+                os.replace(path, staged_path)
+                moved_paths.append((path, staged_path))
+
+            self._ensure_directories()
+            state = self._load_or_create_state()
+        except (OSError, ProfileError) as error:
+            try:
+                for path in (self.global_dir, self.guest_dir, self.accounts_dir):
+                    if path.exists() or path.is_symlink():
+                        self._remove_path(path)
+                for original_path, staged_path in reversed(moved_paths):
+                    if staged_path.exists() or staged_path.is_symlink():
+                        os.replace(staged_path, original_path)
+                if staging_dir.exists():
+                    shutil.rmtree(staging_dir)
+            except OSError as rollback_error:
+                raise ProfileError(
+                    "앱 데이터를 초기화하지 못했고 이전 데이터를 복원할 수 없습니다."
+                ) from rollback_error
+            raise ProfileError("앱 데이터를 초기화할 수 없습니다.") from error
+
+        self._state = state
+        try:
+            shutil.rmtree(staging_dir)
+        except OSError as error:
+            raise ProfileError(
+                "초기화 전 앱 데이터를 완전히 제거할 수 없습니다."
+            ) from error
+
+    def _remove_stale_reset_staging(self) -> None:
+        """이전 초기화가 남긴 앱 소유 격리 디렉터리를 정리한다."""
+        for path in self.data_dir.glob(".mdlogger-reset-*"):
+            marker = path / ".managed-by-mdlogger"
+            if path.is_dir() and not path.is_symlink() and marker.is_file():
+                shutil.rmtree(path)
+
+    def _managed_reset_paths(self) -> list[Path]:
+        """공유 데이터 디렉터리에서도 안전하게 지울 수 있는 앱 소유 경로를 반환한다."""
+        paths = [self.global_dir, self.guest_dir, self.accounts_dir]
+        file_names = (
+            "games.db",
+            "games.db-wal",
+            "games.db-shm",
+            "games.db-journal",
+            "settings.json",
+            "decks.json",
+            "decks.json.tmp",
+            "decks_sync.json",
+            "decks_sync.json.tmp",
+            "environment_version_cache.json",
+            "environment_version_cache.json.tmp",
+            "release_policy_cache.json",
+            "release_policy_cache.json.tmp",
+        )
+        paths.extend(self.data_dir / name for name in file_names)
+        paths.extend(self.data_dir.glob(".settings.json.*.tmp"))
+        paths.extend(self.data_dir.glob("games.db.pre-migration-v*.bak*"))
+        return paths
+
+    @staticmethod
+    def _remove_path(path: Path) -> None:
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
 
     def guest(self) -> ProfileContext:
         return ProfileContext(
@@ -149,6 +241,9 @@ class ProfileManager:
                 raise ProfileError("등록 프로필에는 remote user ID가 필요합니다.")
             updated["last_registered_user_id"] = profile.remote_user_id
             updated["last_registered_display_name"] = profile.display_name
+            account_ids = set(updated.get("credential_account_ids", []))
+            account_ids.add(profile.remote_user_id)
+            updated["credential_account_ids"] = sorted(account_ids)
         updated["session_state"] = profile.session_state
         self._write_state(updated)
         self._state = updated
@@ -251,11 +346,28 @@ class ProfileManager:
             if not isinstance(display_name, str) or not display_name.strip():
                 raise ProfileError("마지막 등록 계정 표시 이름이 올바르지 않습니다.")
 
+        credential_account_ids = state.get("credential_account_ids")
+        if credential_account_ids is not None:
+            if not isinstance(credential_account_ids, list):
+                raise ProfileError("저장된 자격 증명 계정 목록이 올바르지 않습니다.")
+            if len(set(credential_account_ids)) != len(credential_account_ids):
+                raise ProfileError("저장된 자격 증명 계정 목록에 중복이 있습니다.")
+            for account_id in credential_account_ids:
+                self._canonical_uuid(account_id, "credential account ID")
+
         session_state = state.get("session_state")
         if session_state is not None and (
             not isinstance(session_state, str) or not session_state.strip()
         ):
             raise ProfileError("저장된 세션 상태가 올바르지 않습니다.")
+
+    def credential_account_ids(self) -> tuple[str, ...]:
+        """이 설치가 저장한 refresh token의 알려진 계정 ID를 반환한다."""
+        account_ids = set(self._state.get("credential_account_ids", []))
+        last_account_id = self._state.get("last_registered_user_id")
+        if isinstance(last_account_id, str):
+            account_ids.add(last_account_id)
+        return tuple(sorted(account_ids))
 
     def _write_state(self, state: _ProfileState) -> None:
         temporary_path = self._state_path.with_suffix(".tmp")

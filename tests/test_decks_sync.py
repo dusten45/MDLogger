@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import urllib.error
+from threading import Event, Thread
 
 import pytest
 
@@ -163,6 +164,42 @@ def test_sync_passes_saved_etag_back(tmp_path, monkeypatch):
         url="http://x", decks_path=tmp_path / "decks.json", state_path=state_path
     )
     assert seen["etag"] == "prev"
+
+
+def test_invalidated_background_sync_cannot_recreate_reset_cache(tmp_path, monkeypatch):
+    _no_real_data_dir(monkeypatch)
+    fetched = Event()
+    release_fetch = Event()
+
+    def blocked_fetch(url, etag):
+        fetched.set()
+        assert release_fetch.wait(timeout=2)
+        return ["원격 덱"], "etag"
+
+    monkeypatch.setattr(sync, "_fetch_remote", blocked_fetch)
+    with sync._BACKGROUND_SYNC_LOCK:
+        generation = sync._BACKGROUND_SYNC_GENERATION
+    decks_path = tmp_path / "decks.json"
+    state_path = tmp_path / "decks_sync.json"
+    worker = Thread(
+        target=sync.sync_decks,
+        kwargs={
+            "url": "https://example.com/decks.json",
+            "decks_path": decks_path,
+            "state_path": state_path,
+            "generation": generation,
+        },
+    )
+    worker.start()
+    assert fetched.wait(timeout=2)
+
+    sync.invalidate_background_sync()
+    release_fetch.set()
+    worker.join(timeout=2)
+
+    assert not worker.is_alive()
+    assert not decks_path.exists()
+    assert not state_path.exists()
 
 
 def test_sync_swallows_fetch_error(tmp_path, monkeypatch):
