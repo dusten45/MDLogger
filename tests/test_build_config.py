@@ -1,12 +1,14 @@
 """하드닝 H1 — 배포 빌드 설정 주입 테스트.
 
-설정 우선순위(환경변수 > 번들 빌드 설정 > 없음)와, 번들 생성 모듈의
+설정 우선순위(환경변수 > 번들 빌드 설정 > `.env` > 없음)와, 번들 생성 모듈의
 커밋 금지·비밀 미포함 강제를 검증한다.
 """
 
 from __future__ import annotations
 
 import importlib
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -264,37 +266,54 @@ def test_generated_module_not_present_in_source():
     assert not module_path.exists(), "번들 모듈은 저장소에 커밋되지 않아야 한다"
 
 
-def _run_generator(tmp_path, dest, *, url, anon_key):
-    script = (
-        Path(__file__).resolve().parents[1] / "scripts" / "generate_build_config.py"
+def _run_generator(tmp_path, dest, *, env_text: str | None):
+    project_root = tmp_path / "project"
+    script = project_root / "scripts" / "generate_build_config.py"
+    script.parent.mkdir(parents=True)
+    shutil.copy2(
+        Path(__file__).resolve().parents[1] / "scripts" / "generate_build_config.py",
+        script,
     )
+    if env_text is not None:
+        (project_root / ".env").write_text(env_text, encoding="utf-8")
+
+    child_env = os.environ.copy()
+    child_env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1] / "src")
     return subprocess.run(
-        [
-            sys.executable,
-            str(script),
-            "--url",
-            url,
-            "--anon-key",
-            anon_key,
-            "--dest",
-            str(dest),
-        ],
+        [sys.executable, str(script), "--dest", str(dest)],
         capture_output=True,
         text=True,
         cwd=tmp_path,
+        env=child_env,
     )
+
+
+def _env_text(url: str, anon_key: str) -> str:
+    return f"MDLOGGER_SUPABASE_URL={url}\nMDLOGGER_SUPABASE_ANON_KEY={anon_key}\n"
+
+
+def test_generate_script_fails_when_root_env_is_missing(tmp_path):
+    dest = tmp_path / "out" / "_bundled_config.py"
+    proc = _run_generator(tmp_path, dest, env_text=None)
+    assert proc.returncode != 0
+    assert ".env 파일이 없습니다" in proc.stderr
+    assert not dest.exists()
 
 
 def test_generate_script_rejects_service_role_before_writing(tmp_path):
     dest = tmp_path / "out" / "_bundled_config.py"
-    proc = _run_generator(tmp_path, dest, url=URL, anon_key=SERVICE_ROLE_PREFIX_KEY)
+    proc = _run_generator(
+        tmp_path,
+        dest,
+        env_text=_env_text(URL, SERVICE_ROLE_PREFIX_KEY),
+    )
     assert proc.returncode != 0
     assert not dest.exists(), "service-role key로는 파일을 쓰면 안 된다"
 
 
 def test_generate_script_writes_anon_bundle(tmp_path):
     dest = tmp_path / "out" / "_bundled_config.py"
-    proc = _run_generator(tmp_path, dest, url=URL, anon_key=ANON_PREFIX_KEY)
+    proc = _run_generator(tmp_path, dest, env_text=_env_text(URL, ANON_PREFIX_KEY))
     assert proc.returncode == 0, proc.stderr
     assert dest.exists()
     text = dest.read_text(encoding="utf-8")
@@ -305,6 +324,6 @@ def test_generate_script_writes_anon_bundle(tmp_path):
 
 def test_generate_script_fails_on_empty_values(tmp_path):
     dest = tmp_path / "out" / "_bundled_config.py"
-    proc = _run_generator(tmp_path, dest, url="", anon_key=ANON_PREFIX_KEY)
+    proc = _run_generator(tmp_path, dest, env_text=_env_text("", ANON_PREFIX_KEY))
     assert proc.returncode != 0
     assert not dest.exists()
