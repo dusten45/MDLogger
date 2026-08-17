@@ -14,6 +14,7 @@ dependencies = [
 
 [project.scripts]
 mdlogger = "mdlogger.app:main"
+mdlogger-admin = "mdlogger.admin_app:main"
 
 [dependency-groups]
 dev = [
