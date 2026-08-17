@@ -13,12 +13,15 @@
 flatpak install flathub org.freedesktop.Sdk//25.08
 ```
 
-온라인 기능을 포함한 배포본은 빌드 전에 Supabase publishable(anon) 설정을 생성한다. service-role 또는 secret 키는 절대 사용하지 않는다.
+온라인 기능을 포함한 배포본은 빌드 전에 프로젝트 루트의 `.env`에서 Supabase publishable(anon) 설정을 생성한다. `.env` 파일이 없거나 필수 값이 비어 있으면 생성은 중단된다. service-role 또는 secret 키는 절대 사용하지 않는다.
+
+```text
+MDLOGGER_SUPABASE_URL=<hosted-project-url>
+MDLOGGER_SUPABASE_ANON_KEY=<publishable-anon-key>
+```
 
 ```bash
-MDLOGGER_SUPABASE_URL=<hosted-project-url> \
-MDLOGGER_SUPABASE_ANON_KEY=<publishable-anon-key> \
-    uv run python scripts/generate_build_config.py
+uv run python scripts/generate_build_config.py
 ```
 
 ### 빌드 및 번들 생성
@@ -79,11 +82,9 @@ Windows에서 PowerShell을 열고 프로젝트 루트에서 실행한다. 현�
 
 ### 설정 생성 및 빌드
 
-온라인 기능을 포함하려면 publishable(anon) 설정을 먼저 생성한다.
+온라인 기능을 포함하려면 프로젝트 루트의 `.env`에 `MDLOGGER_SUPABASE_URL`과 `MDLOGGER_SUPABASE_ANON_KEY`를 설정한 뒤 publishable(anon) 설정을 생성한다.
 
 ```powershell
-$env:MDLOGGER_SUPABASE_URL = "<hosted-project-url>"
-$env:MDLOGGER_SUPABASE_ANON_KEY = "<publishable-anon-key>"
 uv run python scripts/generate_build_config.py
 
 uv run pyinstaller --noconfirm --clean MDLogger.spec

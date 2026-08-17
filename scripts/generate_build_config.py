@@ -7,13 +7,13 @@ _bundled_config.py`를 소유자 값으로 만든다. 이 모듈은 `.gitignore`
 
 사용(소유자)::
 
-    MDLOGGER_SUPABASE_URL=... MDLOGGER_SUPABASE_ANON_KEY=... \\
-        uv run python scripts/generate_build_config.py
-
-또는 ``--url``/``--anon-key`` 인자로 지정.
+    # 프로젝트 루트 .env에 MDLOGGER_SUPABASE_URL과
+    # MDLOGGER_SUPABASE_ANON_KEY를 설정한 뒤 실행한다.
+    uv run python scripts/generate_build_config.py
 
 실패 조건:
-- URL 또는 anon key가 비어 있음.
+- 프로젝트 루트에 ``.env`` 파일이 없음.
+- ``.env``의 URL 또는 anon key가 비어 있거나 올바르지 않음.
 - anon key 자리에 service-role/secret key 또는 role='service_role' JWT.
 - URL authority부에 user:pass 자격 증명.
 
@@ -23,14 +23,15 @@ _bundled_config.py`를 소유자 값으로 만든다. 이 모듈은 `.gitignore`
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from mdlogger.remote.config import RemoteConfig, env_file_config
 from mdlogger.secret_scan import assert_not_secret, scan_file
 
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _URL_ENV = "MDLOGGER_SUPABASE_URL"
 _ANON_KEY_ENV = "MDLOGGER_SUPABASE_ANON_KEY"
 _BUNDLED_REL = Path("mdlogger") / "remote" / "_bundled_config.py"
@@ -45,7 +46,28 @@ _HEADER = (
 
 
 def _default_module_path() -> Path:
-    return Path(__file__).resolve().parents[1] / "src" / _BUNDLED_REL
+    return _PROJECT_ROOT / "src" / _BUNDLED_REL
+
+
+def _root_env_config() -> RemoteConfig | None:
+    """프로젝트 루트 ``.env``의 publishable 설정을 읽는다."""
+    env_path = _PROJECT_ROOT / ".env"
+    if not env_path.is_file():
+        print(
+            f"오류: 프로젝트 루트에 .env 파일이 없습니다: {env_path}",
+            file=sys.stderr,
+        )
+        return None
+
+    config = env_file_config(env_path)
+    if config is None:
+        print(
+            "오류: .env에 MDLOGGER_SUPABASE_URL과 "
+            "MDLOGGER_SUPABASE_ANON_KEY를 올바르게 설정해야 합니다.",
+            file=sys.stderr,
+        )
+        return None
+    return config
 
 
 def _render_module(base_url: str, anon_key: str) -> str:
@@ -59,15 +81,6 @@ def _render_module(base_url: str, anon_key: str) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description="publishable Supabase 설정 모듈 생성")
     parser.add_argument(
-        "--url", default=os.environ.get(_URL_ENV, "").strip(), help="Supabase base URL"
-    )
-    parser.add_argument(
-        "--anon-key",
-        dest="anon_key",
-        default=os.environ.get(_ANON_KEY_ENV, "").strip(),
-        help="publishable(anon) key",
-    )
-    parser.add_argument(
         "--dest",
         type=Path,
         default=None,
@@ -76,16 +89,13 @@ def main() -> int:
     args = parser.parse_args()
     path = args.dest if args.dest is not None else _default_module_path()
 
-    base_url = args.url.strip()
-    anon_key = args.anon_key.strip()
-    if not base_url or not anon_key:
-        print(
-            "오류: MDLOGGER_SUPABASE_URL과 MDLOGGER_SUPABASE_ANON_KEY가 모두 필요합니다.",
-            file=sys.stderr,
-        )
+    config = _root_env_config()
+    if config is None:
         return 1
 
     try:
+        base_url = config.base_url
+        anon_key = config.anon_key
         assert_not_secret(base_url, anon_key)
     except ValueError as exc:
         print(f"오류: {exc}", file=sys.stderr)

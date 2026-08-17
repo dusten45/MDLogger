@@ -44,16 +44,20 @@ jobs:
             # 산출 모듈을 만들 수 있어야 하고, secret 값은 거부되어야 한다.
             - name: Secret scan build config (positive)
               run: |
+                  cat > .env <<'EOF'
+                  MDLOGGER_SUPABASE_URL=https://example.supabase.co
+                  MDLOGGER_SUPABASE_ANON_KEY=sb_publishable_test_not_a_secret_key_abcdefgh
+                  EOF
                   uv run python scripts/generate_build_config.py \
-                    --url "https://example.supabase.co" \
-                    --anon-key "sb_publishable_test_not_a_secret_key_abcdefgh" \
                     --dest "$RUNNER_TEMP/_bundled_config.py"
 
             - name: Secret scan build config (must reject secrets)
               run: |
+                  cat > .env <<'EOF'
+                  MDLOGGER_SUPABASE_URL=https://user:pass@example.supabase.co
+                  MDLOGGER_SUPABASE_ANON_KEY=sb_secret_leaked_service_key_abcdefgh
+                  EOF
                   if uv run python scripts/generate_build_config.py \
-                    --url "https://user:pass@example.supabase.co" \
-                    --anon-key "sb_secret_leaked_service_key_abcdefgh" \
                     --dest "$RUNNER_TEMP/_bundled_config_reject.py" ; then
                     echo "ERROR: secret value should have been rejected"; exit 1; fi
                   echo "secret rejection OK"
