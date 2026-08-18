@@ -1,0 +1,16 @@
+{
+    "$schema": "./node_modules/wrangler/config-schema.json",
+    // Worker 이름. Cloudflare 대시보드에서 만드는 Worker 이름과 일치해야 한다.
+    // (Wrangler v3+ Workers Builds는 WRANGLER_CI_OVERRIDE_NAME으로 자동 보정하지만,
+    //  일관성을 위해 동일하게 유지한다.)
+    "name": "mdlogger-web",
+    // Cloudflare Workers 런타임 호환 날짜. 최신 날짜로 설정한다.
+    "compatibility_date": "2026-08-19",
+    "assets": {
+        // Vite 빌드 산출물 디렉터리.
+        "directory": "./dist",
+        // React Router SPA: 존재하지 않는 경로 요청 시 index.html을 200으로 반환해
+        // 새로고침해도 클라이언트 라우팅이 동작하도록 한다.
+        "not_found_handling": "single-page-application",
+    },
+}
