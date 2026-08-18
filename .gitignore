@@ -34,12 +34,6 @@ dist/
 *.spec
 !MDLogger.spec
 
-# ---- Installer scripts (local dev workflow) ----
-# OS별 배포 설치 프로그램은 로컬 전용(개발 워크플로우)이다. 배포 절차는
-# docs/deployment-guide.md 를 단일 출처로 한다.
-scripts/installer_windows.iss
-scripts/flatpak_build.sh
-
 # ---- Runtime data (recreated on first launch via ensure_data_dir) ----
 # The SQLite DB is per-user gameplay data, and decks_sync.json is local ETag state.
 # The canonical decks list lives on a GitHub Gist (see src/mdlogger/paths.py
