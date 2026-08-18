@@ -1,0 +1,108 @@
+/*
+ * 디자인 토큰 (데스크톱 `ui/theme.py`의 semantic token을 CSS 변수로 재정의, spec §5.3).
+ *
+ * - `:root`는 라이트 + blue 강조색 기본값, `[data-theme="dark"]`는 다크 기본값.
+ * - 강조색 의존 토큰(--accent, --accent-hover, --accent-pressed, --text-on-accent,
+ *   --focus-ring, --selection, --chart-primary)은 `applyTheme`가 프리셋에 따라
+ *   인라인으로 덮어쓴다. 여기 값은 blue 기본값(초기 렌더/폴백)이다.
+ */
+
+:root {
+  /* 라이트 semantic 색상 (LIGHT_COLORS) */
+  --background: #f5f7fa;
+  --surface: #ffffff;
+  --surface-subtle: #eef2f6;
+  --surface-raised: #ffffff;
+  --text-primary: #18202a;
+  --text-secondary: #667085;
+  --text-disabled: #8a94a3;
+  --text-on-accent: #ffffff;
+  --border: #d8dee8;
+  --border-strong: #7b8798;
+  --divider: #d8dee8;
+  --focus-ring: #356ae6;
+  --accent: #356ae6;
+  --accent-hover: #2857c7;
+  --accent-pressed: #2048a8;
+  --selection: #dce7ff;
+  --success: #168a5b;
+  --success-subtle: #e8f6ef;
+  --danger: #c43d4b;
+  --danger-subtle: #fcecef;
+  --warning: #946200;
+  --warning-subtle: #fff4d6;
+  --chart-axis: #667085;
+  --chart-grid: #d8dee8;
+  --chart-primary: #356ae6;
+  --chart-secondary: #168a5b;
+  --chart-marker: #c43d4b;
+}
+
+[data-theme="dark"] {
+  /* 다크 semantic 색상 (DARK_COLORS) */
+  --background: #11151b;
+  --surface: #191f28;
+  --surface-subtle: #222a35;
+  --surface-raised: #252e3a;
+  --text-primary: #f2f4f7;
+  --text-secondary: #a7b0be;
+  --text-disabled: #737e8e;
+  --text-on-accent: #11151b;
+  --border: #343e4d;
+  --border-strong: #667085;
+  --divider: #343e4d;
+  --focus-ring: #7ea2ff;
+  --accent: #7ea2ff;
+  --accent-hover: #95b3ff;
+  --accent-pressed: #668ce8;
+  --selection: #26395f;
+  --success: #52c78c;
+  --success-subtle: #17392b;
+  --danger: #ff7a86;
+  --danger-subtle: #45242b;
+  --warning: #f5b942;
+  --warning-subtle: #423616;
+  --chart-axis: #a7b0be;
+  --chart-grid: #343e4d;
+  --chart-primary: #7ea2ff;
+  --chart-secondary: #52c78c;
+  --chart-marker: #ff7a86;
+}
+
+:root {
+  /* 크기·간격 토큰 (MetricTokens) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --control-height-small: 34px;
+  --control-height: 38px;
+  --control-height-primary: 44px;
+  --radius-control: 8px;
+  --radius-surface: 12px;
+  --border-width: 1px;
+  --focus-width: 2px;
+  --icon-small: 16px;
+  --icon-medium: 20px;
+  --icon-large: 24px;
+
+  /* 글자 크기 역할 (FontRole) — 전역 --font-scale을 곱한다. */
+  --font-scale: 1;
+  --font-display: calc(1.7rem * var(--font-scale));
+  --font-title: calc(1.35rem * var(--font-scale));
+  --font-section: calc(1.08rem * var(--font-scale));
+  --font-body: calc(1rem * var(--font-scale));
+  --font-label: calc(1rem * var(--font-scale));
+  --font-caption: calc(0.92rem * var(--font-scale));
+  --font-numeric: calc(1.35rem * var(--font-scale));
+
+  --font-weight-display: 700;
+  --font-weight-title: 600;
+  --font-weight-section: 600;
+  --font-weight-body: 400;
+  --font-weight-label: 500;
+  --font-weight-caption: 400;
+  --font-weight-numeric: 600;
+}

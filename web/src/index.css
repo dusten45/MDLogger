@@ -1,0 +1,186 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    margin: 0;
+    height: 100%;
+}
+
+body {
+    background-color: var(--background);
+    color: var(--text-primary);
+    font-family:
+        system-ui,
+        -apple-system,
+        "Segoe UI",
+        Roboto,
+        "Noto Sans KR",
+        "Apple SD Gothic Neo",
+        sans-serif;
+    font-size: var(--font-body);
+    font-weight: var(--font-weight-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--accent);
+}
+
+button {
+    font: inherit;
+    color: var(--text-primary);
+    background: var(--surface);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-control);
+    min-height: var(--control-height);
+    padding: 0 var(--space-3);
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+button:focus-visible,
+input:focus-visible {
+    outline: var(--focus-width) solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+input {
+    font: inherit;
+    color: var(--text-primary);
+    background: var(--surface);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-control);
+    min-height: var(--control-height);
+    padding: 0 var(--space-3);
+    width: 100%;
+}
+
+.page-title {
+    margin: 0 0 var(--space-2);
+    font-size: var(--font-title);
+    font-weight: var(--font-weight-title);
+}
+
+.page-description {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-body);
+}
+
+.section-title {
+    margin: 0 0 var(--space-3);
+    font-size: var(--font-section);
+    font-weight: var(--font-weight-section);
+}
+
+/* ---- 인증 ---- */
+.auth-page {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-4);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--font-label);
+    font-weight: var(--font-weight-label);
+}
+
+.auth-tabs {
+    display: flex;
+    gap: var(--space-2);
+    border-bottom: var(--border-width) solid var(--divider);
+}
+
+.auth-tab {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    min-height: var(--control-height);
+    color: var(--text-secondary);
+    border-bottom: var(--focus-width) solid transparent;
+}
+
+.auth-tab--active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.auth-link {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    min-height: auto;
+    padding: 0;
+    text-align: left;
+}
+
+.auth-error {
+    color: var(--danger);
+    margin-top: var(--space-3);
+}
+
+.auth-message {
+    color: var(--success);
+    margin-top: var(--space-3);
+}
+
+.auth-loading {
+    color: var(--text-secondary);
+    padding: var(--space-4);
+}
+
+/* ---- 설정 ---- */
+.settings-section {
+    margin-top: var(--space-6);
+}
+
+.account-email {
+    color: var(--text-secondary);
+    margin: 0 0 var(--space-3);
+}
+
+.settings-message {
+    color: var(--success);
+    margin: 0 0 var(--space-3);
+}
+
+.settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    align-items: flex-start;
+}
+
+button.danger {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* 접근성: 시스템 애니메이션 감소 요청 존중 (spec §9). */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

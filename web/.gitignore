@@ -1,0 +1,19 @@
+# ---- Node / build output ----
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ---- Environment (실제 Supabase URL·anon key는 커밋하지 않는다) ----
+.env
+.env.*
+!.env.example
+
+# ---- Editor / OS cruft ----
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
