@@ -14,7 +14,7 @@ from ..decks import load_decks
 from ..enums import RESULT_LABELS
 from ..game_service import GameService
 from ..game_sync.coordinator import SyncCoordinator
-from ..game_sync.models import SyncStatus
+from ..game_sync.models import SyncPhase, SyncStatus
 from ..models import GameMode, RankStanding, StandingKind
 from ..profiles import ProfileContext, ProfileKind
 from .detail_view import DetailView
@@ -85,6 +85,10 @@ class MainWindow(QMainWindow):
 
     def set_sync_status(self, status: SyncStatus) -> None:
         self._sync_status = status
+        # 동기화 주기가 끝나면(모드 기준정보는 run_once 끝에 갱신된다) 캐시가
+        # 바뀌었는지 확인해 목록을 갱신한다. SYNCING은 주기 시작 전 상태다.
+        if status.phase is not SyncPhase.SYNCING:
+            self._reload_modes_if_changed()
         self.refresh_header()
 
     def request_sync(self, *, retry_failed: bool = False) -> None:
@@ -116,6 +120,35 @@ class MainWindow(QMainWindow):
             self._result_view.set_mode(self._current_mode_id)
         # 활성 모드가 없으면 전적 입력을 비활성화해 무모드 저장을 막는다(spec §2.5-7).
         self._result_view.set_record_button_enabled(self._current_mode_id is not None)
+
+    @staticmethod
+    def _mode_signature(mode) -> tuple:
+        """모드 행의 비교용 시그니처 (id·종류·표시명·문맥·정렬·활성·시즌)."""
+        return (
+            str(mode["id"]),
+            str(mode["standing_kind"]),
+            str(mode["display_name"]),
+            mode["play_context_id"],
+            int(mode["sort_order"] or 0),
+            bool(mode["is_active"]),
+            mode["season_label"],
+        )
+
+    def _reload_modes_if_changed(self) -> None:
+        """동기화로 로컬 play_modes 캐시가 바뀌었으면 모드 목록을 갱신한다.
+
+        현재 선택을 보존하고, 선택한 모드가 사라졌으면 기본 모드로 되돌린다.
+        """
+        fresh = self._games.get_active_play_modes()
+        if [self._mode_signature(m) for m in fresh] == [
+            self._mode_signature(m) for m in self._modes
+        ]:
+            return
+        previous = self._current_mode_id
+        self._load_modes()
+        if previous is not None and previous in self._mode_by_id:
+            self._current_mode_id = previous
+            self._result_view.set_mode(previous)
 
     def _current_mode(self) -> GameMode | None:
         if self._current_mode_id is None:

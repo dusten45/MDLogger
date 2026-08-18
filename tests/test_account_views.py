@@ -392,3 +392,44 @@ def test_main_window_shows_profile_and_local_status_without_changing_result_flow
 
     window.close_profile_windows()
     games.close()
+
+
+def test_main_window_reloads_modes_when_sync_completes(
+    qapp: QApplication, tmp_path: Path
+):
+    profiles = ProfileManager(tmp_path)
+    profile = profiles.guest()
+    profiles.prepare_database(profile)
+    games = GameService.open(profile.database_path)
+    window = MainWindow(games, ["테스트 덱"], profile)
+
+    initial_ids = [str(m["id"]) for m in window._modes]
+    assert "wcq-2026" in initial_ids
+
+    # 동기화가 서버 기준정보로 로컬 캐시를 재구성한 상황을 재현한다.
+    games.delete_play_mode("wcq-2026")
+    games.insert_play_mode(
+        {
+            "id": "wcq-2027",
+            "standing_kind": "event_points",
+            "display_name": "2027 WCQ",
+            "play_context_id": "wcq_2027",
+            "sort_order": 3,
+            "is_active": True,
+            "season_label": "2027",
+        }
+    )
+
+    # SYNCED 상태가 도착하기 전에는 아직 이전 목록을 유지한다.
+    assert [str(m["id"]) for m in window._modes] == initial_ids
+
+    window.set_sync_status(
+        SyncStatus(SyncPhase.SYNCED, pending_count=0, failed_count=0)
+    )
+
+    updated_ids = [str(m["id"]) for m in window._modes]
+    assert "wcq-2026" not in updated_ids
+    assert "wcq-2027" in updated_ids
+
+    window.close_profile_windows()
+    games.close()
