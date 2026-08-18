@@ -78,9 +78,9 @@ flatpak uninstall --unused
 
 ## Windows exe 배포판 빌드
 
-Windows에서 PowerShell을 열고 프로젝트 루트에서 실행한다. 현재 배포 형식은 단일 exe가 아니라 `MDLogger.exe`와 `_internal` 폴더를 함께 만드는 onedir 형식이다.
+Windows에서 PowerShell을 열고 프로젝트 루트에서 실행한다. 배포는 두 단계로 이루어진다. 먼저 PyInstaller로 onedir 산출물(`MDLogger.exe` + `_internal/`)을 만들고, 이어서 Inno Setup으로 설치 프로그램(`MDLoggerSetup-<버전>.exe`)을 생성한다. 최종 배포물은 설치 프로그램 하나다.
 
-### 설정 생성 및 빌드
+### 설정 생성 및 PyInstaller 빌드
 
 온라인 기능을 포함하려면 프로젝트 루트의 `.env`에 `MDLOGGER_SUPABASE_URL`과 `MDLOGGER_SUPABASE_ANON_KEY`를 설정한 뒤 publishable(anon) 설정을 생성한다.
 
@@ -97,7 +97,7 @@ dist\MDLogger\MDLogger.exe
 dist\MDLogger\_internal\
 ```
 
-### 배포 전 검증 및 ZIP 생성
+### 배포 전 검증
 
 산출물 전체를 검사하고 체크섬을 생성한다.
 
@@ -106,10 +106,20 @@ uv run python -m mdlogger.secret_scan dist\MDLogger
 uv run python -m mdlogger.checksum dist\MDLogger
 ```
 
-시크릿 스캔 결과가 0건인지 확인한 뒤, 폴더 전체를 ZIP으로 묶는다.
+시크릿 스캔 결과가 0건인지 확인한다. 체크섬 manifest는 `dist\MDLogger.sha256`에 생성된다.
+
+### 설치 프로그램 생성 (Inno Setup)
+
+`scripts\installer_windows.iss`로 설치 프로그램을 만든다. Inno Setup 6을 설치한 뒤 `ISCC.exe`로 빌드한다.
 
 ```powershell
-Compress-Archive -Path dist\MDLogger -DestinationPath dist\MDLogger-win64.zip -Force
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" scripts\installer_windows.iss
 ```
 
-`MDLogger.exe`만 따로 배포하면 `_internal` 파일이 없어 실행되지 않는다. 반드시 `MDLogger-win64.zip`처럼 `MDLogger` 폴더 전체를 배포한다.
+설치 프로그램은 `dist\installer\MDLoggerSetup-<버전>.exe`에 생성된다. 버전은 `src\mdlogger\_version.py`의 `__version__`과 일치해야 한다. 스크립트의 `MyAppVersion` 기본값을 직접 고치거나, 빌드 시 `/DMyAppVersion`으로 주입한다.
+
+```powershell
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=0.2.0 scripts\installer_windows.iss
+```
+
+설치 프로그램은 onedir 폴더 전체(`_internal/` 포함)를 Program Files에 설치하고 시작 메뉴·바탕화면 바로가기와 제거 프로그램을 만든다. 사용자 데이터(SQLite)는 OS 표준 데이터 디렉터리에 있으므로 제거 시에도 남는다. 배포는 `dist\installer\MDLoggerSetup-<버전>.exe` 파일 하나만 올리면 된다.
