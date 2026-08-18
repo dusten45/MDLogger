@@ -19,3 +19,8 @@ verify_jwt = true
 # 명시적으로 켠다(하드닝 D-6). 예약되지 않은 누가 호출해도 본인 세션만 폐기되지만,
 # 유효한 로그인 세션 없이는 접근 자체를 차단한다.
 verify_jwt = true
+
+[functions.deck-catalog]
+# 덱 목록 proxy. 로그인 access token을 요구한다(무분별한 proxy 사용 방지).
+# 함수 내부에서도 getUser로 재검증한다(방어심도).
+verify_jwt = true
