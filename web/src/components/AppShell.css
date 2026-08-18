@@ -1,0 +1,53 @@
+.app-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+  padding: var(--space-4);
+  /* 모바일 하단 내비게이션 높이만큼 여백을 둔다. */
+  padding-bottom: calc(var(--control-height-primary) + var(--space-8));
+}
+
+.app-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: var(--surface);
+  border-top: var(--border-width) solid var(--divider);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-height-primary);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: var(--font-label);
+  font-weight: var(--font-weight-label);
+}
+
+.nav-item--active {
+  color: var(--accent);
+}
+
+/* 태블릿/데스크톱: 하단 내비게이션을 상단으로 이동 (spec §5.2, 로드맵 18.1). */
+@media (min-width: 768px) {
+  .app-main {
+    padding-bottom: var(--space-4);
+  }
+
+  .app-nav {
+    position: static;
+    border-top: none;
+    border-bottom: var(--border-width) solid var(--divider);
+    padding-bottom: 0;
+  }
+}
