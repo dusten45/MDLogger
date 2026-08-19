@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 
 from ..enums import STANDING_KINDS
 from ..game_service import GameService
-from .theme import METRICS, set_style_property
+from .theme import METRICS, scaled, set_style_property
 
 
 def _cell(text: str) -> QTableWidgetItem:
@@ -53,7 +53,7 @@ class _ModeEditDialog(QDialog):
     ):
         super().__init__(parent)
         self.setWindowTitle("모드 편집" if mode_id else "모드 추가")
-        self.setMinimumWidth(360)
+        self.setMinimumWidth(scaled(360))
 
         layout = QVBoxLayout(self)
         layout.setSpacing(METRICS.space_2)
@@ -144,7 +144,7 @@ class ModeManagerDialog(QDialog):
         super().__init__(parent)
         self._games = games
         self.setWindowTitle("모드 관리 (개발자)")
-        self.resize(640, 420)
+        self.resize(scaled(640), scaled(420))
 
         layout = QVBoxLayout(self)
         layout.setSpacing(METRICS.space_2)

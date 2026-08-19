@@ -7,7 +7,31 @@ from enum import StrEnum
 
 from PySide6.QtCore import QObject, Qt, Signal, Slot
 from PySide6.QtGui import QColor, QFont, QPalette
-from PySide6.QtWidgets import QApplication, QStyleFactory, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QProxyStyle,
+    QStyleFactory,
+    QWidget,
+)
+
+
+class _ScaledStyle(QProxyStyle):
+    """현재 UI 배율을 Qt 기본 스타일의 픽셀 메트릭에도 적용한다.
+
+    명시적으로 QSS/레이아웃 값을 설정하지 않은 위젯의 기본 margin, indicator,
+    목록 행 높이, 스크롤바 등도 앱 시작 배율에 맞춰 생성된다.
+    """
+
+    def __init__(self, base_style, ui_scale: float) -> None:
+        super().__init__(base_style)
+        self._ui_scale = ui_scale
+
+    def set_ui_scale(self, ui_scale: float) -> None:
+        self._ui_scale = ui_scale
+
+    def pixelMetric(self, metric, option=None, widget=None) -> int:
+        value = super().pixelMetric(metric, option, widget)
+        return max(1, round(value * self._ui_scale)) if value > 0 else value
 
 
 class ThemeMode(StrEnum):
@@ -73,28 +97,113 @@ class AccentTokens:
     dark_text_on_accent: str
 
 
-@dataclass(frozen=True, slots=True)
-class MetricTokens:
-    """플랫폼과 테마에 독립적인 크기·간격 토큰."""
+_ui_scale = 1.0
+_application_base_font: QFont | None = None
+_scaled_style: _ScaledStyle | None = None
 
-    space_1: int = 4
-    space_2: int = 8
-    space_3: int = 12
-    space_4: int = 16
-    space_6: int = 24
-    space_8: int = 32
-    control_height_small: int = 34
-    control_height: int = 38
-    control_height_primary: int = 44
-    result_height: int = 104
-    radius_control: int = 8
-    radius_surface: int = 12
-    border_width: int = 1
-    focus_width: int = 2
-    icon_small: int = 16
-    icon_medium: int = 20
-    icon_large: int = 24
-    motion_duration_ms: int = 0
+
+def scaled(value: int) -> int:
+    """100% 기준 크기를 현재 전역 UI 배율로 조정한다 (최소 1px)."""
+    return max(1, round(value * _ui_scale))
+
+
+class MetricTokens:
+    """플랫폼·테마 독립 크기 토큰. 각 속성은 전역 UI 배율이 곱해진 값이다.
+
+    ``motion_duration_ms``는 시간 값이므로 배율을 적용하지 않는다.
+    """
+
+    # 100% 기준 값
+    _space_1: int = 4
+    _space_2: int = 8
+    _space_3: int = 12
+    _space_4: int = 16
+    _space_6: int = 24
+    _space_8: int = 32
+    _control_height_small: int = 34
+    _control_height: int = 38
+    _control_height_primary: int = 44
+    _result_height: int = 104
+    _radius_control: int = 8
+    _radius_surface: int = 12
+    _border_width: int = 1
+    _focus_width: int = 2
+    _icon_small: int = 16
+    _icon_medium: int = 20
+    _icon_large: int = 24
+    _motion_duration_ms: int = 0
+
+    @property
+    def space_1(self) -> int:
+        return scaled(self._space_1)
+
+    @property
+    def space_2(self) -> int:
+        return scaled(self._space_2)
+
+    @property
+    def space_3(self) -> int:
+        return scaled(self._space_3)
+
+    @property
+    def space_4(self) -> int:
+        return scaled(self._space_4)
+
+    @property
+    def space_6(self) -> int:
+        return scaled(self._space_6)
+
+    @property
+    def space_8(self) -> int:
+        return scaled(self._space_8)
+
+    @property
+    def control_height_small(self) -> int:
+        return scaled(self._control_height_small)
+
+    @property
+    def control_height(self) -> int:
+        return scaled(self._control_height)
+
+    @property
+    def control_height_primary(self) -> int:
+        return scaled(self._control_height_primary)
+
+    @property
+    def result_height(self) -> int:
+        return scaled(self._result_height)
+
+    @property
+    def radius_control(self) -> int:
+        return scaled(self._radius_control)
+
+    @property
+    def radius_surface(self) -> int:
+        return scaled(self._radius_surface)
+
+    @property
+    def border_width(self) -> int:
+        return scaled(self._border_width)
+
+    @property
+    def focus_width(self) -> int:
+        return scaled(self._focus_width)
+
+    @property
+    def icon_small(self) -> int:
+        return scaled(self._icon_small)
+
+    @property
+    def icon_medium(self) -> int:
+        return scaled(self._icon_medium)
+
+    @property
+    def icon_large(self) -> int:
+        return scaled(self._icon_large)
+
+    @property
+    def motion_duration_ms(self) -> int:
+        return self._motion_duration_ms
 
 
 METRICS = MetricTokens()
@@ -342,11 +451,18 @@ def _with_accent(
 def font_for_role(base_font: QFont, role: FontRole) -> QFont:
     """시스템 기본 글꼴을 보존하면서 역할에 맞는 크기와 굵기를 파생한다.
 
-    역할 배율에 전역 ``font_scale``(글자 크기 설정)을 곱한다(spec §5.2).
+    역할 배율에 전역 ``ui_scale``(UI 크기 설정)을 곱한다(spec §5.2).
     """
 
     font = QFont(base_font)
     base_size = base_font.pointSizeF()
+    app = QApplication.instance()
+    if (
+        isinstance(app, QApplication)
+        and _application_base_font is not None
+        and base_font == app.font()
+    ):
+        base_size = _application_base_font.pointSizeF()
     if base_size <= 0:
         base_size = 10.0
 
@@ -359,37 +475,51 @@ def font_for_role(base_font: QFont, role: FontRole) -> QFont:
         FontRole.CAPTION: (0.92, QFont.Weight.Normal),
         FontRole.NUMERIC: (1.35, QFont.Weight.DemiBold),
     }[role]
-    font.setPointSizeF(max(9.0, base_size * scale * _font_scale))
+    font.setPointSizeF(max(1.0, base_size * scale * _ui_scale))
     font.setWeight(weight)
     return font
 
 
-_font_scale = 1.0
+def current_ui_scale() -> float:
+    """현재 전역 UI 배율을 반환한다."""
+    return _ui_scale
 
 
-def current_font_scale() -> float:
-    """현재 전역 글자 크기 배율을 반환한다."""
-    return _font_scale
+def _scale_font(font: QFont, scale: float) -> QFont:
+    """100% 기준 앱 글꼴을 목표 UI 배율로 조정한다."""
+    scaled_font = QFont(font)
+    if (point_size := font.pointSizeF()) > 0:
+        scaled_font.setPointSizeF(point_size * scale)
+    elif (pixel_size := font.pixelSize()) > 0:
+        scaled_font.setPixelSize(max(1, round(pixel_size * scale)))
+    return scaled_font
 
 
-def apply_font_scale(scale: float, app: QApplication | None = None) -> None:
-    """전역 글자 크기 배율을 갱신하고 열린 창을 최선 노력으로 re-polish한다.
+def apply_ui_scale(scale: float, app: QApplication | None = None) -> None:
+    """앱 시작 전에 전역 UI 배율을 적용한다.
 
-    글자 크기는 ``font_for_role``이 위젯 생성 시 적용하므로, 이미 만들어진 위젯은
-    재시작해야 완전히 반영될 수 있다(spec §5.2, §10-2).
+    이미 열린 창은 현재 모양을 유지한다. ``SettingsWindow``는 이 값을 저장만
+    하며, 다음 앱 실행에서 창·글꼴·스타일·기본 Qt 메트릭을 함께 생성한다.
     """
-    global _font_scale
-    _font_scale = scale
+    global _application_base_font, _scaled_style, _ui_scale
+
+    _ui_scale = scale
     if app is None:
         instance = QApplication.instance()
         app = instance if isinstance(instance, QApplication) else None
-    if app is not None:
-        for widget in app.topLevelWidgets():
-            style = widget.style()
-            if style is not None:
-                style.unpolish(widget)
-                style.polish(widget)
-            widget.update()
+    if app is None:
+        return
+
+    if _application_base_font is None:
+        _application_base_font = QFont(app.font())
+    if _scaled_style is None:
+        _scaled_style = _ScaledStyle(app.style(), scale)
+        app.setStyle(_scaled_style)
+    else:
+        _scaled_style.set_ui_scale(scale)
+
+    app.setFont(_scale_font(_application_base_font, scale))
+    app.setStyleSheet(build_stylesheet(current_colors(app)))
 
 
 def set_style_property(widget: QWidget, name: str, value: str | bool | None) -> None:
@@ -733,12 +863,14 @@ def apply_theme(
     app: QApplication,
     mode: ThemeMode = ThemeMode.SYSTEM,
     accent: str = "blue",
-    font_scale: float = 1.0,
+    ui_scale: float = 1.0,
 ) -> ThemeController:
     """Fusion을 사용할 수 있으면 선택하고 앱 테마 제어기를 생성한다."""
+    global _scaled_style
 
     fusion_style = _fusion_style_name()
     if fusion_style is not None:
         app.setStyle(fusion_style)
-    apply_font_scale(font_scale, app)
+    _scaled_style = None
+    apply_ui_scale(ui_scale, app)
     return ThemeController(app, mode, accent)

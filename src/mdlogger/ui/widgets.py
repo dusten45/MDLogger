@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from .icons import load_icon
-from .theme import METRICS, FontRole, font_for_role, set_style_property
+from .theme import METRICS, FontRole, font_for_role, scaled, set_style_property
 
 
 class FlowLayout(QLayout):
@@ -378,7 +378,7 @@ class Stepper(QWidget):
 
         self._label = QLabel(str(self._value))
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._label.setMinimumWidth(48)
+        self._label.setMinimumWidth(scaled(48))
         self._label.setFont(font_for_role(self._label.font(), FontRole.SECTION))
 
         self._minus.clicked.connect(lambda: self.set_value(self._value - 1))
@@ -394,7 +394,7 @@ class Stepper(QWidget):
     ) -> QPushButton:
         btn = QPushButton(text)
         # 진행 정보 행에서 세그먼트 버튼과 높이를 맞춘다
-        btn.setFixedSize(40, METRICS.control_height)
+        btn.setFixedSize(scaled(40), METRICS.control_height)
         # 키보드 접근성을 위해 포커스를 허용한다(spec §6.1)
         btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)

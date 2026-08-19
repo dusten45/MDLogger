@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Signal
+from PySide6.QtGui import QGuiApplication, QShowEvent
 from PySide6.QtWidgets import (
+    QFrame,
     QMainWindow,
     QMessageBox,
+    QScrollArea,
     QStackedWidget,
 )
 
@@ -20,7 +23,7 @@ from ..profiles import ProfileContext, ProfileKind
 from .detail_view import DetailView
 from .focus import restrict_focus_to_pointer
 from .result_view import ResultView
-from .theme import ThemeController
+from .theme import ThemeController, scaled
 
 
 class MainWindow(QMainWindow):
@@ -46,17 +49,22 @@ class MainWindow(QMainWindow):
         self._modes: list = []
         self._mode_by_id: dict[str, GameMode] = {}
         self._current_mode_id: str | None = None
+        self._startup_height_finalized = False
 
         self.setWindowTitle("MDLogger")
-        self.resize(420, 680)
-        self.setMinimumWidth(380)
+        self.setMinimumWidth(scaled(380))
 
         self._stack = QStackedWidget()
         self._result_view = ResultView()
         self._detail_view = DetailView(self._decks)
+        self._detail_scroll = QScrollArea()
+        self._detail_scroll.setWidgetResizable(True)
+        self._detail_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._detail_scroll.setWidget(self._detail_view)
         self._stack.addWidget(self._result_view)
-        self._stack.addWidget(self._detail_view)
+        self._stack.addWidget(self._detail_scroll)
         self.setCentralWidget(self._stack)
+        self.resize(scaled(420), self._initial_main_window_height())
 
         # 화면1 시그널
         self._result_view.record_requested.connect(self.show_detail)
@@ -72,6 +80,14 @@ class MainWindow(QMainWindow):
         self.refresh_header()
         self.show_result()
         restrict_focus_to_pointer(self)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        if self._startup_height_finalized:
+            return
+
+        self._startup_height_finalized = True
+        self.resize(self.width(), self._initial_main_window_height())
 
     @property
     def profile(self) -> ProfileContext | None:
@@ -182,7 +198,21 @@ class MainWindow(QMainWindow):
                 rating = self._games.get_last_rating(mode.id)
                 if rating is not None:
                     self._detail_view.form.set_rating_before(rating)
-        self._stack.setCurrentWidget(self._detail_view)
+        self._detail_scroll.verticalScrollBar().setValue(0)
+        self._stack.setCurrentWidget(self._detail_scroll)
+
+    def _initial_main_window_height(self) -> int:
+        screen = self.screen() or QGuiApplication.primaryScreen()
+        # 비어 있는 오류 상태줄은 검증 문구가 나타날 때 1px 더 필요하다.
+        detail_height = max(
+            scaled(680), self._detail_view.minimumSizeHint().height() + scaled(1)
+        )
+        if screen is None:
+            return detail_height
+
+        frame_height = max(0, self.frameGeometry().height() - self.height())
+        available_height = max(1, screen.availableGeometry().height() - frame_height)
+        return min(detail_height, available_height)
 
     # ----- 동작 -----
     def on_confirm(self, values: dict) -> None:

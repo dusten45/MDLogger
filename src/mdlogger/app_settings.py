@@ -37,7 +37,7 @@ PREFERENCE_KEYS = (
     "score_input_mode",
 )
 # 기기 특성 설정. 어떤 경로로도 직렬화·전송하지 않는다(클라이언트/서버 하드 차단).
-DEVICE_KEYS = ("font_scale", "low_spec_mode", "reduce_motion")
+DEVICE_KEYS = ("ui_scale", "low_spec_mode", "reduce_motion")
 
 
 class AccentPreset(StrEnum):
@@ -71,7 +71,7 @@ class AppSettings:
 
     theme_mode: ThemeMode = ThemeMode.SYSTEM
     accent_color: str = AccentPreset.BLUE.value
-    font_scale: float = 1.0  # 0.8 ~ 1.5
+    ui_scale: float = 1.0  # 0.75 ~ 1.5
     low_spec_mode: bool = False
     reduce_motion: ReduceMotion = ReduceMotion.SYSTEM
     memo_enabled: bool = True
@@ -83,7 +83,7 @@ class AppSettings:
             "schema_version": SCHEMA_VERSION,
             "theme_mode": self.theme_mode.value,
             "accent_color": self.accent_color,
-            "font_scale": self.font_scale,
+            "ui_scale": self.ui_scale,
             "low_spec_mode": self.low_spec_mode,
             "reduce_motion": self.reduce_motion.value,
             "memo_enabled": self.memo_enabled,
@@ -96,7 +96,7 @@ class AppSettings:
         return cls(
             theme_mode=_parse_theme_mode(data.get("theme_mode")),
             accent_color=_parse_accent(data.get("accent_color")),
-            font_scale=_parse_font_scale(data.get("font_scale")),
+            ui_scale=_parse_ui_scale(data.get("ui_scale", data.get("font_scale"))),
             low_spec_mode=_parse_bool(data.get("low_spec_mode"), False),
             reduce_motion=_parse_reduce_motion(data.get("reduce_motion")),
             memo_enabled=_parse_bool(data.get("memo_enabled"), True),
@@ -119,12 +119,12 @@ def _parse_accent(value: Any) -> str:
     return AccentPreset.BLUE.value
 
 
-def _parse_font_scale(value: Any) -> float:
+def _parse_ui_scale(value: Any) -> float:
     if isinstance(value, bool):
         return 1.0
     if isinstance(value, (int, float)):
         scale = float(value)
-        if 0.8 <= scale <= 1.5:
+        if 0.75 <= scale <= 1.5:
             return scale
     return 1.0
 

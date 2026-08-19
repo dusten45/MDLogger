@@ -7,6 +7,7 @@ import sys
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from .admin_modes import AdminConfigurationError, admin_client_from_environment
+from .app_settings import SettingsRepository
 from .ui.admin_window import AdminWindow
 from .ui.focus import install_pointer_focus_only
 from .ui.icons import application_icon
@@ -21,7 +22,7 @@ def main() -> None:
     icon = application_icon()
     if icon is not None:
         app.setWindowIcon(icon)
-    apply_theme(app, ThemeMode.SYSTEM)
+    apply_theme(app, ThemeMode.SYSTEM, ui_scale=SettingsRepository().load().ui_scale)
 
     try:
         client = admin_client_from_environment()

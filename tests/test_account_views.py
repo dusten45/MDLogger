@@ -9,7 +9,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -34,7 +34,7 @@ from mdlogger.ui.account_views import (
 )
 from mdlogger.ui.focus import install_pointer_focus_only
 from mdlogger.ui.main_window import MainWindow
-from mdlogger.ui.theme import DARK_COLORS, build_palette
+from mdlogger.ui.theme import DARK_COLORS, build_palette, scaled
 
 USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 
@@ -69,6 +69,15 @@ def test_login_form_has_visible_labels_password_toggle_and_enter_submit(
     assert window._password.echoMode() is QLineEdit.EchoMode.Normal
     window._password.returnPressed.emit()
     assert submitted == [("a@test.local", "password")]
+    window.close()
+
+
+def test_login_window_size_is_independent_of_main_window_height(
+    qapp: QApplication,
+):
+    window = AuthWindow()
+    assert window.size() == QSize(scaled(420), scaled(560))
+    assert window.minimumSize() == QSize(scaled(360), scaled(500))
     window.close()
 
 

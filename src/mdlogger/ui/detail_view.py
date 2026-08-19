@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 from .detail_form import DetailForm
-from .theme import set_style_property
+from .theme import scaled, set_style_property
 from .widgets import ResultSelect
 
 
@@ -18,13 +18,13 @@ class DetailView(QWidget):
         super().__init__(parent)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(14, 10, 14, 10)
-        root.setSpacing(8)
+        root.setContentsMargins(scaled(14), scaled(10), scaled(14), scaled(10))
+        root.setSpacing(scaled(8))
 
         # 상단 배너 (클릭 = 입력 취소, 메인 화면 복귀). secondary 버튼.
         self._banner = QPushButton("전적 입력 취소")
         self._banner.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._banner.setMinimumHeight(36)
+        self._banner.setMinimumHeight(scaled(36))
         self._banner.setAccessibleName("전적 입력 취소")
         self._banner.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         set_style_property(self._banner, "role", "secondary")
@@ -36,7 +36,7 @@ class DetailView(QWidget):
         self._result_select.changed.connect(self._on_result_changed)
         root.addWidget(self._result_select)
 
-        # 입력 폼 (스크롤 없이 한 화면에 모두 표시)
+        # 입력 폼 (작은 화면에서는 DetailView 바깥 스크롤 영역으로 접근 보장)
         self.form = DetailForm(decks)
         root.addWidget(self.form)
 

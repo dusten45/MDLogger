@@ -42,6 +42,7 @@ from .theme import (
     ThemeMode,
     apply_theme,
     font_for_role,
+    scaled,
     set_style_property,
 )
 from .widgets import Card, SearchableDeckCombo, SingleSelect, Stepper
@@ -99,7 +100,7 @@ class WidgetGallery(QDialog):
 
         super().__init__(parent)
         self.setWindowTitle("위젯 갤러리 (개발용)")
-        self.resize(760, 680)
+        self.resize(scaled(760), scaled(680))
 
         self._controller = controller
         if self._controller is None:
@@ -285,11 +286,11 @@ class WidgetGallery(QDialog):
         form.setSpacing(METRICS.space_2)
 
         stepper = Stepper(minimum=1, maximum=10, value=3)
-        stepper.setFixedWidth(200)
+        stepper.setFixedWidth(scaled(200))
         form.addRow("Stepper", stepper)
 
         card = Card("승률", "66%")
-        card.setFixedWidth(200)
+        card.setFixedWidth(scaled(200))
         form.addRow("Card", card)
 
         # 빈 상태로 시작해 한 글자씩 입력할 때마다 실시간 필터링이 되는지

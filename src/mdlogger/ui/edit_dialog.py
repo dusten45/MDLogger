@@ -17,7 +17,7 @@ from ..enums import RESULT_COLORS, RESULTS
 from ..game_service import GameService
 from ..models import GameMode, StandingKind
 from .detail_form import DetailForm
-from .theme import METRICS, FontRole, font_for_role, set_style_property
+from .theme import METRICS, FontRole, font_for_role, scaled, set_style_property
 from .widgets import SingleSelect
 
 
@@ -36,7 +36,7 @@ class EditDialog(QDialog):
         self._id = int(row["id"])
 
         self.setWindowTitle("기록 편집")
-        self.setMinimumWidth(360)
+        self.setMinimumWidth(scaled(360))
 
         layout = QVBoxLayout(self)
         layout.setSpacing(METRICS.space_2)

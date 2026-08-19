@@ -46,8 +46,8 @@ from .theme import (
     FontRole,
     ThemeController,
     ThemeMode,
-    apply_font_scale,
     font_for_role,
+    scaled,
     set_style_property,
 )
 from .widgets import SingleSelect
@@ -60,7 +60,8 @@ ACCENT_OPTIONS = [
     ("magenta", "자홍"),
     ("amber", "주황"),
 ]
-FONT_SCALE_OPTIONS = [
+UI_SCALE_OPTIONS = [
+    ("0.75", "75%"),
     ("0.8", "80%"),
     ("0.9", "90%"),
     ("1.0", "100%"),
@@ -131,8 +132,8 @@ class SettingsWindow(QDialog):
         self._mode_settings = ModeSettings(games) if games is not None else None
 
         self.setWindowTitle("설정")
-        self.setMinimumSize(620, 520)
-        self.resize(680, 620)
+        self.setMinimumSize(scaled(620), scaled(520))
+        self.resize(scaled(680), scaled(620))
 
         root = QVBoxLayout(self)
         root.setContentsMargins(
@@ -144,7 +145,7 @@ class SettingsWindow(QDialog):
         body.setSpacing(METRICS.space_4)
 
         self._nav = QListWidget()
-        self._nav.setFixedWidth(160)
+        self._nav.setFixedWidth(scaled(160))
         self._nav.currentRowChanged.connect(self._on_nav_changed)
         body.addWidget(self._nav)
 
@@ -214,14 +215,14 @@ class SettingsWindow(QDialog):
             )
         )
 
-        self._font_select = SingleSelect(FONT_SCALE_OPTIONS)
-        self._font_select.setValue(_font_scale_key(self._settings.font_scale))
-        self._font_select.changed.connect(self._on_font_changed)
+        self._ui_scale_select = SingleSelect(UI_SCALE_OPTIONS)
+        self._ui_scale_select.setValue(_ui_scale_key(self._settings.ui_scale))
+        self._ui_scale_select.changed.connect(self._on_ui_scale_changed)
         layout.addLayout(
             self._option(
-                "글자 크기",
-                "미리보기: 본문 100% · 제목 135% · 큰 숫자 135%. 재시작 후 완전히 적용됩니다.",
-                self._font_select,
+                "UI 크기",
+                "버튼·글자·아이콘·간격 등 모든 UI 요소를 같은 비율로 조정합니다. 다음 앱 실행부터 적용됩니다.",
+                self._ui_scale_select,
             )
         )
 
@@ -412,8 +413,8 @@ class SettingsWindow(QDialog):
         self._settings = _replace(self._settings, accent_color=value)
         self._commit()
 
-    def _on_font_changed(self, value: str) -> None:
-        self._settings = _replace(self._settings, font_scale=float(value))
+    def _on_ui_scale_changed(self, value: str) -> None:
+        self._settings = _replace(self._settings, ui_scale=float(value))
         self._commit()
 
     def _on_motion_changed(self, value: str) -> None:
@@ -441,7 +442,6 @@ class SettingsWindow(QDialog):
     def _commit(self) -> None:
         self._store.save(self._settings)
         self._apply_theme()
-        self._apply_font()
         self._apply_motion()
         self.memo_enabled_changed.emit(self._settings.memo_enabled)
         self.score_input_mode_changed.emit(self._settings.score_input_mode.value)
@@ -450,9 +450,6 @@ class SettingsWindow(QDialog):
         if self._theme is not None:
             self._theme.set_mode(self._settings.theme_mode)
             self._theme.set_accent(self._settings.accent_color)
-
-    def _apply_font(self) -> None:
-        apply_font_scale(self._settings.font_scale)
 
     def _apply_motion(self) -> None:
         set_result_motion_enabled(not effective_reduce_motion(self._settings))
@@ -485,7 +482,7 @@ class SettingsWindow(QDialog):
     def _sync_widgets(self) -> None:
         self._theme_select.setValue(self._settings.theme_mode.value)
         self._accent_select.setValue(self._settings.accent_color)
-        self._font_select.setValue(_font_scale_key(self._settings.font_scale))
+        self._ui_scale_select.setValue(_ui_scale_key(self._settings.ui_scale))
         self._motion_select.setValue(self._settings.reduce_motion.value)
         self._low_spec.setChecked(self._settings.low_spec_mode)
         self._memo_check.setChecked(self._settings.memo_enabled)
@@ -597,7 +594,7 @@ def _replace(settings: AppSettings, **updates: Any) -> AppSettings:
     values = {
         "theme_mode": settings.theme_mode,
         "accent_color": settings.accent_color,
-        "font_scale": settings.font_scale,
+        "ui_scale": settings.ui_scale,
         "low_spec_mode": settings.low_spec_mode,
         "reduce_motion": settings.reduce_motion,
         "memo_enabled": settings.memo_enabled,
@@ -607,9 +604,9 @@ def _replace(settings: AppSettings, **updates: Any) -> AppSettings:
     return AppSettings(**values)
 
 
-def _font_scale_key(scale: float) -> str:
-    """float 글자 배율을 선택 옵션의 문자열 키로 매핑한다."""
-    for key, _label in FONT_SCALE_OPTIONS:
+def _ui_scale_key(scale: float) -> str:
+    """float UI 배율을 선택 옵션의 문자열 키로 매핑한다."""
+    for key, _label in UI_SCALE_OPTIONS:
         if abs(float(key) - scale) < 0.001:
             return key
     return "1.0"

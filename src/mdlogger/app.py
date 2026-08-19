@@ -41,14 +41,14 @@ def main() -> None:
     if _app_icon is not None:
         app.setWindowIcon(_app_icon)  # 모든 창의 타이틀바·태스크바 아이콘
 
-    # 설정을 창 생성 전에 로드해 테마·강조색·글자 크기를 먼저 적용한다(spec §6.4).
+    # 설정을 창 생성 전에 로드해 테마·강조색·UI 크기를 먼저 적용한다(spec §6.4).
     settings_repo = SettingsRepository()
     settings = settings_repo.load()
     _theme_controller = apply_theme(
         app,
         mode=settings.theme_mode,
         accent=settings.accent_color,
-        font_scale=settings.font_scale,
+        ui_scale=settings.ui_scale,
     )
     # 저사양 모드/애니메이션 감소에 따라 승/패 버튼 애니메이션을 시작부터 적용한다.
     set_result_motion_enabled(not effective_reduce_motion(settings))

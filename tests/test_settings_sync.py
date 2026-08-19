@@ -48,7 +48,7 @@ def test_upload_strips_device_keys_and_sends_only_preferences() -> None:
             "memo_enabled": False,
             "default_mode": "rank-2026-08",
             "score_input_mode": "delta",
-            "font_scale": 1.5,
+            "ui_scale": 1.5,
             "low_spec_mode": True,
             "reduce_motion": "on",
         },
@@ -81,7 +81,7 @@ def test_download_returns_only_preference_keys() -> None:
                             "preferences": {
                                 "theme_mode": "dark",
                                 "accent_color": "amber",
-                                "font_scale": 1.5,
+                                "ui_scale": 1.5,
                                 "unknown": "x",
                             }
                         }

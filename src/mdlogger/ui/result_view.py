@@ -23,7 +23,7 @@ from PySide6.QtGui import QEnterEvent, QResizeEvent
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from .icons import load_icon
-from .theme import METRICS, FontRole, font_for_role, set_style_property
+from .theme import METRICS, FontRole, font_for_role, scaled, set_style_property
 from .widgets import SingleSelect
 
 _RESULT_ASPECT = 4 / 3  # 세로:가로 — 세로가 조금 더 길게
@@ -128,8 +128,8 @@ class _RecordButton(QWidget):
         return True
 
     def heightForWidth(self, width: int) -> int:
-        per = max(0.0, (width - _RESULT_GAP) / 2)
-        return int(per * _RESULT_ASPECT) + 2 * _RESULT_MARGIN
+        per = max(0.0, (width - scaled(_RESULT_GAP)) / 2)
+        return int(per * _RESULT_ASPECT) + 2 * scaled(_RESULT_MARGIN)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         self._layout_button()
@@ -139,14 +139,14 @@ class _RecordButton(QWidget):
         r = self.rect()
         # 휴지 크기는 5% 여유를 남겨 성장 때 잘리지 않게 한다.
         base_w = r.width() / (1.0 + _RESULT_GROW)
-        base_h = (r.height() - 2 * _RESULT_MARGIN) / (1.0 + _RESULT_GROW)
+        base_h = (r.height() - 2 * scaled(_RESULT_MARGIN)) / (1.0 + _RESULT_GROW)
         self._button.set_base_size(QSize(int(base_w), int(base_h)))
 
     def place(self, btn: _ResultButton, size: QSize) -> None:
         r = self.rect()
         # 중심을 기준으로 성장 → 위·아래·양옆 모두 커진다. 수직 중심은 살짝 위로.
         cx = r.left() + r.width() / 2
-        cy = r.top() + r.height() / 2 - _RESULT_UP
+        cy = r.top() + r.height() / 2 - scaled(_RESULT_UP)
         x = int(cx - size.width() / 2)
         y = int(cy - size.height() / 2)
         btn.setGeometry(x, y, int(size.width()), int(size.height()))
@@ -164,12 +164,12 @@ class ResultView(QWidget):
 
         root = QVBoxLayout(self)
         self._root_layout = root
-        root.setContentsMargins(12, 10, 12, 10)
-        root.setSpacing(10)
+        root.setContentsMargins(scaled(12), scaled(10), scaled(12), scaled(10))
+        root.setSpacing(scaled(10))
 
         # 낮은 우선순위의 계정/동기화 상태 (맨 위 텍스트) + 톱니바퀴 설정 버튼
         account_row = QHBoxLayout()
-        account_row.setSpacing(8)
+        account_row.setSpacing(scaled(8))
         self._account_status = QLabel("게스트 · 로컬 저장")
         set_style_property(self._account_status, "tone", "muted")
         self._account_status.setWordWrap(True)
@@ -218,20 +218,20 @@ class ResultView(QWidget):
 
         # 하단: 되돌리기 / 통계
         bottom = QHBoxLayout()
-        bottom.setSpacing(8)
+        bottom.setSpacing(scaled(8))
         self._undo = QPushButton("마지막 기록 취소")
         undo_icon = load_icon("undo")
         if undo_icon is not None:
             self._undo.setIcon(undo_icon)
             self._undo.setIconSize(QSize(METRICS.icon_medium, METRICS.icon_medium))
         self._undo.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._undo.setMinimumHeight(36)
+        self._undo.setMinimumHeight(scaled(36))
         self._undo.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._undo.setEnabled(False)
         self._undo.clicked.connect(self.undo_requested)
         stats_btn = QPushButton("통계 / 기록")
         stats_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        stats_btn.setMinimumHeight(36)
+        stats_btn.setMinimumHeight(scaled(36))
         stats_btn.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         stats_btn.clicked.connect(self.stats_requested)
         bottom.addWidget(self._undo)

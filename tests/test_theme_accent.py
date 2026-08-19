@@ -11,18 +11,18 @@ from mdlogger.ui.theme import (
     LIGHT_COLORS,
     FontRole,
     ThemeMode,
-    apply_font_scale,
+    apply_ui_scale,
     colors_for_mode,
     contrast_ratio,
-    current_font_scale,
+    current_ui_scale,
     font_for_role,
 )
 
 
 @pytest.fixture(autouse=True)
-def _reset_font_scale():
+def _reset_ui_scale():
     yield
-    apply_font_scale(1.0)
+    apply_ui_scale(1.0)
 
 
 def test_all_accent_presets_meet_contrast_targets() -> None:
@@ -55,15 +55,15 @@ def test_non_blue_accent_derives_accent_fields() -> None:
     assert dark.text_on_accent == ACCENT_PRESETS["amber"].dark_text_on_accent
 
 
-def test_font_for_role_applies_font_scale() -> None:
+def test_font_for_role_applies_ui_scale() -> None:
     base = QFont("Example Sans")
     base.setPointSizeF(10.0)
 
-    apply_font_scale(1.0)
+    apply_ui_scale(1.0)
     title_default = font_for_role(base, FontRole.TITLE)
 
-    apply_font_scale(1.25)
+    apply_ui_scale(1.25)
     title_scaled = font_for_role(base, FontRole.TITLE)
 
-    assert current_font_scale() == 1.25
+    assert current_ui_scale() == 1.25
     assert title_scaled.pointSizeF() == pytest.approx(title_default.pointSizeF() * 1.25)

@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 from ..game_sync.models import SyncConflict
 from ..remote.games import PRIVATE_GAME_FIELDS
 from .focus import allow_tab_focus
-from .theme import METRICS, set_style_property
+from .theme import METRICS, scaled, set_style_property
 
 
 def _wrapped_label(
@@ -73,8 +73,8 @@ class AuthWindow(QWidget):
         self._mode = AuthMode.LOGIN
         self._verification_email = ""
         self.setWindowTitle("MDLogger · 계정")
-        self.resize(420, 560)
-        self.setMinimumSize(360, 500)
+        self.resize(scaled(420), scaled(560))
+        self.setMinimumSize(scaled(360), scaled(500))
 
         root = QVBoxLayout(self)
         root.setContentsMargins(
@@ -418,7 +418,7 @@ class GuestNoticeDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("듀얼 데이터 사용 안내")
         self.setModal(True)
-        self.setMinimumWidth(self.CONTENT_WIDTH + 2 * METRICS.space_6)
+        self.setMinimumWidth(scaled(self.CONTENT_WIDTH) + 2 * METRICS.space_6)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
@@ -433,7 +433,7 @@ class GuestNoticeDialog(QDialog):
                 "계정으로 계속하기 전에 확인해 주세요"
                 if registered
                 else "게스트로 계속하기 전에 확인해 주세요",
-                self.CONTENT_WIDTH,
+                scaled(self.CONTENT_WIDTH),
                 role="title",
             )
         )
@@ -451,7 +451,7 @@ class GuestNoticeDialog(QDialog):
             "전송하지 않음: 자유 입력 메모, 이메일, 표시 이름, 비밀번호·인증 토큰, "
             "로컬 파일 경로와 OS 사용자명\n\n"
             "오프라인에서도 기록할 수 있으며 전송은 연결이 복구된 뒤 진행됩니다.",
-            self.CONTENT_WIDTH,
+            scaled(self.CONTENT_WIDTH),
         )
         body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         layout.addWidget(body, 1)
@@ -459,7 +459,7 @@ class GuestNoticeDialog(QDialog):
         layout.addWidget(
             _wrapped_label(
                 "이 필수 데이터 사용에 동의하지 않으면 앱을 사용할 수 없습니다.",
-                self.CONTENT_WIDTH,
+                scaled(self.CONTENT_WIDTH),
                 tone="muted",
             )
         )
@@ -490,7 +490,7 @@ class GuestRecordChoiceDialog(QDialog):
         self.choice = GuestRecordChoice.LATER
         self.setWindowTitle("게스트 기록 처리")
         self.setModal(True)
-        self.setMinimumWidth(self.CONTENT_WIDTH + 2 * METRICS.space_6)
+        self.setMinimumWidth(scaled(self.CONTENT_WIDTH) + 2 * METRICS.space_6)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
@@ -506,7 +506,7 @@ class GuestRecordChoiceDialog(QDialog):
         header.addWidget(
             _wrapped_label(
                 f"게스트 기록 {record_count}건이 있습니다.",
-                self.CONTENT_WIDTH,
+                scaled(self.CONTENT_WIDTH),
                 role="title",
             )
         )
@@ -514,7 +514,7 @@ class GuestRecordChoiceDialog(QDialog):
             _wrapped_label(
                 "이 기록을 현재 계정으로 가져올지 선택해 주세요. "
                 "원본 게스트 기록은 어떤 경우에도 삭제되지 않습니다.",
-                self.CONTENT_WIDTH,
+                scaled(self.CONTENT_WIDTH),
             )
         )
         layout.addLayout(header)
@@ -562,7 +562,9 @@ class GuestRecordChoiceDialog(QDialog):
         group.setContentsMargins(0, 0, 0, 0)
         group.setSpacing(METRICS.space_1)
         group.addWidget(button)
-        group.addWidget(_wrapped_label(caption, self.CONTENT_WIDTH, tone="muted"))
+        group.addWidget(
+            _wrapped_label(caption, scaled(self.CONTENT_WIDTH), tone="muted")
+        )
         layout.addLayout(group)
         return button
 
@@ -591,8 +593,8 @@ class ConflictDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("동기화 충돌 해결")
         self.setModal(True)
-        self.resize(760, 520)
-        self.setMinimumSize(620, 420)
+        self.resize(scaled(760), scaled(520))
+        self.setMinimumSize(scaled(620), scaled(420))
         self.resolution: str | None = None
         self.merged_payload: dict | None = None
         self._conflict = conflict
@@ -720,7 +722,7 @@ class AccountDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("계정 및 동기화")
         self.setModal(True)
-        self.setMinimumWidth(360)
+        self.setMinimumWidth(scaled(360))
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
@@ -788,6 +790,6 @@ class AccountDialog(QDialog):
         close.clicked.connect(self.reject)
         layout.addWidget(close)
 
-        preferred_width = 420
+        preferred_width = scaled(420)
         self.setMinimumHeight(layout.heightForWidth(self.minimumWidth()))
         self.resize(preferred_width, layout.heightForWidth(preferred_width))

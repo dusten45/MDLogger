@@ -21,7 +21,7 @@ def test_defaults() -> None:
     settings = AppSettings()
     assert settings.theme_mode is ThemeMode.SYSTEM
     assert settings.accent_color == AccentPreset.BLUE.value
-    assert settings.font_scale == 1.0
+    assert settings.ui_scale == 1.0
     assert settings.low_spec_mode is False
     assert settings.reduce_motion is ReduceMotion.SYSTEM
     assert settings.memo_enabled is True
@@ -31,7 +31,7 @@ def test_to_dict_roundtrip() -> None:
     settings = AppSettings(
         theme_mode=ThemeMode.DARK,
         accent_color=AccentPreset.TEAL.value,
-        font_scale=1.25,
+        ui_scale=1.25,
         low_spec_mode=True,
         reduce_motion=ReduceMotion.ON,
         memo_enabled=False,
@@ -41,12 +41,18 @@ def test_to_dict_roundtrip() -> None:
     assert AppSettings.from_dict(data) == settings
 
 
-def test_from_dict_replaces_out_of_range_font_scale() -> None:
-    assert AppSettings.from_dict({"font_scale": 0.5}).font_scale == 1.0
-    assert AppSettings.from_dict({"font_scale": 1.6}).font_scale == 1.0
-    assert AppSettings.from_dict({"font_scale": 1.25}).font_scale == 1.25
-    assert AppSettings.from_dict({"font_scale": "big"}).font_scale == 1.0
-    assert AppSettings.from_dict({"font_scale": True}).font_scale == 1.0
+def test_from_dict_replaces_out_of_range_ui_scale() -> None:
+    assert AppSettings.from_dict({"ui_scale": 0.7}).ui_scale == 1.0
+    assert AppSettings.from_dict({"ui_scale": 1.6}).ui_scale == 1.0
+    assert AppSettings.from_dict({"ui_scale": 0.75}).ui_scale == 0.75
+    assert AppSettings.from_dict({"ui_scale": 1.25}).ui_scale == 1.25
+    assert AppSettings.from_dict({"ui_scale": "big"}).ui_scale == 1.0
+    assert AppSettings.from_dict({"ui_scale": True}).ui_scale == 1.0
+
+
+def test_from_dict_accepts_legacy_font_scale() -> None:
+    assert AppSettings.from_dict({"font_scale": 1.25}).ui_scale == 1.25
+    assert AppSettings.from_dict({"ui_scale": 0.9, "font_scale": 1.25}).ui_scale == 0.9
 
 
 def test_from_dict_replaces_unknown_accent() -> None:
@@ -73,7 +79,7 @@ def test_from_dict_replaces_non_bool_flags() -> None:
 
 def test_sync_allowlists_are_disjoint() -> None:
     assert set(PREFERENCE_KEYS).isdisjoint(set(DEVICE_KEYS))
-    assert "font_scale" in DEVICE_KEYS
+    assert "ui_scale" in DEVICE_KEYS
     assert "theme_mode" in PREFERENCE_KEYS
     assert "default_mode" in PREFERENCE_KEYS
     assert "score_input_mode" in PREFERENCE_KEYS
@@ -137,7 +143,7 @@ def test_repository_single_corrupt_field_replaced(tmp_path: Path) -> None:
                 "schema_version": 1,
                 "theme_mode": "dark",
                 "accent_color": "nope",
-                "font_scale": 9.9,
+                "ui_scale": 9.9,
                 "memo_enabled": False,
             }
         )
@@ -145,7 +151,7 @@ def test_repository_single_corrupt_field_replaced(tmp_path: Path) -> None:
     loaded = SettingsRepository(path).load()
     assert loaded.theme_mode is ThemeMode.DARK
     assert loaded.accent_color == "blue"
-    assert loaded.font_scale == 1.0
+    assert loaded.ui_scale == 1.0
     assert loaded.memo_enabled is False
 
 

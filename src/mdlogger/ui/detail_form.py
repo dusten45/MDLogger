@@ -36,7 +36,7 @@ from ..enums import (
     TURN_ORDERS,
 )
 from ..models import GameMode, RankStanding, StandingKind
-from .theme import METRICS, FontRole, font_for_role, set_style_property
+from .theme import METRICS, FontRole, font_for_role, scaled, set_style_property
 from .widgets import SearchableDeckCombo, SingleSelect, Stepper
 
 
@@ -337,7 +337,7 @@ class DetailForm(QWidget):
         # 경기 후 점수 (DIRECT/편집) + 미리보기/변화량 라벨
         self._score_after = _int_line("경기 후 점수")
         self._delta = QLabel("")
-        self._delta.setMinimumWidth(84)
+        self._delta.setMinimumWidth(scaled(84))
         self._delta.setAlignment(
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
         )
@@ -385,7 +385,7 @@ class DetailForm(QWidget):
         # 경기 후 레이팅 (DIRECT/편집) + 미리보기/변화량 라벨
         self._rating_after = _int_line("경기 후 레이팅")
         self._rating_delta = QLabel("")
-        self._rating_delta.setMinimumWidth(84)
+        self._rating_delta.setMinimumWidth(scaled(84))
         self._rating_delta.setAlignment(
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft
         )

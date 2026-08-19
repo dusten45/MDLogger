@@ -197,7 +197,7 @@ def test_save_flow_clicks_win_and_persists_record(
     # '전적 입력' 버튼 실제 클릭 → 화면2(상세 입력)로 이동
     _click(_find_button(window._result_view, "전적 입력"))
     qapp.processEvents()
-    assert window._stack.currentWidget() is window._detail_view
+    assert window._stack.currentWidget() is window._detail_scroll
 
     # 승/패 선택 (상세 화면의 승/패 선택 컨트롤)
     _click(_find_button(window._detail_view, "승"))
@@ -232,7 +232,7 @@ def test_detail_entry_keeps_deck_popups_closed(
     for _ in range(2):
         _click(_find_button(window._result_view, "전적 입력"))
         qapp.processEvents()
-        assert window._stack.currentWidget() is window._detail_view
+        assert window._stack.currentWidget() is window._detail_scroll
 
         for combo in (
             window._detail_view.form._my_deck,
@@ -261,7 +261,7 @@ def test_cancel_flow_returns_to_result_without_saving(
     # '전적 입력' → 상세로 이동 후, 아무 입력 없이 '전적 입력 취소' 배너 클릭
     _click(_find_button(window._result_view, "전적 입력"))
     qapp.processEvents()
-    assert window._stack.currentWidget() is window._detail_view
+    assert window._stack.currentWidget() is window._detail_scroll
 
     _click(window._detail_view._banner)
     qapp.processEvents()
@@ -280,7 +280,7 @@ def test_confirm_without_deck_selection_shows_validation_and_does_not_save(
 
     _click(_find_button(window._result_view, "전적 입력"))
     qapp.processEvents()
-    assert window._stack.currentWidget() is window._detail_view
+    assert window._stack.currentWidget() is window._detail_scroll
 
     # 승/패 선택 후 내 덱/상대 덱을 선택하지 않은 채 확인 클릭 → 유효성 메시지
     _click(_find_button(window._detail_view, "승"))
@@ -289,7 +289,7 @@ def test_confirm_without_deck_selection_shows_validation_and_does_not_save(
     qapp.processEvents()
 
     assert "정확히 선택하세요" in window._detail_view._status.text()
-    assert window._stack.currentWidget() is window._detail_view
+    assert window._stack.currentWidget() is window._detail_scroll
     assert games.count_games() == 0
 
     window.close_profile_windows()
