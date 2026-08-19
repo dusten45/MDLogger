@@ -13,9 +13,9 @@
 
 ; 버전은 src\mdlogger\_version.py 의 __version__ 과 일치해야 한다.
 ; 수동 동기화가 번거로우면 빌드 스크립트에서 아래 버전 정의를 주입한다:
-;   ISCC.exe /DMyAppVersion=0.2.0 scripts\installer_windows.iss
+;   ISCC.exe /DMyAppVersion=0.2.1 scripts\installer_windows.iss
 #ifndef MyAppVersion
-    #define MyAppVersion "0.2.0"
+    #define MyAppVersion "0.2.1"
 #endif
 #define MyAppName "MDLogger"
 #define MyAppExeName "MDLogger.exe"
