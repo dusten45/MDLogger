@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..portable import PortableArchiveError, import_portable_archive
+from .theme import scaled
 
 
 class PortableImportDialog(QDialog):
@@ -38,14 +39,14 @@ class PortableImportDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("휴대용 아카이브 가져오기")
         self.setModal(True)
-        self.setMinimumWidth(440)
+        self.setMinimumWidth(scaled(440))
         self._target_db_path = Path(target_db_path)
         self.already_imported = False
         self.imported_count = 0
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(12)
+        layout.setContentsMargins(scaled(24), scaled(24), scaled(24), scaled(24))
+        layout.setSpacing(scaled(12))
 
         title = QLabel("가져올 휴대용 아카이브 선택")
         title.setProperty("role", "title")
@@ -65,13 +66,13 @@ class PortableImportDialog(QDialog):
         browse.setProperty("role", "secondary")
         browse.clicked.connect(self._browse)
         row = QHBoxLayout()
-        row.setSpacing(8)
+        row.setSpacing(scaled(8))
         row.addWidget(self._path_edit, 1)
         row.addWidget(browse)
         layout.addLayout(row)
 
         buttons = QHBoxLayout()
-        buttons.setSpacing(8)
+        buttons.setSpacing(scaled(8))
         cancel = QPushButton("취소")
         cancel.clicked.connect(self.reject)
         import_btn = QPushButton("가져오기")

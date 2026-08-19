@@ -45,7 +45,7 @@ create policy user_settings_update_own
 
 -- 취향 설정 upsert RPC (spec §4.2).
 -- preferences의 키가 PREFERENCE_KEYS allowlist에만 속하는지 검증한다.
--- DEVICE_KEYS(font_scale/low_spec_mode/reduce_motion)와 미지 키는 거부한다.
+-- DEVICE_KEYS(ui_scale/low_spec_mode/reduce_motion)와 미지 키는 거부한다.
 create or replace function public.upsert_user_settings(preferences jsonb)
 returns jsonb
 language plpgsql

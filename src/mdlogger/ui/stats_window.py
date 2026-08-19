@@ -17,8 +17,8 @@ from datetime import datetime
 from pathlib import Path
 
 import pyqtgraph as pg
-from PySide6.QtCore import QModelIndex, QPersistentModelIndex, Qt, Signal
-from PySide6.QtGui import QResizeEvent
+from PySide6.QtCore import QModelIndex, QPersistentModelIndex, QSize, Qt, Signal
+from PySide6.QtGui import QResizeEvent, QShowEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -64,6 +64,7 @@ from .theme import (
     ThemeController,
     current_colors,
     font_for_role,
+    scaled,
     set_style_property,
 )
 from .widgets import Card, FlowLayout, SingleSelect
@@ -73,6 +74,16 @@ _CARD_WIDE = 720
 _CARD_MEDIUM = 520
 # 시계열이 이보다 적으면 추세를 과장하는 선 그래프 대신 현재 값 안내 (§9.3).
 _PLOT_MIN_POINTS = 4
+
+
+class _ScaledPlotWidget(pg.PlotWidget):
+    """앱 UI 배율에 맞는 pyqtgraph 기본 크기 힌트를 제공한다."""
+
+    def sizeHint(self) -> QSize:
+        return QSize(scaled(600), scaled(480))
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(scaled(600), scaled(480))
 
 
 def _cell(text: str, *, center: bool = False) -> QTableWidgetItem:
@@ -151,8 +162,8 @@ class StatsWindow(QWidget):
         self._app: QApplication | None = app if isinstance(app, QApplication) else None
 
         self.setWindowTitle("통계 / 기록")
-        self.resize(760, 600)
-        self.setMinimumWidth(360)
+        self.resize(scaled(760), scaled(600))
+        self.setMinimumWidth(scaled(360))
 
         self._modes = self._games.get_play_modes()
         self._mode_id: str | None = None  # None = 전체
@@ -294,8 +305,8 @@ class StatsWindow(QWidget):
 
         # 0: 그래프 / 1: 데이터 적음 안내 / 2: 빈 상태
         self._plot_stack = QStackedWidget()
-        self._plot = pg.PlotWidget(axisItems={"bottom": pg.DateAxisItem()})
-        self._plot.setMinimumHeight(200)
+        self._plot = _ScaledPlotWidget(axisItems={"bottom": pg.DateAxisItem()})
+        self._plot.setMinimumHeight(scaled(200))
         self._plot_stack.addWidget(self._plot)
 
         self._sparse_label = QLabel("")
@@ -345,7 +356,7 @@ class StatsWindow(QWidget):
         rhead.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         rhead.setSectionResizeMode(10, QHeaderView.ResizeMode.Stretch)  # 메모 늘림
         # 긴 덱 이름은 열을 무한히 넓히지 않고 최대 폭에서 elide + tooltip으로 처리(§9.4)
-        rhead.setMaximumSectionSize(280)
+        rhead.setMaximumSectionSize(scaled(280))
         self._rtable.doubleClicked.connect(self._edit_selected)
         self._rtable.itemSelectionChanged.connect(self._update_record_actions)
         _install_elide(self._rtable)
@@ -403,22 +414,30 @@ class StatsWindow(QWidget):
         self._refresh_plot()
 
     # ===== 갱신 =====
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        # 최초 표시 뒤에야 탭의 실제 콘텐츠 폭이 확정된다.
+        self._relayout_cards(self._stats_tab.width())
+
     def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         self._relayout_cards(self._stats_tab.width())
 
     def _relayout_cards(self, width: int) -> None:
-        if width >= _CARD_WIDE:
+        if width >= scaled(_CARD_WIDE):
             cols = 3
-        elif width >= _CARD_MEDIUM:
+        elif width >= scaled(_CARD_MEDIUM):
             cols = 2
         else:
             cols = 1
         if cols == self._card_cols:
             return
         self._card_cols = cols
+        while self._cards_grid.count() > 0:
+            self._cards_grid.takeAt(0)
         for i, card in enumerate(self._cards):
             self._cards_grid.addWidget(card, i // cols, i % cols)
+        self._cards_grid.invalidate()
 
     def refresh(self) -> None:
         self._refresh_cards()
@@ -547,14 +566,14 @@ class StatsWindow(QWidget):
             return f"{when}\n{value}" if when else value
 
         self._plot_stack.setCurrentWidget(self._plot)
-        self._plot.plot(xs, ys, pen=pg.mkPen(colors.chart_primary, width=2))
+        self._plot.plot(xs, ys, pen=pg.mkPen(colors.chart_primary, width=scaled(2)))
         scatter = pg.ScatterPlotItem(
             x=xs,
             y=ys,
             brush=brushes,
             symbol=symbols,
             pen=pg.mkPen(colors.surface),
-            size=11,
+            size=scaled(11),
             hoverable=True,
             tip=_tip,
             data=tips,

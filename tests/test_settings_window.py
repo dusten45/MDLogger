@@ -8,6 +8,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import QPoint, QRect, QSize
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -18,10 +19,24 @@ from PySide6.QtWidgets import (
     QScrollArea,
 )
 
-from mdlogger.app_settings import AppSettings, MemorySettingsStore, ReduceMotion
+from mdlogger.app_settings import (
+    AppSettings,
+    MemorySettingsStore,
+    ReduceMotion,
+    ScoreInputMode,
+)
 from mdlogger.game_service import GameService
+from mdlogger.models import GameMode, StandingKind
+from mdlogger.ui.main_window import MainWindow
 from mdlogger.ui.settings_window import SettingsWindow
-from mdlogger.ui.theme import ThemeController, ThemeMode, current_font_scale
+from mdlogger.ui.stats_window import StatsWindow
+from mdlogger.ui.theme import (
+    ThemeController,
+    ThemeMode,
+    apply_ui_scale,
+    current_ui_scale,
+    scaled,
+)
 
 
 @pytest.fixture(scope="module")
@@ -30,11 +45,28 @@ def qapp():
     yield application
 
 
+class _Screen:
+    def __init__(self, height: int) -> None:
+        self._height = height
+
+    def availableGeometry(self) -> QRect:
+        return QRect(0, 0, 1920, self._height)
+
+
 @pytest.fixture(autouse=True)
 def _reset_app_properties(qapp):
+    original_font = qapp.font()
+    original_palette = qapp.palette()
+    original_style_sheet = qapp.styleSheet()
+    apply_ui_scale(1.0, qapp)
     yield
+    qapp.closeAllWindows()
+    qapp.processEvents()
     qapp.setProperty("accentColor", None)
     qapp.setProperty("themeMode", None)
+    qapp.setStyleSheet(original_style_sheet)
+    qapp.setFont(original_font)
+    qapp.setPalette(original_palette)
 
 
 def _find_button(parent, text: str) -> QPushButton:
@@ -44,7 +76,13 @@ def _find_button(parent, text: str) -> QPushButton:
     raise AssertionError(f"버튼을 찾지 못함: {text!r}")
 
 
-def _window(store, theme=None, games=None, registered=False) -> SettingsWindow:
+def _window(
+    store,
+    theme=None,
+    games=None,
+    registered=False,
+    parent=None,
+) -> SettingsWindow:
     return SettingsWindow(
         store,
         theme,
@@ -52,6 +90,7 @@ def _window(store, theme=None, games=None, registered=False) -> SettingsWindow:
         profile_name="user@example.com" if registered else "게스트",
         status_text="로그인됨" if registered else "게스트 · 로컬 저장",
         registered=registered,
+        parent=parent,
     )
 
 
@@ -118,12 +157,277 @@ def test_theme_and_accent_apply_immediately(qapp) -> None:
     assert theme.accent == "teal"
 
 
-def test_font_scale_applies_immediately(qapp) -> None:
-    store = MemorySettingsStore()
-    win = _window(store)
-    win._on_font_changed("1.25")
-    assert store.load().font_scale == 1.25
-    assert current_font_scale() == 1.25
+def test_ui_scale_is_saved_for_the_next_restart(qapp) -> None:
+    games = GameService.open(":memory:")
+    try:
+        main = MainWindow(games, ["테스트 덱"])
+        settings = _window(MemorySettingsStore(), parent=main)
+        main.show()
+        settings.show()
+        qapp.processEvents()
+
+        original_size = main.size()
+        original_font_size = main._result_view._today.font().pointSizeF()
+        settings._on_ui_scale_changed("0.75")
+        qapp.processEvents()
+
+        assert settings._store.load().ui_scale == 0.75
+        assert current_ui_scale() == 1.0
+        assert main.size() == original_size
+        assert main._result_view._today.font().pointSizeF() == original_font_size
+    finally:
+        settings.close()
+        main.close()
+        games.close()
+
+
+def test_ui_scale_applies_to_windows_created_on_next_start(qapp) -> None:
+    apply_ui_scale(0.75, qapp)
+    games = GameService.open(":memory:")
+    try:
+        main = MainWindow(games, ["테스트 덱"])
+        settings = _window(MemorySettingsStore(AppSettings(ui_scale=0.75)), parent=main)
+        result_layout = main._result_view.layout()
+        appearance_page = settings._pages[0][1]
+        appearance_layout = appearance_page.layout()
+
+        assert result_layout is not None
+        assert appearance_layout is not None
+        assert main.size() == QSize(315, 641)
+        assert settings.size() == QSize(510, 465)
+        assert settings.minimumSize() == QSize(465, 390)
+        assert settings._nav.width() == 120
+        assert main._result_view._undo.iconSize() == QSize(15, 15)
+        assert result_layout.contentsMargins().left() == 9
+        assert appearance_layout.contentsMargins().left() == 7
+        assert "min-height: 26px" in qapp.styleSheet()
+    finally:
+        settings.close()
+        main.close()
+        games.close()
+
+
+def test_result_view_does_not_inherit_detail_scroll_range(qapp) -> None:
+    games = GameService.open(":memory:")
+    try:
+        main = MainWindow(games, ["테스트 덱"])
+        main.show()
+        qapp.processEvents()
+
+        assert main._stack.currentWidget() is main._result_view
+        assert not main._detail_scroll.isVisible()
+    finally:
+        main.close()
+        games.close()
+
+
+def test_stats_layout_and_table_constraints_scale_on_next_start(qapp) -> None:
+    games = GameService.open(":memory:")
+    full_size = None
+    scaled_stats = None
+    try:
+        full_size = StatsWindow(games, ["테스트 덱"])
+        assert full_size.size() == QSize(760, 600)
+        full_size.show()
+        qapp.processEvents()
+        full_size_columns = full_size._card_cols
+        full_size.close()
+        qapp.processEvents()
+
+        apply_ui_scale(0.75, qapp)
+        scaled_stats = StatsWindow(games, ["테스트 덱"])
+        assert scaled_stats.size() == QSize(570, 450)
+        scaled_stats.show()
+        qapp.processEvents()
+
+        assert scaled_stats._card_cols == full_size_columns
+        assert scaled_stats._rtable.horizontalHeader().maximumSectionSize() == 210
+    finally:
+        if full_size is not None:
+            full_size.close()
+        if scaled_stats is not None:
+            scaled_stats.close()
+        games.close()
+
+
+def test_main_window_uses_stable_detail_height_when_screen_allows(
+    qapp, monkeypatch
+) -> None:
+    apply_ui_scale(1.0, qapp)
+    monkeypatch.setattr(MainWindow, "screen", lambda _: _Screen(1440))
+    games = GameService.open(":memory:")
+    try:
+        main = MainWindow(games, ["테스트 덱"])
+        expected_size = QSize(
+            420, main._detail_view.minimumSizeHint().height() + scaled(1)
+        )
+        assert main.size() == expected_size
+
+        main.show()
+        qapp.processEvents()
+        assert main.size() == expected_size
+
+        main.show_detail()
+        qapp.processEvents()
+        assert main.size() == expected_size
+        assert main._detail_scroll.verticalScrollBar().maximum() == 0
+
+        main.show_result()
+        qapp.processEvents()
+        assert main.size() == expected_size
+    finally:
+        main.close()
+        games.close()
+
+
+def test_detail_view_allows_scrolling_to_confirm_on_small_main_window(
+    qapp, monkeypatch
+) -> None:
+    apply_ui_scale(0.75, qapp)
+    monkeypatch.setattr(MainWindow, "screen", lambda _: _Screen(510))
+    games = GameService.open(":memory:")
+    try:
+        main = MainWindow(games, ["테스트 덱"])
+        expected_size = QSize(315, 510)
+        assert main.size() == expected_size
+
+        main.show()
+        qapp.processEvents()
+        shown_size = main.size()
+
+        main.show_detail()
+        qapp.processEvents()
+
+        scroll = main._detail_scroll
+        assert main.size() == shown_size
+        assert main._stack.currentWidget() is scroll
+        assert scroll.verticalScrollBar().maximum() > 0
+        scroll.ensureWidgetVisible(main._detail_view._confirm)
+        qapp.processEvents()
+        confirm_bottom = main._detail_view._confirm.mapTo(
+            scroll.viewport(), QPoint(0, main._detail_view._confirm.height())
+        ).y()
+        assert confirm_bottom <= scroll.viewport().height()
+
+        main.show_result()
+        qapp.processEvents()
+        assert main.size() == shown_size
+    finally:
+        main.close()
+        games.close()
+
+
+def test_detail_scroll_resets_when_reopened(qapp, monkeypatch) -> None:
+    apply_ui_scale(1.0, qapp)
+    monkeypatch.setattr(MainWindow, "screen", lambda _: _Screen(510))
+    games = GameService.open(":memory:")
+    try:
+        main = MainWindow(games, ["테스트 덱"])
+        main.show()
+        main.show_detail()
+        qapp.processEvents()
+
+        scroll = main._detail_scroll
+        scroll.verticalScrollBar().setValue(scroll.verticalScrollBar().maximum())
+        assert scroll.verticalScrollBar().value() > 0
+
+        main.show_result()
+        main.show_detail()
+        qapp.processEvents()
+        assert scroll.verticalScrollBar().value() == 0
+    finally:
+        main.close()
+        games.close()
+
+
+@pytest.mark.parametrize("ui_scale", (0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5))
+def test_detail_form_variants_fit_the_stable_large_screen_height(
+    qapp, monkeypatch, ui_scale: float
+) -> None:
+    apply_ui_scale(ui_scale, qapp)
+    monkeypatch.setattr(MainWindow, "screen", lambda _: _Screen(1800))
+    games = GameService.open(":memory:")
+    try:
+        main = MainWindow(games, ["테스트 덱"])
+        expected_size = main.size()
+        main.show()
+        main.show_detail()
+        qapp.processEvents()
+
+        modes = (
+            GameMode("event", StandingKind.EVENT_POINTS, "event", None),
+            GameMode("rank", StandingKind.RANK, "rank", None),
+            GameMode("rating", StandingKind.RATING, "rating", None),
+        )
+        for mode in modes:
+            for input_mode in (ScoreInputMode.DELTA, ScoreInputMode.DIRECT):
+                for memo_enabled in (True, False):
+                    main._detail_view.set_mode(mode)
+                    main.set_score_input_mode(input_mode)
+                    main.set_memo_enabled(memo_enabled)
+                    qapp.processEvents()
+
+                    assert main.size() == expected_size
+                    assert main._detail_scroll.verticalScrollBar().maximum() == 0
+    finally:
+        main.close()
+        games.close()
+
+
+def test_detail_validation_messages_do_not_add_a_scrollbar(qapp, monkeypatch) -> None:
+    apply_ui_scale(1.0, qapp)
+    monkeypatch.setattr(MainWindow, "screen", lambda _: _Screen(1440))
+    games = GameService.open(":memory:")
+    try:
+        main = MainWindow(games, ["테스트 덱"])
+        main.show()
+        main.show_detail()
+        qapp.processEvents()
+
+        messages = (
+            "승/패를 선택하세요",
+            "내 덱 / 상대 덱을 후보에서 정확히 선택하세요",
+            "경기 전/후 레이팅을 입력하세요",
+            "경기 전 레이팅을 입력하세요",
+            "레이팅 변동폭을 입력하세요",
+        )
+        for message in messages:
+            main._detail_view._status.setText(message)
+            qapp.processEvents()
+            assert main._detail_scroll.verticalScrollBar().maximum() == 0
+    finally:
+        main.close()
+        games.close()
+
+
+def test_main_window_rechecks_available_height_after_show(qapp, monkeypatch) -> None:
+    apply_ui_scale(1.0, qapp)
+    monkeypatch.setattr(MainWindow, "screen", lambda _: _Screen(764))
+    monkeypatch.setattr(
+        MainWindow,
+        "frameGeometry",
+        lambda window: QRect(
+            0,
+            0,
+            window.width(),
+            window.height() + (4 if window.isVisible() else 0),
+        ),
+    )
+    games = GameService.open(":memory:")
+    try:
+        main = MainWindow(games, ["테스트 덱"])
+        assert main.height() == 764
+
+        main.show()
+        qapp.processEvents()
+        assert main.height() == 760
+
+        main.show_detail()
+        qapp.processEvents()
+        assert main._detail_scroll.verticalScrollBar().maximum() > 0
+    finally:
+        main.close()
+        games.close()
 
 
 def test_memo_toggle_emits_signal_and_persists(qapp) -> None:

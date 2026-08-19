@@ -40,9 +40,9 @@ select is(
 
 -- DEVICE_KEYS 포함 payload는 거부된다(서버 하드 차단).
 select throws_ok(
-    $$ select public.upsert_user_settings('{"font_scale":1.5}'::jsonb) $$,
+    $$ select public.upsert_user_settings('{"ui_scale":1.5}'::jsonb) $$,
     '22023', NULL,
-    '기기 특성 설정(font_scale)은 거부된다'
+    '기기 특성 설정(ui_scale)은 거부된다'
 );
 
 select throws_ok(

@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 
 from ..admin_modes import AdminModesError
 from ..enums import STANDING_KINDS
-from .theme import METRICS, set_style_property
+from .theme import METRICS, scaled, set_style_property
 
 T = TypeVar("T")
 
@@ -64,7 +64,7 @@ class _ModeEditor(QDialog):
         super().__init__(parent)
         is_editing = mode is not None
         self.setWindowTitle("모드 편집" if is_editing else "모드 추가")
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(scaled(400))
         self._data: dict[str, Any] = {}
 
         layout = QVBoxLayout(self)
@@ -166,7 +166,7 @@ class AdminWindow(QMainWindow):
         super().__init__()
         self._client = client
         self.setWindowTitle("MDLogger 관리자 — 모드/시즌 관리")
-        self.resize(850, 560)
+        self.resize(scaled(850), scaled(560))
 
         central = QWidget()
         layout = QVBoxLayout(central)
