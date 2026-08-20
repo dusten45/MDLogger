@@ -1,0 +1,100 @@
+/* 기록 흐름 (spec §5.2, §7): 모드 선택 → 승/패 → 상세 입력 → 저장. */
+
+.record-page {
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+.record-today {
+    margin: 0 0 var(--space-3);
+    color: var(--text-secondary);
+    font-size: var(--font-body);
+}
+
+.mode-chips {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-3);
+}
+
+.mode-chip {
+    min-height: var(--control-height-primary);
+    padding: 0 var(--space-4);
+    border-radius: 999px;
+    background: var(--surface);
+    border: var(--border-width) solid var(--border);
+    color: var(--text-primary);
+    font-weight: var(--font-weight-label);
+}
+
+.mode-chip--active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-on-accent);
+}
+
+.result-prompt {
+    margin: 0 0 var(--space-3);
+    font-size: var(--font-body);
+    color: var(--text-secondary);
+}
+
+.result-buttons {
+    display: flex;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.result-button {
+    flex: 1;
+    min-height: 96px;
+    font-size: var(--font-title);
+    font-weight: var(--font-weight-title);
+    border-radius: var(--radius-surface);
+}
+
+.result-button--win {
+    background: var(--success-subtle);
+    border-color: var(--success);
+    color: var(--success);
+}
+
+.result-button--lose {
+    background: var(--danger-subtle);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.result-button--selected-win {
+    background: var(--success);
+    border-color: var(--success);
+    color: var(--text-on-accent);
+}
+
+.result-button--selected-lose {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--text-on-accent);
+}
+
+.record-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+}
+
+.record-actions .primary-button {
+    flex: 1;
+}
+
+.undo-button {
+    min-height: var(--control-height-primary);
+}
+
+/* 넓은 화면: 승/패 버튼을 좌우 배치하고 폭을 넓힌다 (spec §18.3). */
+@media (min-width: 768px) {
+    .record-page {
+        max-width: 720px;
+    }
+}

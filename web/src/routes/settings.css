@@ -1,0 +1,59 @@
+/* 설정 (spec §8.3). 범주별 섹션 + 즉시 적용. */
+
+.settings-page {
+    max-width: 560px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.accent-options {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.accent-swatch {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--control-height-primary);
+    padding: 0 var(--space-3);
+}
+
+.accent-swatch--active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 var(--focus-width) var(--focus-ring);
+}
+
+.accent-swatch__dot {
+    width: var(--icon-medium);
+    height: var(--icon-medium);
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.toggle-row__text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.toggle-row__description {
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+}
+
+.toggle-row input[type="checkbox"] {
+    width: var(--control-height-primary);
+    height: var(--control-height);
+    flex-shrink: 0;
+}
