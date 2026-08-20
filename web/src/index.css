@@ -184,3 +184,151 @@ button.danger {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ---- 공용 폼/컨트롤 (spec §9: 48px 터치 영역, 명시 라벨) ---- */
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.card {
+    background: var(--surface);
+    border: var(--border-width) solid var(--divider);
+    border-radius: var(--radius-surface);
+    padding: var(--space-3);
+}
+
+.section-surface {
+    background: var(--surface);
+    border: var(--border-width) solid var(--divider);
+    border-radius: var(--radius-surface);
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.section-surface__title {
+    margin: 0;
+    font-size: var(--font-section);
+    font-weight: var(--font-weight-section);
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.field__label {
+    font-size: var(--font-label);
+    font-weight: var(--font-weight-label);
+    color: var(--text-secondary);
+}
+
+.field-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.field-row .field__label {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.field-row > :not(.field__label) {
+    flex: 1;
+    min-width: 0;
+}
+
+select,
+textarea {
+    font: inherit;
+    color: var(--text-primary);
+    background: var(--surface);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-control);
+    min-height: var(--control-height);
+    padding: 0 var(--space-3);
+    width: 100%;
+}
+
+textarea {
+    padding: var(--space-2) var(--space-3);
+    resize: vertical;
+}
+
+select:focus-visible,
+textarea:focus-visible {
+    outline: var(--focus-width) solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.segmented {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.segmented__button {
+    flex: 1;
+    min-height: var(--control-height-primary);
+    background: var(--surface);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-control);
+    color: var(--text-primary);
+    font-weight: var(--font-weight-label);
+}
+
+.segmented__button--active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-on-accent);
+}
+
+.field-error {
+    color: var(--danger);
+    font-size: var(--font-caption);
+    margin: 0;
+}
+
+.form-message {
+    margin: 0;
+    font-size: var(--font-body);
+}
+
+.form-message--error {
+    color: var(--danger);
+}
+
+.form-message--success {
+    color: var(--success);
+}
+
+.primary-button {
+    min-height: var(--control-height-primary);
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-on-accent);
+    font-weight: var(--font-weight-label);
+}
+
+.primary-button:disabled {
+    opacity: 0.6;
+}
+
+.readonly-value {
+    font-size: var(--font-numeric);
+    font-weight: var(--font-weight-numeric);
+    min-height: var(--control-height);
+    display: flex;
+    align-items: center;
+}
+
+.field-hint {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+}

@@ -1,0 +1,174 @@
+/* 기록 목록 (spec §8.1). 휴대폰은 카드, 넓은 화면은 목록 그대로 유지. */
+
+.history-page {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.history-filter {
+    margin: var(--space-3) 0;
+}
+
+.history-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.history-item {
+    background: var(--surface);
+    border: var(--border-width) solid var(--divider);
+    border-radius: var(--radius-surface);
+    padding: var(--space-3);
+}
+
+.history-item__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.history-item__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.result-badge {
+    font-weight: var(--font-weight-label);
+    padding: 0 var(--space-2);
+    border-radius: 999px;
+    min-height: var(--control-height-small);
+    display: inline-flex;
+    align-items: center;
+}
+
+.result-badge--win {
+    background: var(--success-subtle);
+    color: var(--success);
+}
+
+.result-badge--lose {
+    background: var(--danger-subtle);
+    color: var(--danger);
+}
+
+.mode-badge {
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+    border: var(--border-width) solid var(--border);
+    border-radius: 999px;
+    padding: 0 var(--space-2);
+    min-height: var(--control-height-small);
+    display: inline-flex;
+    align-items: center;
+}
+
+.history-item__time {
+    margin-left: auto;
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+}
+
+.history-item__decks {
+    margin: 0;
+    font-size: var(--font-body);
+}
+
+.history-item__meta {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+}
+
+.history-item__actions {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+}
+
+/* 넓은 화면 표: 휴대폰에서는 숨기고 768px 이상에서 카드 대신 표를 보여준다
+   (spec §8.1: 넓은 화면은 표, 휴대폰은 카드). */
+.history-table {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .history-page {
+        max-width: 960px;
+    }
+
+    .history-list {
+        display: none;
+    }
+
+    .history-table {
+        display: table;
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--font-body);
+        table-layout: fixed;
+    }
+
+    .history-table th,
+    .history-table td {
+        text-align: left;
+        padding: var(--space-2);
+        border-bottom: var(--border-width) solid var(--divider);
+        vertical-align: middle;
+        overflow-wrap: anywhere;
+    }
+
+    .history-table thead th {
+        color: var(--text-secondary);
+        font-size: var(--font-caption);
+        font-weight: var(--font-weight-label);
+        white-space: nowrap;
+    }
+
+    .history-table th:nth-child(1) {
+        width: 15%;
+    }
+
+    .history-table th:nth-child(2) {
+        width: 8%;
+    }
+
+    .history-table th:nth-child(3) {
+        width: 12%;
+    }
+
+    .history-table th:nth-child(4) {
+        width: 20%;
+    }
+
+    .history-table th:nth-child(5) {
+        width: 12%;
+    }
+
+    .history-table th:nth-child(6) {
+        width: 18%;
+    }
+
+    .history-table th:nth-child(7) {
+        width: 15%;
+    }
+
+    .history-table__time {
+        white-space: nowrap;
+        color: var(--text-secondary);
+        font-size: var(--font-caption);
+    }
+
+    .history-table__actions {
+        white-space: nowrap;
+    }
+
+    .history-table__actions button + button {
+        margin-left: var(--space-2);
+    }
+}
