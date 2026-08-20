@@ -1,4 +1,4 @@
-// 설정 화면 (spec §8.3). 테마·강조색·글자 크기·성능·기록 설정 + 계정·동기화.
+// 설정 화면 (spec §8.3). 테마·강조색·글자 크기·기록 설정 + 계정·동기화.
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/useAuth";
@@ -33,12 +33,6 @@ const ACCENT_LABELS: Readonly<Record<string, string>> = {
     magenta: "마젠타",
     amber: "호박",
 };
-
-const REDUCE_MOTION_OPTIONS = [
-    { value: "system", label: "시스템" },
-    { value: "off", label: "끔" },
-    { value: "on", label: "켬" },
-] as const;
 
 const FONT_SCALE_OPTIONS = [0.8, 0.9, 1.0, 1.1, 1.25, 1.5];
 
@@ -302,54 +296,6 @@ export function SettingsPage() {
                         ))}
                     </select>
                 </div>
-
-                <div className="field">
-                    <span className="field__label">애니메이션 감소</span>
-                    <div
-                        className="segmented"
-                        role="group"
-                        aria-label="애니메이션 감소"
-                    >
-                        {REDUCE_MOTION_OPTIONS.map((option) => (
-                            <button
-                                key={option.value}
-                                type="button"
-                                className={
-                                    settings.reduce_motion === option.value
-                                        ? "segmented__button segmented__button--active"
-                                        : "segmented__button"
-                                }
-                                aria-pressed={
-                                    settings.reduce_motion === option.value
-                                }
-                                onClick={() =>
-                                    updateSettings({
-                                        reduce_motion: option.value,
-                                    })
-                                }
-                            >
-                                {option.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section
-                className="section-surface"
-                aria-labelledby="performance-title"
-            >
-                <h2 id="performance-title" className="section-surface__title">
-                    성능
-                </h2>
-                <ToggleRow
-                    label="저사양 모드"
-                    description="애니메이션과 일부 시각 효과를 줄여 CPU·GPU 사용량을 낮춥니다."
-                    checked={settings.low_spec_mode}
-                    onChange={(value) =>
-                        updateSettings({ low_spec_mode: value })
-                    }
-                />
             </section>
 
             <section
@@ -436,8 +382,8 @@ export function SettingsPage() {
                 </h2>
                 <p className="page-description">
                     취향 설정(테마·강조색·메모·기본 모드·입력 방식)만 수동으로
-                    업로드/다운로드합니다. 글자 크기·저사양 모드·애니메이션
-                    감소는 기기별 설정이라 동기화하지 않습니다.
+                    업로드/다운로드합니다. 글자 크기는 기기별 설정이라
+                    동기화하지 않습니다.
                 </p>
                 <div className="settings-actions">
                     <button
@@ -539,13 +485,15 @@ function ToggleRow({
                 <span className="field__label">{rowLabel}</span>
                 <span className="toggle-row__description">{description}</span>
             </div>
-            <input
-                type="checkbox"
-                role="switch"
-                aria-label={rowLabel}
-                checked={checked}
-                onChange={(event) => onChange(event.target.checked)}
-            />
+            <label className="toggle-row__switch">
+                <input
+                    type="checkbox"
+                    role="switch"
+                    aria-label={rowLabel}
+                    checked={checked}
+                    onChange={(event) => onChange(event.target.checked)}
+                />
+            </label>
         </div>
     );
 }

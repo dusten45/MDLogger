@@ -112,18 +112,17 @@ export function LoginPage() {
                 <form className="auth-form" onSubmit={handleSubmit}>
                     <div
                         className="auth-tabs"
-                        role="tablist"
+                        role="group"
                         aria-label="인증 방식"
                     >
                         <button
                             type="button"
-                            role="tab"
-                            aria-selected={mode === "login"}
                             className={
                                 mode === "login"
                                     ? "auth-tab auth-tab--active"
                                     : "auth-tab"
                             }
+                            aria-pressed={mode === "login"}
                             onClick={() => {
                                 setMode("login");
                                 setError(null);
@@ -134,13 +133,12 @@ export function LoginPage() {
                         </button>
                         <button
                             type="button"
-                            role="tab"
-                            aria-selected={mode === "signup"}
                             className={
                                 mode === "signup"
                                     ? "auth-tab auth-tab--active"
                                     : "auth-tab"
                             }
+                            aria-pressed={mode === "signup"}
                             onClick={() => {
                                 setMode("signup");
                                 setError(null);
