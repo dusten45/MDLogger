@@ -76,6 +76,7 @@
 .matchup-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
     font-size: var(--font-body);
 }
 
@@ -84,6 +85,12 @@
     text-align: left;
     padding: var(--space-2);
     border-bottom: var(--border-width) solid var(--divider);
+    overflow-wrap: anywhere;
+}
+
+.matchup-table th:first-child,
+.matchup-table td:first-child {
+    width: 40%;
 }
 
 .matchup-table thead th {

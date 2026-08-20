@@ -1,7 +1,7 @@
 // 기록 화면 (기본 화면, spec §5.2, §7). 핵심 기록 흐름:
 // 모드 선택 → 승/패 → 상세 입력 → 저장(낙관적 동시성) → 마지막 기록 취소.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GameDetailForm } from "../components/record/GameDetailForm";
 import "../components/record/record.css";
 import { fetchDecks } from "../decks/deckCatalog";
@@ -28,6 +28,10 @@ export function RecordPage() {
     const [decks, setDecks] = useState<string[]>([]);
     const [games, setGames] = useState<Game[]>([]);
     const [form, setForm] = useState<GameFormState>(() => emptyForm());
+    const [baseline, setBaseline] = useState<GameFormState>(() => emptyForm());
+    // 비동기 저장/취소 후에도 최신 폼을 참조하기 위한 ref (dirty 기준 동기화).
+    const formRef = useRef(form);
+    formRef.current = form;
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<Message | null>(null);
     const [loading, setLoading] = useState(true);
@@ -55,9 +59,15 @@ export function RecordPage() {
                 );
                 const initialMode =
                     modeRows.find((mode) => mode.id === initialId) ?? null;
-                setForm((current) =>
-                    applyMode(current, initialMode, gameRows, settings, false),
+                const next = applyMode(
+                    formRef.current,
+                    initialMode,
+                    gameRows,
+                    settings,
+                    false,
                 );
+                setForm(next);
+                setBaseline(next);
             })
             .catch(() => {
                 if (!cancelled) {
@@ -107,7 +117,9 @@ export function RecordPage() {
             }
         }
         const mode = modes.find((candidate) => candidate.id === modeId) ?? null;
-        setForm((current) => applyMode(current, mode, games, settings, false));
+        const next = applyMode(form, mode, games, settings, false);
+        setForm(next);
+        setBaseline(next);
     }
 
     function selectResult(result: "win" | "lose") {
@@ -136,9 +148,15 @@ export function RecordPage() {
             }
             setMessage({ kind: "success", text: "기록을 저장했습니다." });
             const rows = await refreshGames();
-            setForm((current) =>
-                applyMode(current, current.mode, rows, settings, true),
+            const next = applyMode(
+                formRef.current,
+                formRef.current.mode,
+                rows,
+                settings,
+                true,
             );
+            setForm(next);
+            setBaseline(next);
         } catch (error) {
             setMessage({
                 kind: "error",
@@ -166,9 +184,15 @@ export function RecordPage() {
                 text: "마지막 기록을 취소했습니다.",
             });
             const rows = await refreshGames();
-            setForm((current) =>
-                applyMode(current, current.mode, rows, settings, true),
+            const next = applyMode(
+                formRef.current,
+                formRef.current.mode,
+                rows,
+                settings,
+                true,
             );
+            setForm(next);
+            setBaseline(next);
         } catch (error) {
             setMessage({
                 kind: "error",
@@ -182,19 +206,7 @@ export function RecordPage() {
         }
     }
 
-    const dirty = useMemo(
-        () =>
-            form.result !== null ||
-            form.myDeck !== "" ||
-            form.oppDeck !== "" ||
-            form.scoreDelta !== "" ||
-            form.scoreAfter !== "" ||
-            form.ratingDelta !== "" ||
-            form.ratingAfter !== "" ||
-            form.ratingBeforeInput !== "" ||
-            form.note !== "",
-        [form],
-    );
+    const dirty = useMemo(() => !sameInput(form, baseline), [form, baseline]);
 
     useEffect(() => {
         if (!dirty) {
@@ -441,6 +453,30 @@ function localNaiveIso(date: Date): string {
 function localDateString(date: Date): string {
     const pad = (value: number) => String(value).padStart(2, "0");
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** 사용자 입력 필드가 기준(마지막 저장/리셋 상태)과 같은지 비교한다. */
+function sameInput(a: GameFormState, b: GameFormState): boolean {
+    return (
+        a.mode?.id === b.mode?.id &&
+        a.result === b.result &&
+        a.turnOrder === b.turnOrder &&
+        a.myDeck === b.myDeck &&
+        a.oppDeck === b.oppDeck &&
+        a.turns === b.turns &&
+        a.endReason === b.endReason &&
+        a.note === b.note &&
+        a.scoreBeforeInput === b.scoreBeforeInput &&
+        a.scoreDelta === b.scoreDelta &&
+        a.scoreAfter === b.scoreAfter &&
+        a.ratingBeforeInput === b.ratingBeforeInput &&
+        a.ratingDelta === b.ratingDelta &&
+        a.ratingAfter === b.ratingAfter &&
+        a.rankBefore?.tier === b.rankBefore?.tier &&
+        a.rankBefore?.division === b.rankBefore?.division &&
+        a.rankAfter?.tier === b.rankAfter?.tier &&
+        a.rankAfter?.division === b.rankAfter?.division
+    );
 }
 
 /** 모드 전환 시 사라지는 타이핑 입력(점수/레이팅)이 있는지 확인한다. */

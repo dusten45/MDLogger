@@ -52,8 +52,20 @@
     font-size: var(--font-caption);
 }
 
-.toggle-row input[type="checkbox"] {
-    width: var(--control-height-primary);
-    height: var(--control-height);
+.toggle-row__switch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--control-height);
+    min-height: var(--control-height);
     flex-shrink: 0;
+    cursor: pointer;
+}
+
+.toggle-row__switch input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    min-height: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
 }
