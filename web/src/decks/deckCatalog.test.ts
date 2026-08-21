@@ -30,7 +30,7 @@ describe("deckCatalog", () => {
 
     const decks = await fetchDecks();
 
-    expect(mockInvoke).toHaveBeenCalledWith("deck-catalog");
+    expect(mockInvoke).toHaveBeenCalledWith("deck-catalog", { method: "GET" });
     expect(decks).toEqual(["기타", "티아라멘츠"]);
   });
 

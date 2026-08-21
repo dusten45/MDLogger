@@ -13,6 +13,7 @@ export interface DeckCatalogResponse {
 export async function fetchDecks(): Promise<string[]> {
   const { data, error } = await getSupabaseClient().functions.invoke(
     "deck-catalog",
+    { method: "GET" },
   );
   if (error) {
     throw error;

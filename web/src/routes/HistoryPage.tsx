@@ -52,7 +52,11 @@ export function HistoryPage() {
 
     useEffect(() => {
         let cancelled = false;
-        Promise.all([listGameModes(), fetchDecks(), listGames({ limit: 1000 })])
+        Promise.all([
+            listGameModes(),
+            fetchDecks().catch(() => ["기타"]),
+            listGames({ limit: 1000 }),
+        ])
             .then(([modeRows, deckRows, gameRows]) => {
                 if (cancelled) {
                     return;
