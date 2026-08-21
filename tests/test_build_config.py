@@ -266,10 +266,16 @@ def test_generated_module_not_present_in_source():
     assert not module_path.exists(), "번들 모듈은 저장소에 커밋되지 않아야 한다"
 
 
-def _run_generator(tmp_path, dest, *, env_text: str | None):
+def _run_generator(
+    tmp_path,
+    dest,
+    *,
+    env_text: str | None,
+    extra_env: dict[str, str] | None = None,
+):
     project_root = tmp_path / "project"
     script = project_root / "scripts" / "generate_build_config.py"
-    script.parent.mkdir(parents=True)
+    script.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(
         Path(__file__).resolve().parents[1] / "scripts" / "generate_build_config.py",
         script,
@@ -279,6 +285,8 @@ def _run_generator(tmp_path, dest, *, env_text: str | None):
 
     child_env = os.environ.copy()
     child_env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1] / "src")
+    if extra_env:
+        child_env.update(extra_env)
     return subprocess.run(
         [sys.executable, str(script), "--dest", str(dest)],
         capture_output=True,
@@ -320,6 +328,41 @@ def test_generate_script_writes_anon_bundle(tmp_path):
     assert URL in text
     assert ANON_PREFIX_KEY in text
     assert not scan_file(dest), "생성 모듈에 비밀이 없어야 한다"
+
+
+def test_generate_script_writes_bundle_from_environment_variables(tmp_path):
+    dest = tmp_path / "out" / "_bundled_config.py"
+    proc = _run_generator(
+        tmp_path,
+        dest,
+        env_text=None,
+        extra_env={
+            "MDLOGGER_SUPABASE_URL": URL,
+            "MDLOGGER_SUPABASE_ANON_KEY": ANON_PREFIX_KEY,
+        },
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert dest.exists()
+    text = dest.read_text(encoding="utf-8")
+    assert URL in text
+    assert ANON_PREFIX_KEY in text
+    assert not scan_file(dest)
+
+
+def test_generate_script_fails_on_invalid_url_in_environment(tmp_path):
+    dest = tmp_path / "out" / "_bundled_config.py"
+    proc = _run_generator(
+        tmp_path,
+        dest,
+        env_text=None,
+        extra_env={
+            "MDLOGGER_SUPABASE_URL": "invalid-url-scheme",
+            "MDLOGGER_SUPABASE_ANON_KEY": ANON_PREFIX_KEY,
+        },
+    )
+    assert proc.returncode != 0
+    assert "올바르지 않습니다" in proc.stderr
+    assert not dest.exists()
 
 
 def test_generate_script_fails_on_empty_values(tmp_path):

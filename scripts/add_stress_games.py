@@ -43,8 +43,10 @@ from mdlogger.profiles import (  # noqa: E402
 
 
 def _sample_at(played_at: str, index: int) -> dict:
-    """분석 허용 관측치가 비지 않도록 값이 섞이는 샘플 기록."""
+    """분석 허용 관측치가 비지 않도록 값이 섞이는 샘플 기록(Payload v2)."""
     result = "win" if index % 2 == 0 else "lose"
+    points_before = (index * 100) % 20000
+    points_after = points_before + (1000 if result == "win" else -500)
     return {
         "played_at": played_at,
         "result": result,
@@ -53,7 +55,10 @@ def _sample_at(played_at: str, index: int) -> dict:
         "opp_deck": f"상대 덱 {index % 7}",
         "turns": 3 + (index % 6),
         "end_reason": ("regular", "surrender", "timeout")[index % 3],
-        "score_after": 1000 + index,
+        "standing_kind": "event_points",
+        "play_context_id": "dc_cup_2026_08",
+        "event_points_before": max(0, points_before),
+        "event_points_after": max(0, points_after),
         "note": f"stress {index}",
     }
 
