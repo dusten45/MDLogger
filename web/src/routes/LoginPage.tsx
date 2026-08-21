@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
+import { AuthUnavailable } from "../components/AuthUnavailable";
 
 type Mode = "login" | "signup" | "reset";
 
@@ -16,6 +17,8 @@ export function LoginPage() {
         resetPassword,
         updatePassword,
         clearRecovery,
+        authError,
+        retrySession,
     } = useAuth();
     const navigate = useNavigate();
 
@@ -26,8 +29,18 @@ export function LoginPage() {
     const [message, setMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    if (!loading && session && !recovery) {
+    if (loading) {
+        return (
+            <p className="auth-loading" role="status">
+                인증 확인 중...
+            </p>
+        );
+    }
+    if (session && !recovery) {
         return <Navigate to="/" replace />;
+    }
+    if (authError) {
+        return <AuthUnavailable onRetry={retrySession} />;
     }
 
     async function handleSubmit(event: FormEvent) {

@@ -9,6 +9,8 @@ export interface AuthContextValue {
     user: User | null;
     loading: boolean;
     recovery: boolean;
+    authError: boolean;
+    retrySession(): void;
     signIn(
         email: string,
         password: string,

@@ -1,5 +1,12 @@
 /* 설정 (spec §8.3). 범주별 섹션 + 즉시 적용. */
 
+.build-version {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--font-caption);
+    overflow-wrap: anywhere;
+}
+
 .settings-page {
     max-width: 560px;
     margin: 0 auto;
