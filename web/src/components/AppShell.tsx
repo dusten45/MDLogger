@@ -1,4 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { OfflineBanner } from "./OfflineBanner";
+import { ReloadPrompt } from "./ReloadPrompt";
 import "./AppShell.css";
 
 // 핵심 내비게이션 최대 네 개 (spec §5.2, 로드맵 18.1).
@@ -12,9 +14,11 @@ const NAV_ITEMS = [
 export function AppShell() {
   return (
     <div className="app-shell">
+      <OfflineBanner />
       <main className="app-main">
         <Outlet />
       </main>
+      <ReloadPrompt />
       <nav className="app-nav" aria-label="주요 내비게이션">
         {NAV_ITEMS.map((item) => (
           <NavLink
