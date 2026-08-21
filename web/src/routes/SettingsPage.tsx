@@ -19,6 +19,7 @@ import {
     uploadPreferences,
 } from "../settings/settingsSync";
 import { DEFAULT_MODE_LAST_USED, parseSettings } from "../settings/webSettings";
+import { useInstallPrompt } from "../lib/useInstallPrompt";
 import "./settings.css";
 
 const THEME_OPTIONS = [
@@ -50,9 +51,20 @@ interface Message {
 export function SettingsPage() {
     const { user, signOut } = useAuth();
     const { settings, updateSettings, resetSettings } = useSettings();
+    const { canInstall, isStandalone, isIOS, promptInstall } = useInstallPrompt();
     const [modes, setModes] = useState<GameMode[]>([]);
     const [busy, setBusy] = useState<string | null>(null);
     const [message, setMessage] = useState<Message | null>(null);
+
+    async function handleInstall() {
+        const accepted = await promptInstall();
+        if (accepted) {
+            setMessage({
+                kind: "success",
+                text: "앱 설치 요청이 완료되었습니다.",
+            });
+        }
+    }
 
     useEffect(() => {
         let cancelled = false;
@@ -297,6 +309,47 @@ export function SettingsPage() {
                         ))}
                     </select>
                 </div>
+            </section>
+
+            <section className="section-surface" aria-labelledby="pwa-title">
+                <h2 id="pwa-title" className="section-surface__title">
+                    앱 설치
+                </h2>
+                {isStandalone ? (
+                    <div className="pwa-status">
+                        <p className="pwa-status__badge">
+                            ✓ 앱이 설치되어 독립 실행 모드로 동작 중입니다
+                        </p>
+                        <p className="page-description">
+                            브라우저 주소창 없이 네이티브 앱 환경으로 실행 중입니다.
+                        </p>
+                    </div>
+                ) : canInstall ? (
+                    <div className="pwa-install">
+                        <p className="page-description">
+                            MDLogger를 홈 화면에 설치하여 브라우저 주소창 없이 빠르고 편리하게 사용할 수 있습니다.
+                        </p>
+                        <button
+                            type="button"
+                            className="primary-button"
+                            onClick={handleInstall}
+                        >
+                            홈 화면에 앱 설치하기
+                        </button>
+                    </div>
+                ) : isIOS ? (
+                    <div className="pwa-guide">
+                        <p className="page-description">
+                            iOS(아이폰/아이패드)에서는 Safari 하단의 <strong>공유 버튼(□↑)</strong>을 누른 후 <strong>'홈 화면에 추가'</strong>를 선택하여 앱으로 설치할 수 있습니다.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="pwa-guide">
+                        <p className="page-description">
+                            브라우저 메뉴에서 <strong>'앱 설치'</strong> 또는 <strong>'홈 화면에 추가'</strong>를 선택하여 독립 앱으로 설치할 수 있습니다.
+                        </p>
+                    </div>
+                )}
             </section>
 
             <section

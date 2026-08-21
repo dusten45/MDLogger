@@ -1,0 +1,93 @@
+.reload-prompt {
+    position: fixed;
+    bottom: calc(var(--control-height) + var(--space-4) + env(safe-area-inset-bottom, 0px));
+    right: var(--space-4);
+    z-index: 200;
+    max-width: 380px;
+    background: var(--surface-raised);
+    border: var(--border-width) solid var(--accent);
+    border-radius: var(--radius-surface);
+    padding: var(--space-3) var(--space-4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    animation: reload-prompt-slide-up 0.25s ease-out;
+}
+
+@media (min-width: 600px) {
+    .reload-prompt {
+        bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+@media (max-width: 480px) {
+    .reload-prompt {
+        left: var(--space-3);
+        right: var(--space-3);
+        max-width: none;
+    }
+}
+
+@keyframes reload-prompt-slide-up {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.reload-prompt__message strong {
+    font-size: var(--font-label);
+    font-weight: var(--font-weight-title);
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: var(--space-1);
+}
+
+.reload-prompt__message p {
+    margin: 0;
+    font-size: var(--font-caption);
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.reload-prompt__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+}
+
+.reload-prompt__btn {
+    min-height: var(--control-height-small);
+    padding: 0 var(--space-3);
+    font-size: var(--font-caption);
+    font-weight: var(--font-weight-label);
+    border-radius: var(--radius-control);
+    cursor: pointer;
+}
+
+.reload-prompt__btn--primary {
+    background: var(--accent);
+    color: var(--text-on-accent);
+    border: var(--border-width) solid var(--accent);
+}
+
+.reload-prompt__btn--primary:hover {
+    background: var(--accent-hover);
+}
+
+.reload-prompt__btn--secondary {
+    background: var(--surface);
+    color: var(--text-secondary);
+    border: var(--border-width) solid var(--border);
+}
+
+.reload-prompt__btn--secondary:hover {
+    background: var(--surface-subtle);
+    color: var(--text-primary);
+}
