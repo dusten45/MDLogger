@@ -290,12 +290,32 @@ textarea:focus-visible {
     border-radius: var(--radius-control);
     color: var(--text-primary);
     font-weight: var(--font-weight-label);
+    white-space: nowrap;
 }
 
 .segmented__button--active {
     background: var(--accent);
     border-color: var(--accent);
     color: var(--text-on-accent);
+}
+
+.segmented--grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.segmented--grid-2 .segmented__button {
+    min-height: 40px;
+}
+
+@media (min-width: 600px) {
+    .segmented--grid-2 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .segmented--grid-2 .segmented__button {
+        min-height: var(--control-height-primary);
+    }
 }
 
 .field-error {

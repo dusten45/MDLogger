@@ -102,7 +102,11 @@ export function GameDetailForm({
                 <h2 id="reason-title" className="section-surface__title">
                     종료 방식
                 </h2>
-                <div className="segmented" role="group" aria-label="종료 방식">
+                <div
+                    className="segmented segmented--grid-2"
+                    role="group"
+                    aria-label="종료 방식"
+                >
                     {END_REASONS.map((value) => (
                         <button
                             key={value}
