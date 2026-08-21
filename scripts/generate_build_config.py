@@ -7,13 +7,18 @@ _bundled_config.py`를 소유자 값으로 만든다. 이 모듈은 `.gitignore`
 
 사용(소유자)::
 
-    # 프로젝트 루트 .env에 MDLOGGER_SUPABASE_URL과
-    # MDLOGGER_SUPABASE_ANON_KEY를 설정한 뒤 실행한다.
-    uv run python scripts/generate_build_config.py
+    # 1) 프로젝트 루트 .env에 설정 후 실행:
+    #    MDLOGGER_SUPABASE_URL=<url>
+    #    MDLOGGER_SUPABASE_ANON_KEY=<key>
+    #    uv run python scripts/generate_build_config.py
+    #
+    # 2) 또는 환경 변수로 직접 주입:
+    #    MDLOGGER_SUPABASE_URL=<url> MDLOGGER_SUPABASE_ANON_KEY=<key> \
+    #        uv run python scripts/generate_build_config.py
 
 실패 조건:
-- 프로젝트 루트에 ``.env`` 파일이 없음.
-- ``.env``의 URL 또는 anon key가 비어 있거나 올바르지 않음.
+- 환경 변수와 프로젝트 루트 ``.env`` 파일 모두에 필수 설정이 없음.
+- URL 또는 anon key가 비어 있거나 올바르지 않음(http/https 미준수 등).
 - anon key 자리에 service-role/secret key 또는 role='service_role' JWT.
 - URL authority부에 user:pass 자격 증명.
 
@@ -28,7 +33,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from mdlogger.remote.config import RemoteConfig, env_file_config
+from mdlogger.remote.config import (
+    RemoteConfig,
+    config_from_environment,
+    env_file_config,
+)
 from mdlogger.secret_scan import assert_not_secret, scan_file
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -49,12 +58,20 @@ def _default_module_path() -> Path:
     return _PROJECT_ROOT / "src" / _BUNDLED_REL
 
 
-def _root_env_config() -> RemoteConfig | None:
-    """프로젝트 루트 ``.env``의 publishable 설정을 읽는다."""
+def _resolve_config() -> RemoteConfig | None:
+    """환경 변수 또는 프로젝트 루트 ``.env``에서 publishable 설정을 읽는다."""
+    try:
+        config = config_from_environment()
+    except ValueError as exc:
+        print(f"오류: 환경 변수 설정이 올바르지 않습니다: {exc}", file=sys.stderr)
+        return None
+    if config is not None:
+        return config
+
     env_path = _PROJECT_ROOT / ".env"
     if not env_path.is_file():
         print(
-            f"오류: 프로젝트 루트에 .env 파일이 없습니다: {env_path}",
+            f"오류: 환경 변수({_URL_ENV}, {_ANON_KEY_ENV})가 없거나 .env 파일이 없습니다: {env_path}",
             file=sys.stderr,
         )
         return None
@@ -89,7 +106,7 @@ def main() -> int:
     args = parser.parse_args()
     path = args.dest if args.dest is not None else _default_module_path()
 
-    config = _root_env_config()
+    config = _resolve_config()
     if config is None:
         return 1
 
