@@ -38,6 +38,9 @@ def _env(name: str) -> str:
 
 def _request(method: str, url: str, payload: dict | None, key: str) -> dict | list:
     """service-role key로 Supabase REST/RPC 요청을 보낸다."""
+    if not url.startswith("https://") and not url.startswith("http://"):
+        print(f"지원하지 않는 URL 스킴입니다: {url}", file=sys.stderr)
+        sys.exit(1)
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
     body = None
     if payload is not None:

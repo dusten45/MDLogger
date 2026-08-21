@@ -37,6 +37,9 @@ jobs:
             - name: Run tests
               run: uv run pytest
 
+            - name: Python dependency security audit
+              run: uvx pip-audit
+
             # 빌드 산출물(번들 설정 모듈)에 service-role key·비밀 자격 증명이
             # 들어가지 않도록, 실제 빌드에서 사용하는 generate_build_config.py +
             # assert_not_secret + scan_file 파이프라인을 CI에서 실행한다
@@ -84,6 +87,9 @@ jobs:
 
             - name: Install dependencies
               run: npm ci
+
+            - name: Web dependency security audit
+              run: npm audit
 
             - name: Build static assets
               run: VITE_SUPABASE_URL=https://example.supabase.co VITE_SUPABASE_ANON_KEY=sb_publishable_test_not_a_secret_key_abcdefgh VITE_BUILD_ID=${{ github.sha }} npm run build
