@@ -8,7 +8,10 @@
         "build": "tsc -b && vite build",
         "lint": "eslint .",
         "preview": "vite preview",
-        "test": "vitest run",
+        "test": "vitest run && node --test scripts/check-secrets.node-test.mjs",
+        "check:secrets": "node scripts/check-secrets.mjs dist",
+        "check:deploy-env": "node scripts/check-deploy-env.mjs",
+        "deploy": "npm run check:deploy-env && npm run build && npm run check:secrets && wrangler deploy",
         "test:watch": "vitest"
     },
     "dependencies": {

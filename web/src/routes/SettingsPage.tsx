@@ -9,6 +9,7 @@ import {
     revokeAllSessions,
 } from "../auth/account";
 import { listGameModes } from "../games/modes";
+import { CLIENT_VERSION } from "../lib/build";
 import type { GameMode } from "../games/types";
 import { ACCENT_IDS, ACCENT_PRESETS } from "../theme/accentPresets";
 import { resolveThemeMode } from "../theme/applyTheme";
@@ -415,6 +416,10 @@ export function SettingsPage() {
                 {user?.email ? (
                     <p className="account-email">{user.email}</p>
                 ) : null}
+                <p className="page-description">
+                    계정 삭제는 모든 기록을 영구적으로 삭제하며 되돌릴 수
+                    없습니다.
+                </p>
                 <div className="settings-actions">
                     <button
                         type="button"
@@ -464,6 +469,8 @@ export function SettingsPage() {
                     설정 초기화
                 </button>
             </section>
+
+            <p className="build-version">웹 버전: {CLIENT_VERSION}</p>
         </section>
     );
 }

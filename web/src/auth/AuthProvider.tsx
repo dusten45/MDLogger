@@ -9,31 +9,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<AuthContextValue["session"]>(null);
     const [loading, setLoading] = useState(true);
     const [recovery, setRecovery] = useState(false);
+    const [authError, setAuthError] = useState(false);
+    const [sessionAttempt, setSessionAttempt] = useState(0);
 
     useEffect(() => {
-        const supabase = getSupabaseClient();
+        let active = true;
+        let unsubscribe: (() => void) | undefined;
 
-        // 세션 복구(로그인 유지). detectSessionInUrl이 URL의 인증 토큰도 처리한다.
-        supabase.auth.getSession().then(({ data }) => {
-            setSession(data.session);
-            setLoading(false);
-        });
-
-        const { data: listener } = supabase.auth.onAuthStateChange(
-            (event, newSession) => {
-                setSession(newSession);
-                // 비밀번호 재설정 링크를 통해 진입하면 PASSWORD_RECOVERY가 발생한다.
-                // PKCE 흐름에서는 URL에 type=recovery가 없을 수 있으므로 이 이벤트로 감지한다.
-                if (event === "PASSWORD_RECOVERY") {
-                    setRecovery(true);
+        async function restoreSession() {
+            setLoading(true);
+            setAuthError(false);
+            try {
+                const supabase = getSupabaseClient();
+                const { data, error } = await supabase.auth.getSession();
+                if (!active) {
+                    return;
                 }
-            },
-        );
+                setSession(data.session);
+                setAuthError(error !== null);
+                const { data: listener } = supabase.auth.onAuthStateChange(
+                    (event, newSession) => {
+                        if (!active) {
+                            return;
+                        }
+                        setSession(newSession);
+                        setAuthError(false);
+                        // 비밀번호 재설정 링크를 통해 진입하면 PASSWORD_RECOVERY가 발생한다.
+                        // PKCE 흐름에서는 URL에 type=recovery가 없을 수 있으므로 이 이벤트로 감지한다.
+                        if (event === "PASSWORD_RECOVERY") {
+                            setRecovery(true);
+                        }
+                    },
+                );
+                unsubscribe = () => listener.subscription.unsubscribe();
+            } catch {
+                if (active) {
+                    setSession(null);
+                    setAuthError(true);
+                }
+            } finally {
+                if (active) {
+                    setLoading(false);
+                }
+            }
+        }
 
+        void restoreSession();
         return () => {
-            listener.subscription.unsubscribe();
+            active = false;
+            unsubscribe?.();
         };
-    }, []);
+    }, [sessionAttempt]);
 
     const value = useMemo<AuthContextValue>(
         () => ({
@@ -41,6 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             user: session?.user ?? null,
             loading,
             recovery,
+            authError,
+            retrySession() {
+                setSessionAttempt((attempt) => attempt + 1);
+            },
             async signIn(email, password) {
                 const { error } =
                     await getSupabaseClient().auth.signInWithPassword({
@@ -85,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setRecovery(false);
             },
         }),
-        [session, loading, recovery],
+        [session, loading, recovery, authError],
     );
 
     return (

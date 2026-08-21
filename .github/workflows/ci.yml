@@ -61,3 +61,41 @@ jobs:
                     --dest "$RUNNER_TEMP/_bundled_config_reject.py" ; then
                     echo "ERROR: secret value should have been rejected"; exit 1; fi
                   echo "secret rejection OK"
+
+    web:
+        name: Web build, lint, tests, secret scan
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+
+        defaults:
+            run:
+                working-directory: web
+
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v4
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "22"
+                  cache: npm
+                  cache-dependency-path: web/package-lock.json
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build static assets
+              run: VITE_SUPABASE_URL=https://example.supabase.co VITE_SUPABASE_ANON_KEY=sb_publishable_test_not_a_secret_key_abcdefgh VITE_BUILD_ID=${{ github.sha }} npm run build
+
+            - name: Lint web source
+              run: npm run lint
+
+            - name: Run web tests
+              run: npm test
+
+            - name: Verify security headers are bundled
+              run: test -f dist/_headers
+
+            - name: Scan web bundle for server secrets
+              run: npm run check:secrets
