@@ -24,6 +24,11 @@
 > `src/mdlogger/remote/_bundled_config.py`가 남아 있어 483 passed/2 failed였으며, 이는
 > 사용자 생성 설정을 보존하기 위한 로컬 상태 제약으로 기록한다. 제품 책임자 확인으로
 > 3단계 구현 완료로 처리한다.
+>
+> **▶ 배포 후속 보완 (2026-08-22):** 웹 배포 환경에서 덱 목록 미표시 원인(Edge Function
+> CORS/OPTIONS preflight 부재, `invoke` 기본 method POST 차단)을 수정. Edge Functions에
+> `corsHeaders` 및 `OPTIONS` preflight 처리를 추가하고, `web`에서 명시적 `GET` 요청 및
+> 덱 목록 로드 실패 시 fallback(`["기타"]`) 처리를 적용했다.
 
 이 문서에 나온 모든 결정은 제품 책임자(사용자)와 확정한 값이다. 각 결정의 전후
 상태와 이유를 담았으며, 실제 서버 스키마/계약에 근거했다. 알 수 없거나 후속에서
@@ -150,6 +155,8 @@ RPC를 재사용하고, 신규는 덱 캐시 테이블과 `deck-catalog` Edge Fu
 - 공백 제거·중복 제거·`기타` 포함을 보장한다. 웹은 로컬 덱이 없으므로 병합하지 않고
   Edge Function이 반환한 현재 목록을 그대로 사용한다.
 - 호출은 로그인 access token을 요구한다(무분별한 proxy 사용 방지).
+- 브라우저 Cross-Origin 호출을 위해 `OPTIONS` preflight 및 `corsHeaders`(`Access-Control-Allow-*`)를
+  반환하며, `GET`과 `POST` 호출을 모두 수용한다. 클라이언트는 명시적 `GET`으로 호출한다.
 
 ---
 

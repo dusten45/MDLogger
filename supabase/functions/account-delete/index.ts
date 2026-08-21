@@ -18,10 +18,20 @@ import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const MAX_BODY_BYTES = 4 * 1024;
 
+const corsHeaders: Record<string, string> = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers":
+        "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 function jsonResponse(status: number, body: Record<string, unknown>): Response {
     return new Response(JSON.stringify(body), {
         status,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+        },
     });
 }
 
@@ -58,6 +68,10 @@ async function captureCounts(
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
+    if (req.method === "OPTIONS") {
+        return new Response("ok", { headers: corsHeaders });
+    }
+
     if (req.method !== "POST") {
         return jsonResponse(405, { code: "method_not_allowed" });
     }

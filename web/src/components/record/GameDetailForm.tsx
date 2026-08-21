@@ -183,8 +183,10 @@ function DeckField({
     onChange(value: string): void;
 }) {
     // 덱 목록에 없는 기존 값(예: Gist에서 삭제된 덱)도 빈 선택으로 보이지 않게
-    // 현재 값을 옵션에 추가한다.
-    const options = value && !decks.includes(value) ? [value, ...decks] : decks;
+    // 현재 값을 옵션에 추가한다. 목록이 비어있으면 최소한 '기타'를 기본 제공한다.
+    const baseDecks = decks.length > 0 ? decks : ["기타"];
+    const options =
+        value && !baseDecks.includes(value) ? [value, ...baseDecks] : baseDecks;
     return (
         <div className="field">
             <label className="field__label" htmlFor={id}>

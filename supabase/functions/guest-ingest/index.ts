@@ -70,10 +70,20 @@ const RESULTS = new Set(["win", "lose"]);
 const TURN_ORDERS = new Set(["first", "second"]);
 const END_REASONS = new Set(["regular", "surrender", "timeout", "disconnect"]);
 
+const corsHeaders: Record<string, string> = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers":
+        "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 function jsonResponse(status: number, body: Record<string, unknown>): Response {
     return new Response(JSON.stringify(body), {
         status,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+        },
     });
 }
 
@@ -175,6 +185,10 @@ function checkAbuseGuards(
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
+    if (req.method === "OPTIONS") {
+        return new Response("ok", { headers: corsHeaders });
+    }
+
     if (req.method !== "POST") {
         return jsonResponse(405, { code: "method_not_allowed" });
     }
