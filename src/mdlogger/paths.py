@@ -63,6 +63,16 @@ DECKS_REMOTE_URL = os.environ.get(
 
 DECKS_SYNC_STATE_PATH = DATA_DIR / "decks_sync.json"
 
+# 웹 canonical 공개 법률 문서 URL. 환경변수로 재정의 가능.
+PRIVACY_POLICY_URL = os.environ.get(
+    "MDLOGGER_PRIVACY_URL",
+    "https://mdlogger-web.dalimi4511-615.workers.dev/privacy",
+).strip()
+TERMS_OF_SERVICE_URL = os.environ.get(
+    "MDLOGGER_TERMS_URL",
+    "https://mdlogger-web.dalimi4511-615.workers.dev/terms",
+).strip()
+
 _PRIVATE_DIR_MODE = 0o700
 _PRIVATE_FILE_MODE = 0o600
 

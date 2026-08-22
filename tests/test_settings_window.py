@@ -554,3 +554,15 @@ def test_last_used_mode_option_does_not_duplicate_after_reopen(qapp, tmp_path) -
         assert reopened_window._default_mode.value() == "last_used"
     finally:
         reopened_games.close()
+
+
+def test_settings_window_has_legal_policy_links(qapp) -> None:
+    win = _window(MemorySettingsStore())
+    privacy_btn = win.findChild(QPushButton, "settingsPrivacyLink")
+    terms_btn = win.findChild(QPushButton, "settingsTermsLink")
+
+    assert privacy_btn is not None
+    assert privacy_btn.text() == "개인정보 처리방침"
+    assert terms_btn is not None
+    assert terms_btn.text() == "서비스 이용약관"
+    win.close()
