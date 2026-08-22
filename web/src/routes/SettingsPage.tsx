@@ -1,6 +1,5 @@
-// 설정 화면 (spec §8.3). 테마·강조색·글자 크기·기록 설정 + 계정·동기화.
-
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import {
     deleteAccount,
@@ -521,6 +520,23 @@ export function SettingsPage() {
                 >
                     설정 초기화
                 </button>
+            </section>
+
+            <section className="section-surface" aria-labelledby="legal-title">
+                <h2 id="legal-title" className="section-surface__title">
+                    서비스 정보 및 법률 정책
+                </h2>
+                <p className="page-description">
+                    MDLogger는 개인정보 보호법 및 관계 법령을 준수합니다.
+                </p>
+                <div className="settings-actions">
+                    <Link to="/privacy" className="settings-link-button">
+                        개인정보 처리방침
+                    </Link>
+                    <Link to="/terms" className="settings-link-button">
+                        서비스 이용약관
+                    </Link>
+                </div>
             </section>
 
             <p className="build-version">웹 버전: {CLIENT_VERSION}</p>
