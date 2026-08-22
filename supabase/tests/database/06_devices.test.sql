@@ -42,7 +42,7 @@ select throws_ok(
 );
 
 select is(
-    public.register_or_touch_device(1, 2, '77777777-7777-4777-8777-777777777777', 'PC A 갱신', '0.2.1'
+    public.register_or_touch_device(1, 2, '77777777-7777-4777-8777-777777777777', 'PC A 갱신', '1.0.0'
     ) ->> 'display_name',
     'PC A 갱신',
     '같은 installation을 touch한다'
@@ -66,7 +66,7 @@ select results_eq(
     $$ select display_name, client_version, sync_schema_version, payload_version
        from public.devices
        where installation_id = '77777777-7777-4777-8777-777777777777' $$,
-    $$ values ('PC A 갱신', '0.2.1', 1, 2) $$,
+    $$ values ('PC A 갱신', '1.0.0', 1, 2) $$,
     'touch가 표시 이름과 client/schema/payload version을 기록한다'
 );
 
