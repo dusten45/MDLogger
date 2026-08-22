@@ -251,8 +251,8 @@ def test_resolve_online_fetches_and_caches(tmp_path):
 def test_resolve_online_below_minimum_gates_off(tmp_path):
     cache = tmp_path / "release_policy_cache.json"
     body = (
-        b'[{"platform":"windows","latest_version":"0.3.0",'
-        b'"minimum_supported_version":"0.3.0"}]'
+        b'[{"platform":"windows","latest_version":"99.0.0",'
+        b'"minimum_supported_version":"99.0.0"}]'
     )
     _, client = _fake_client(body=body)
     policy, allowed = resolve_policy_for_startup(CONFIG, cache, client=client)
