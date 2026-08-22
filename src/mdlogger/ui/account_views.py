@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtGui import QCloseEvent, QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..game_sync.models import SyncConflict
+from ..paths import PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL
 from ..remote.games import PRIVATE_GAME_FIELDS
 from .focus import allow_tab_focus
 from .theme import METRICS, scaled, set_style_property
@@ -180,6 +181,41 @@ class AuthWindow(QWidget):
         self._guest.setObjectName("guestContinue")
         self._guest.clicked.connect(self.guest_requested)
         layout.addWidget(self._guest)
+
+        self._legal_notice = QLabel(
+            "본 서비스는 만 14세 이상만 이용 가능하며, 계정을 생성하면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다."
+        )
+        self._legal_notice.setProperty("tone", "muted")
+        self._legal_notice.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._legal_notice.setWordWrap(True)
+        self._legal_notice.hide()
+        layout.addWidget(self._legal_notice)
+
+        legal_layout = QHBoxLayout()
+        legal_layout.setSpacing(METRICS.space_2)
+        legal_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self._privacy_btn = QPushButton("개인정보 처리방침")
+        self._privacy_btn.setProperty("role", "ghost")
+        self._privacy_btn.setObjectName("authPrivacyLink")
+        self._privacy_btn.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl(PRIVACY_POLICY_URL))
+        )
+        legal_layout.addWidget(self._privacy_btn)
+
+        legal_sep = QLabel("·")
+        legal_sep.setProperty("tone", "muted")
+        legal_layout.addWidget(legal_sep)
+
+        self._terms_btn = QPushButton("이용약관")
+        self._terms_btn.setProperty("role", "ghost")
+        self._terms_btn.setObjectName("authTermsLink")
+        self._terms_btn.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl(TERMS_OF_SERVICE_URL))
+        )
+        legal_layout.addWidget(self._terms_btn)
+
+        layout.addLayout(legal_layout)
         layout.addStretch(1)
 
         allow_tab_focus(page)
@@ -193,6 +229,8 @@ class AuthWindow(QWidget):
         QWidget.setTabOrder(self._submit, self._reset)
         QWidget.setTabOrder(self._reset, self._toggle_mode)
         QWidget.setTabOrder(self._toggle_mode, self._guest)
+        QWidget.setTabOrder(self._guest, self._privacy_btn)
+        QWidget.setTabOrder(self._privacy_btn, self._terms_btn)
         return page
 
     def _build_verification_page(self) -> QWidget:
@@ -248,6 +286,7 @@ class AuthWindow(QWidget):
         self._toggle_mode.setText("새 계정 만들기")
         self._reset.show()
         self._set_confirmation_visible(False)
+        self._legal_notice.hide()
         self.clear_errors()
         self.set_status(message)
         self._email.setFocus(Qt.FocusReason.OtherFocusReason)
@@ -260,6 +299,7 @@ class AuthWindow(QWidget):
         self._toggle_mode.setText("이미 계정이 있습니다")
         self._reset.hide()
         self._set_confirmation_visible(True)
+        self._legal_notice.show()
         self.clear_errors()
         self.set_status("")
         self._email.setFocus(Qt.FocusReason.OtherFocusReason)
@@ -458,18 +498,26 @@ class GuestNoticeDialog(QDialog):
 
         layout.addWidget(
             _wrapped_label(
-                "이 필수 데이터 사용에 동의하지 않으면 앱을 사용할 수 없습니다.",
+                "이 데이터 전송은 서비스 제공의 필수 조건입니다.",
                 scaled(self.CONTENT_WIDTH),
                 tone="muted",
             )
         )
+
+        privacy_link = QPushButton("개인정보 처리방침 전문 보기")
+        privacy_link.setProperty("role", "ghost")
+        privacy_link.setObjectName("guestNoticePrivacyLink")
+        privacy_link.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl(PRIVACY_POLICY_URL))
+        )
+        layout.addWidget(privacy_link)
 
         buttons = QHBoxLayout()
         buttons.setSpacing(METRICS.space_2)
         cancel = QPushButton("돌아가기")
         cancel.clicked.connect(self.reject)
         accept = QPushButton(
-            "동의하고 계정으로 계속" if registered else "동의하고 게스트로 계속"
+            "확인하고 계정으로 계속" if registered else "확인하고 게스트로 계속"
         )
         accept.setObjectName("acceptGuestConsent")
         accept.setProperty("role", "primary")

@@ -442,3 +442,32 @@ def test_main_window_reloads_modes_when_sync_completes(
 
     window.close_profile_windows()
     games.close()
+
+
+def test_auth_window_legal_links_and_notice_visibility(qapp: QApplication):
+    window = AuthWindow()
+    window.show()
+    qapp.processEvents()
+
+    assert not window._legal_notice.isVisible()
+    assert window._privacy_btn.text() == "개인정보 처리방침"
+    assert window._terms_btn.text() == "이용약관"
+
+    window.show_signup()
+    qapp.processEvents()
+    assert window._legal_notice.isVisible()
+    assert "만 14세 이상" in window._legal_notice.text()
+    assert "서비스 이용약관 및 개인정보 처리방침" in window._legal_notice.text()
+
+    window.show_login()
+    qapp.processEvents()
+    assert not window._legal_notice.isVisible()
+    window.close()
+
+
+def test_guest_notice_dialog_has_privacy_link(qapp: QApplication):
+    dialog = GuestNoticeDialog()
+    privacy_btn = dialog.findChild(QPushButton, "guestNoticePrivacyLink")
+    assert privacy_btn is not None
+    assert privacy_btn.text() == "개인정보 처리방침 전문 보기"
+    dialog.close()

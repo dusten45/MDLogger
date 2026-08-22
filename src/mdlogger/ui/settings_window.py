@@ -11,7 +11,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QUrl, Signal
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -37,6 +38,7 @@ from ..app_settings import (
     effective_reduce_motion,
 )
 from ..game_service import GameService
+from ..paths import PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL
 from ..remote.settings_sync import SettingsSyncClient, SettingsSyncError
 from ..settings import DEFAULT_MODE_LAST_USED, ModeSettings
 from .focus import restrict_focus_to_pointer
@@ -395,6 +397,28 @@ class SettingsWindow(QDialog):
             delete_btn.setProperty("role", "danger")
             delete_btn.clicked.connect(self.delete_account_requested)
             layout.addWidget(delete_btn)
+
+        layout.addSpacing(METRICS.space_2)
+        legal_header = QLabel("서비스 및 법률 정책")
+        set_style_property(legal_header, "tone", "muted")
+        layout.addWidget(legal_header)
+
+        legal_buttons = QHBoxLayout()
+        legal_buttons.setSpacing(METRICS.space_2)
+        privacy_btn = QPushButton("개인정보 처리방침")
+        privacy_btn.setObjectName("settingsPrivacyLink")
+        privacy_btn.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl(PRIVACY_POLICY_URL))
+        )
+        legal_buttons.addWidget(privacy_btn)
+
+        terms_btn = QPushButton("서비스 이용약관")
+        terms_btn.setObjectName("settingsTermsLink")
+        terms_btn.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl(TERMS_OF_SERVICE_URL))
+        )
+        legal_buttons.addWidget(terms_btn)
+        layout.addLayout(legal_buttons)
 
         layout.addStretch(1)
         return page

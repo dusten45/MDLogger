@@ -173,3 +173,14 @@ def test_ensure_data_dir_secures_existing_sidecars(monkeypatch, tmp_path):
     paths.ensure_data_dir()
 
     assert stat.S_IMODE((data_dir / "games.db-wal").stat().st_mode) == 0o600
+
+
+def test_legal_urls_defined_and_overrideable(monkeypatch):
+    assert (
+        paths.PRIVACY_POLICY_URL
+        == "https://mdlogger-web.dalimi4511-615.workers.dev/privacy"
+    )
+    assert (
+        paths.TERMS_OF_SERVICE_URL
+        == "https://mdlogger-web.dalimi4511-615.workers.dev/terms"
+    )
