@@ -147,6 +147,40 @@ input {
     padding: var(--space-4);
 }
 
+.auth-legal-notice {
+    margin: var(--space-2) 0 0;
+    font-size: var(--font-caption);
+    color: var(--text-secondary);
+    line-height: 1.4;
+    text-align: center;
+}
+
+.auth-legal-notice a {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+.auth-footer-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-6);
+    padding-top: var(--space-3);
+    font-size: var(--font-small);
+    color: var(--text-muted);
+}
+
+.auth-footer-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.auth-footer-links a:hover {
+    text-decoration: underline;
+    color: var(--accent);
+}
+
 .auth-unavailable {
     display: flex;
     flex-direction: column;
