@@ -3,6 +3,7 @@ node_modules/
 dist/
 dist-ssr/
 *.local
+.wrangler/
 
 # ---- Environment (실제 Supabase URL·anon key는 커밋하지 않는다) ----
 .env
@@ -15,5 +16,8 @@ Thumbs.db
 Desktop.ini
 .idea/
 .vscode/
+.zed/
+.fleet/
 *.swp
+*.swo
 *~

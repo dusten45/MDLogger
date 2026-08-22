@@ -18,6 +18,11 @@ env/
 .serena/
 .agents/
 .cache/
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+.hypothesis/
 
 # ---- Generated build config (see scripts/generate_build_config.py) ----
 # publishable(anon) Supabase 값을 담아 PyInstaller가 번들한다. 커밋 금지.
@@ -54,6 +59,7 @@ games.xlsx
 # ---- Supabase CLI scratch dirs ----
 supabase/.branches/
 supabase/.temp/
+supabase/snippets/
 
 # ---- Supabase function local env (service-role key 등 비밀). 커밋 금지. ----
 supabase/functions/.env.local
@@ -63,20 +69,46 @@ supabase/functions/**/.env.local
 /.env
 /.env.local
 
-# ---- Claude Code local settings ----
-.claude/settings.local.json
+# ---- AI agents & assistants (1인 개발 로컬 전용 설정 및 지침) ----
+AGENTS.md
+AGENTS.*.md
+CLAUDE.md
+CLAUDE.*.md
+GEMINI.md
+GEMINI.*.md
+COPILOT.md
+.claude/
+.gemini/
+.cursor/
+.windsurf/
+.copilot/
+
+# ---- Web / Node build artifacts ----
+web/node_modules/
+web/dist/
+web/dist-ssr/
+web/.wrangler/
 
 # ---- Local documentation (kept out of VCS) ----
 # 개발 과정 문서와 운영·제품 계획 문서는 로컬 전용으로 둔다.
-# 릴리스 노트만 저장소에서 버전 관리한다.
+# 릴리스 노트와 공개 법률 문서는 저장소에서 버전 관리한다.
 docs/*
 !docs/release.md
+!docs/privacy-policy.md
+!docs/terms-of-service.md
 
 # ---- OS / editor cruft ----
 Thumbs.db
 Desktop.ini
+ehthumbs.db
 .DS_Store
+.DS_Store?
+._*
 *.swp
+*.swo
 *~
+.*.sw[a-z]
 .idea/
 .vscode/
+.zed/
+.fleet/
