@@ -9,7 +9,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QPoint, QRect, QSize, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -72,12 +72,44 @@ def test_login_form_has_visible_labels_password_toggle_and_enter_submit(
     window.close()
 
 
-def test_login_window_size_is_independent_of_main_window_height(
+def test_auth_window_initial_size_and_auto_expansion(
     qapp: QApplication,
 ):
     window = AuthWindow()
-    assert window.size() == QSize(scaled(420), scaled(560))
-    assert window.minimumSize() == QSize(scaled(360), scaled(500))
+    assert window.size() == QSize(scaled(420), scaled(680))
+    assert window.minimumWidth() == scaled(380)
+    window.close()
+
+
+def test_auth_window_allows_scrolling_on_small_screen(qapp: QApplication, monkeypatch):
+    class _Screen:
+        def availableGeometry(self):
+            return QRect(0, 0, 1920, scaled(500))
+
+    monkeypatch.setattr(AuthWindow, "screen", lambda _: _Screen())
+    window = AuthWindow()
+    window.show()
+    qapp.processEvents()
+
+    assert window.height() <= scaled(500)
+    assert window.height() >= scaled(480)
+    window.show_signup()
+    qapp.processEvents()
+
+    scroll = window._form_scroll
+    assert window._stack.currentWidget() is scroll
+    assert scroll.verticalScrollBar().maximum() > 0
+
+    scroll.ensureWidgetVisible(window._terms_btn)
+    qapp.processEvents()
+    terms_bottom = window._terms_btn.mapTo(
+        scroll.viewport(), QPoint(0, window._terms_btn.height())
+    ).y()
+    assert terms_bottom <= scroll.viewport().height()
+
+    window.show_login()
+    qapp.processEvents()
+    assert scroll.verticalScrollBar().value() == 0
     window.close()
 
 
@@ -164,7 +196,7 @@ def test_verification_back_button_returns_to_login_and_clears_status(
     back.click()
 
     # clicked(bool)의 checked 값이 상태 메시지로 전달되면 setText가 실패한다.
-    assert window._stack.currentWidget() is window._form_page
+    assert window._stack.currentWidget() is window._form_scroll
     assert window._status.text() == ""
     window.close()
 

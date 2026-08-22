@@ -5,17 +5,24 @@ from __future__ import annotations
 from enum import StrEnum
 
 from PySide6.QtCore import Qt, QUrl, Signal
-from PySide6.QtGui import QCloseEvent, QDesktopServices
+from PySide6.QtGui import (
+    QCloseEvent,
+    QDesktopServices,
+    QGuiApplication,
+    QShowEvent,
+)
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLayout,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -73,9 +80,9 @@ class AuthWindow(QWidget):
         super().__init__()
         self._mode = AuthMode.LOGIN
         self._verification_email = ""
+        self._startup_height_finalized = False
         self.setWindowTitle("MDLogger · 계정")
-        self.resize(scaled(420), scaled(560))
-        self.setMinimumSize(scaled(360), scaled(500))
+        self.setMinimumWidth(scaled(380))
 
         root = QVBoxLayout(self)
         root.setContentsMargins(
@@ -85,11 +92,43 @@ class AuthWindow(QWidget):
 
         self._stack = QStackedWidget()
         self._form_page = self._build_form_page()
+        self._form_scroll = QScrollArea()
+        self._form_scroll.setWidgetResizable(True)
+        self._form_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._form_scroll.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._form_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self._form_scroll.setWidget(self._form_page)
+
         self._verification_page = self._build_verification_page()
-        self._stack.addWidget(self._form_page)
+        self._stack.addWidget(self._form_scroll)
         self._stack.addWidget(self._verification_page)
         root.addWidget(self._stack)
+        self.resize(scaled(420), self._initial_auth_window_height())
         self.show_login()
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        if self._startup_height_finalized:
+            return
+
+        self._startup_height_finalized = True
+        self.resize(self.width(), self._initial_auth_window_height())
+
+    def _initial_auth_window_height(self) -> int:
+        screen = self.screen() or QGuiApplication.primaryScreen()
+        root_margin = METRICS.space_6 * 2
+        form_height = max(
+            scaled(680),
+            self._form_page.minimumSizeHint().height() + root_margin + scaled(1),
+        )
+        if screen is None:
+            return form_height
+
+        frame_height = max(0, self.frameGeometry().height() - self.height())
+        available_height = max(1, screen.availableGeometry().height() - frame_height)
+        return min(form_height, available_height)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.flow_cancelled.emit()
@@ -280,7 +319,7 @@ class AuthWindow(QWidget):
 
     def show_login(self, message: str = "") -> None:
         self._mode = AuthMode.LOGIN
-        self._stack.setCurrentWidget(self._form_page)
+        self._stack.setCurrentWidget(self._form_scroll)
         self._title.setText("로그인")
         self._submit.setText("로그인")
         self._toggle_mode.setText("새 계정 만들기")
@@ -289,11 +328,12 @@ class AuthWindow(QWidget):
         self._legal_notice.hide()
         self.clear_errors()
         self.set_status(message)
+        self._form_scroll.verticalScrollBar().setValue(0)
         self._email.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def show_signup(self) -> None:
         self._mode = AuthMode.SIGNUP
-        self._stack.setCurrentWidget(self._form_page)
+        self._stack.setCurrentWidget(self._form_scroll)
         self._title.setText("회원가입")
         self._submit.setText("계정 만들기")
         self._toggle_mode.setText("이미 계정이 있습니다")
@@ -302,6 +342,7 @@ class AuthWindow(QWidget):
         self._legal_notice.show()
         self.clear_errors()
         self.set_status("")
+        self._form_scroll.verticalScrollBar().setValue(0)
         self._email.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def show_verification(self, email: str) -> None:
