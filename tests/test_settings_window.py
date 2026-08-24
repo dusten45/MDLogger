@@ -558,9 +558,17 @@ def test_last_used_mode_option_does_not_duplicate_after_reopen(qapp, tmp_path) -
 
 def test_settings_window_has_legal_policy_links(qapp) -> None:
     win = _window(MemorySettingsStore())
+    notice = win.findChild(QLabel, "settingsUnofficialNotice")
     privacy_btn = win.findChild(QPushButton, "settingsPrivacyLink")
     terms_btn = win.findChild(QPushButton, "settingsTermsLink")
 
+    assert notice is not None
+    assert notice.text() == (
+        "MDLogger는 Yu-Gi-Oh! MASTER DUEL을 위한 비공식 전적 기록 및 통계 도구이며, "
+        "KONAMI 또는 관련 권리자와 제휴·후원·승인 관계가 없습니다. "
+        "Yu-Gi-Oh! MASTER DUEL 및 관련 명칭, 표장, 게임 자산에 관한 권리는 "
+        "각 권리자에게 있습니다."
+    )
     assert privacy_btn is not None
     assert privacy_btn.text() == "개인정보 처리방침"
     assert terms_btn is not None

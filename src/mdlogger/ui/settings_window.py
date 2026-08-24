@@ -403,6 +403,18 @@ class SettingsWindow(QDialog):
         set_style_property(legal_header, "tone", "muted")
         layout.addWidget(legal_header)
 
+        unofficial_notice = QLabel(
+            "MDLogger는 Yu-Gi-Oh! MASTER DUEL을 위한 비공식 전적 기록 및 통계 "
+            "도구이며, KONAMI 또는 관련 권리자와 제휴·후원·승인 관계가 없습니다. "
+            "Yu-Gi-Oh! MASTER DUEL 및 관련 명칭, 표장, 게임 자산에 관한 권리는 "
+            "각 권리자에게 있습니다."
+        )
+        unofficial_notice.setObjectName("settingsUnofficialNotice")
+        unofficial_notice.setAccessibleName("비공식 도구 및 권리 관계 안내")
+        unofficial_notice.setWordWrap(True)
+        set_style_property(unofficial_notice, "tone", "muted")
+        layout.addWidget(unofficial_notice)
+
         legal_buttons = QHBoxLayout()
         legal_buttons.setSpacing(METRICS.space_2)
         privacy_btn = QPushButton("개인정보 처리방침")

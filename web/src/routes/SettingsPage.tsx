@@ -19,6 +19,7 @@ import {
 } from "../settings/settingsSync";
 import { DEFAULT_MODE_LAST_USED, parseSettings } from "../settings/webSettings";
 import { useInstallPrompt } from "../lib/useInstallPrompt";
+import { UnofficialNotice } from "../components/UnofficialNotice";
 import "./settings.css";
 
 const THEME_OPTIONS = [
@@ -50,7 +51,8 @@ interface Message {
 export function SettingsPage() {
     const { user, signOut } = useAuth();
     const { settings, updateSettings, resetSettings } = useSettings();
-    const { canInstall, isStandalone, isIOS, promptInstall } = useInstallPrompt();
+    const { canInstall, isStandalone, isIOS, promptInstall } =
+        useInstallPrompt();
     const [modes, setModes] = useState<GameMode[]>([]);
     const [busy, setBusy] = useState<string | null>(null);
     const [message, setMessage] = useState<Message | null>(null);
@@ -320,13 +322,15 @@ export function SettingsPage() {
                             ✓ 앱이 설치되어 독립 실행 모드로 동작 중입니다
                         </p>
                         <p className="page-description">
-                            브라우저 주소창 없이 네이티브 앱 환경으로 실행 중입니다.
+                            브라우저 주소창 없이 네이티브 앱 환경으로 실행
+                            중입니다.
                         </p>
                     </div>
                 ) : canInstall ? (
                     <div className="pwa-install">
                         <p className="page-description">
-                            MDLogger를 홈 화면에 설치하여 브라우저 주소창 없이 빠르고 편리하게 사용할 수 있습니다.
+                            MDLogger를 홈 화면에 설치하여 브라우저 주소창 없이
+                            빠르고 편리하게 사용할 수 있습니다.
                         </p>
                         <button
                             type="button"
@@ -339,13 +343,18 @@ export function SettingsPage() {
                 ) : isIOS ? (
                     <div className="pwa-guide">
                         <p className="page-description">
-                            iOS(아이폰/아이패드)에서는 Safari 하단의 <strong>공유 버튼(□↑)</strong>을 누른 후 <strong>'홈 화면에 추가'</strong>를 선택하여 앱으로 설치할 수 있습니다.
+                            iOS(아이폰/아이패드)에서는 Safari 하단의{" "}
+                            <strong>공유 버튼(□↑)</strong>을 누른 후{" "}
+                            <strong>'홈 화면에 추가'</strong>를 선택하여 앱으로
+                            설치할 수 있습니다.
                         </p>
                     </div>
                 ) : (
                     <div className="pwa-guide">
                         <p className="page-description">
-                            브라우저 메뉴에서 <strong>'앱 설치'</strong> 또는 <strong>'홈 화면에 추가'</strong>를 선택하여 독립 앱으로 설치할 수 있습니다.
+                            브라우저 메뉴에서 <strong>'앱 설치'</strong> 또는{" "}
+                            <strong>'홈 화면에 추가'</strong>를 선택하여 독립
+                            앱으로 설치할 수 있습니다.
                         </p>
                     </div>
                 )}
@@ -526,9 +535,7 @@ export function SettingsPage() {
                 <h2 id="legal-title" className="section-surface__title">
                     서비스 정보 및 법률 정책
                 </h2>
-                <p className="page-description">
-                    MDLogger는 개인정보 보호법 및 관계 법령을 준수합니다.
-                </p>
+                <UnofficialNotice />
                 <div className="settings-actions">
                     <Link to="/privacy" className="settings-link-button">
                         개인정보 처리방침

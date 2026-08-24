@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { AuthUnavailable } from "../components/AuthUnavailable";
+import { UnofficialNotice } from "../components/UnofficialNotice";
 
 type Mode = "login" | "signup" | "reset";
 
@@ -232,7 +233,11 @@ export function LoginPage() {
                             </button>
                             {mode === "signup" ? (
                                 <p className="auth-legal-notice">
-                                    본 서비스는 만 14세 이상만 이용 가능하며, 계정을 생성하면 <Link to="/terms">이용약관</Link> 및 <Link to="/privacy">개인정보 처리방침</Link>에 동의하게 됩니다.
+                                    본 서비스는 만 14세 이상만 이용 가능하며,
+                                    계정을 생성하면{" "}
+                                    <Link to="/terms">이용약관</Link> 및{" "}
+                                    <Link to="/privacy">개인정보 처리방침</Link>
+                                    에 동의하게 됩니다.
                                 </p>
                             ) : null}
                             {mode === "login" ? (
@@ -263,6 +268,8 @@ export function LoginPage() {
                     {message}
                 </p>
             ) : null}
+
+            <UnofficialNotice />
 
             <footer className="auth-footer-links">
                 <Link to="/privacy">개인정보 처리방침</Link>
