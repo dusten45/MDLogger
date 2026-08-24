@@ -58,7 +58,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=["icon/DuelistCup.ico"],  # Windows exe·태스크바·Inno 바로가기 아이콘
+    icon=["icon/MDLogger-icon.ico"],  # Windows exe·태스크바·Inno 바로가기 아이콘
 )
 
 # onedir 산출물: dist/MDLogger/(MDLogger(.exe) + _internal/ 부속 파일)

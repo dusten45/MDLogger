@@ -3,6 +3,7 @@ name = "mdlogger"
 dynamic = ["version"]
 description = "MDLogger — 듀얼 한 판마다 결과를 빠르게 기록하는 데스크톱 앱"
 readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "PySide6>=6.8,<7",

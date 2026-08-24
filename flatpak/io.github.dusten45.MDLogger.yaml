@@ -46,4 +46,4 @@ modules:
           - printf '#!/bin/sh\nexec /app/venv/bin/mdlogger "$@"\n' > /app/bin/mdlogger
           - chmod +x /app/bin/mdlogger
           - install -Dm644 flatpak/io.github.dusten45.MDLogger.desktop /app/share/applications/io.github.dusten45.MDLogger.desktop
-          - install -Dm644 icon/DuelistCup.png /app/share/icons/hicolor/256x256/apps/io.github.dusten45.MDLogger.png
+          - install -Dm644 icon/MDLogger-icon.png /app/share/icons/hicolor/256x256/apps/io.github.dusten45.MDLogger.png

@@ -33,10 +33,10 @@ _ICON_FILES: dict[str, str] = {
     "settings": "settings.svg",
 }
 
-# 앱 아이콘(번들 PNG). 루트 `icon/DuelistCup.png`와 같은 그림을 패키지에 번들해
+# 앱 아이콘(번들 PNG). 루트 `icon/MDLogger-icon.png`와 같은 그림을 패키지에 번들해
 # 런타임(창·태스크바) 및 배포 빌드에 사용한다. hatchling/pyinstaller가 패키지
 # 데이터로 포함한다.
-_APP_ICON_FILE = "DuelistCup.png"
+_APP_ICON_FILE = "MDLogger-icon.png"
 
 
 @cache
@@ -117,7 +117,7 @@ def load_icon(name: str) -> QIcon | None:
 
 @cache
 def application_icon() -> QIcon | None:
-    """앱 아이콘(번들 `DuelistCup.png`)을 반환한다. 패키지에 없으면 None.
+    """앱 아이콘(번들 `MDLogger-icon.png`)을 반환한다. 패키지에 없으면 None.
 
     창 타이틀바·태스크바용 정적 아이콘. 테마에 따라 다시 칠하지 않으며,
     Windows 실행 파일(EXE) 아이콘(`MDLogger.spec`의 ``icon``)과 같은 그림이다.

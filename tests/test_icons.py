@@ -47,7 +47,7 @@ def test_icons_bundled_in_package():
 
 def test_application_icon_bundled_and_loads(qapp):
     icon = icons.application_icon()
-    assert icon is not None, "번들 앱 아이콘(DuelistCup.png) 누락"
+    assert icon is not None, "번들 앱 아이콘(MDLogger-icon.png) 누락"
     assert not icon.isNull()
 
 

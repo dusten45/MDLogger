@@ -41,8 +41,9 @@ DisableProgramGroupPage=yes
 ; Program Files 는 관리자 권한이 필요하므로 admin 이 안전하다.
 PrivilegesRequired=admin
 ; 설치 프로그램(마법사) 아이콘 — Windows/Inno용이므로 .ico 를 사용한다.
-; 같은 그림의 .png(icon\DuelistCup.png)는 앱 자체/다른 OS 배포에서 쓴다.
-SetupIconFile=..\icon\DuelistCup.ico
+; 같은 그림의 .png(icon\MDLogger-icon.png)는 앱 자체/다른 OS 배포에서 쓴다.
+SetupIconFile=..\icon\MDLogger-icon.ico
+LicenseFile=..\LICENSE
 OutputDir=..\dist\installer
 OutputBaseFilename=MDLoggerSetup-{#MyAppVersion}
 Compression=lzma2
