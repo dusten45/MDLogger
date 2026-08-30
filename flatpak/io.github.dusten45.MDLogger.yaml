@@ -41,9 +41,30 @@ modules:
               PYTHONDONTWRITEBYTECODE: "1"
       build-commands:
           - python3 -m venv /app/venv
-          - /app/venv/bin/pip install .
+          # uv.lock에서 생성한 정확한 runtime pin과 platform marker를 먼저 적용한다.
+          - /app/venv/bin/pip install --no-deps --require-hashes -r flatpak/requirements-runtime.txt
+          # 프로젝트 설치가 lock closure를 다시 해석하거나 바꾸지 못하게 한다.
+          - /app/venv/bin/pip install --no-deps .
+          # pip는 빌드에만 필요하며 vendored dependency까지 포함하므로 final image에서 제거한다.
+          - rm -rf /app/venv/lib/python3.13/site-packages/pip /app/venv/lib/python3.13/site-packages/pip-*.dist-info /app/venv/bin/pip /app/venv/bin/pip3 /app/venv/bin/pip3.13
+          - test ! -e /app/venv/lib/python3.13/site-packages/pip
+          - test ! -e /app/venv/bin/pip
+          # 라이선스와 출처를 확인할 수 없는 pyqtgraph palette는 배포하지 않는다.
+          - rm -f /app/venv/lib/python3.13/site-packages/pyqtgraph/colors/maps/PAL-relaxed.hex /app/venv/lib/python3.13/site-packages/pyqtgraph/colors/maps/PAL-relaxed_bright.hex
+          - test ! -e /app/venv/lib/python3.13/site-packages/pyqtgraph/colors/maps/PAL-relaxed.hex
+          - test ! -e /app/venv/lib/python3.13/site-packages/pyqtgraph/colors/maps/PAL-relaxed_bright.hex
           - mkdir -p /app/bin
           - printf '#!/bin/sh\nexec /app/venv/bin/mdlogger "$@"\n' > /app/bin/mdlogger
           - chmod +x /app/bin/mdlogger
           - install -Dm644 flatpak/io.github.dusten45.MDLogger.desktop /app/share/applications/io.github.dusten45.MDLogger.desktop
           - install -Dm644 icon/MDLogger-icon.png /app/share/icons/hicolor/256x256/apps/io.github.dusten45.MDLogger.png
+          - install -Dm644 LICENSE /app/share/licenses/mdlogger/LICENSE
+          - install -Dm644 THIRD_PARTY_NOTICES.txt /app/share/doc/mdlogger/THIRD_PARTY_NOTICES.txt
+          - install -Dm644 THIRD_PARTY_NOTICES.md /app/share/doc/mdlogger/THIRD_PARTY_NOTICES.md
+          - cp -a licenses/desktop /app/share/licenses/mdlogger/desktop
+          - install -Dm644 licenses/inventory/desktop-linux.json /app/share/licenses/mdlogger/inventory/desktop-linux.json
+          - install -Dm644 licenses/inventory/qt-modules-linux-flatpak.json /app/share/licenses/mdlogger/inventory/qt-modules-linux-flatpak.json
+          - install -Dm644 licenses/inventory/qt-third-party-runtime-linux-flatpak.json /app/share/licenses/mdlogger/inventory/qt-third-party-runtime-linux-flatpak.json
+          - cp -a licenses/sources /app/share/doc/mdlogger/sources
+          # Flatpak Builder strips/debug-splits native libraries after module commands; verify wheel bytes here and final-image bytes after finish.
+          - python3 scripts/verify_flatpak_license_payload.py --app-root /app --payload-phase wheel

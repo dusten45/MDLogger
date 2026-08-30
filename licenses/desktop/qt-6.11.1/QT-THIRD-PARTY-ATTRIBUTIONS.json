@@ -1,0 +1,3427 @@
+{
+  "exact_build_sbom_available": false,
+  "platform": "linux-flatpak-x86_64",
+  "qt_version": "6.11.1",
+  "record_count": 123,
+  "records": [
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:assimp:assimp:$<VERSION>:*:*:*:*:*:*:*",
+        "Copyright": "Copyright (c) 2006-2026, assimp team",
+        "Description": "assimp (Open Asset Import Library) is a portable open source library to import various well-known 3D model formats in a uniform manner.",
+        "DownloadLocation": "https://github.com/assimp/assimp/releases/tag/v6.0.4",
+        "Homepage": "http://www.assimp.org/",
+        "Id": "assimp",
+        "License": "BSD 3-clause \"New\" or \"Revised\" Licensee",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "Open Asset Import Library",
+        "PURL": [
+          "pkg:github/assimp/assimp@v$<VERSION>"
+        ],
+        "QDocModule": "qt3d",
+        "QtUsage": "Used for importing assets for use with Qt 3D",
+        "Version": "6.0.4"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt3d/src/3rdparty/assimp/LICENSE",
+          "sha256": "a26ccc3dbf2f58ea99c100945a8a126fa0f9f4d7fd2b49aa8bdb8e09355864d8",
+          "source_member": "qt-everywhere-src-6.11.1/qt3d/src/3rdparty/assimp/LICENSE"
+        }
+      ],
+      "source_path": "qt3d/src/3rdparty/assimp/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright (c) 2014-2018 Omar Cornut",
+        "Description": "Dear ImGui",
+        "Homepage": "https://github.com/ocornut/imgui",
+        "Id": "imgui",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Dear ImGui",
+        "PURL": [
+          "pkg:github/ocornut/imgui@$<VERSION>"
+        ],
+        "QDocModule": "qt3d",
+        "QtUsage": "Used in tests to demonstrate and verify the integration of an external GUI library.",
+        "Version": "v1.91.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt3d/src/3rdparty/imgui/LICENSE.txt",
+          "sha256": "0ebf8feb061536bdebd7c6a365b64808ae3479048b1c44113e19037680c5f2be",
+          "source_member": "qt-everywhere-src-6.11.1/qt3d/src/3rdparty/imgui/LICENSE.txt"
+        }
+      ],
+      "source_path": "qt3d/src/3rdparty/imgui/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant PURL or CPE set, because the dependency is a font file",
+        "Copyright": "Copyright (c) 2004, 2005 Tristan Grimmer",
+        "Description": "ProggyClean.ttf font that is embedded into Dear ImGui",
+        "Files": "imgui_draw.cpp",
+        "Homepage": "https://github.com/bluescan/proggyfonts",
+        "Id": "imgui-proggyclean",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.proggyclean.txt",
+        "LicenseId": "MIT",
+        "Name": "Dear ImGui - ProggyClean.ttf",
+        "QDocModule": "qt3d",
+        "QtUsage": "Used in tests to demonstrate and verify the integration of an external GUI library."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt3d/src/3rdparty/imgui/LICENSE.proggyclean.txt",
+          "sha256": "2edfac83f1216a726d0b8735fb4fcc6d5aeaf55c313f8968b43b8ec5b20c8280",
+          "source_member": "qt-everywhere-src-6.11.1/qt3d/src/3rdparty/imgui/LICENSE.proggyclean.txt"
+        }
+      ],
+      "source_path": "qt3d/src/3rdparty/imgui/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant PURL or CPE set, because the dependency is a single file",
+        "Copyright": "Copyright (c) 2017 Sean Barrett",
+        "Description": "Single-file public domain (or MIT licensed) libraries for C/C++",
+        "Files": "imstb_rectpack.h imstb_textedit.h imstb_truetype.h",
+        "Homepage": "https://github.com/nothings/stb/",
+        "Id": "imgui-stb",
+        "License": "MIT License or Public Domain",
+        "LicenseFile": "LICENSE.imstb.txt",
+        "LicenseId": "MIT OR CC0-1.0",
+        "Name": "Dear ImGui - stb",
+        "QDocModule": "qt3d",
+        "QtUsage": "Used in tests to demonstrate and verify the integration of an external GUI library."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt3d/src/3rdparty/imgui/LICENSE.imstb.txt",
+          "sha256": "9407f57d550d1d36974de15c7aad3dbf21e59c4b3312fc762157f05fdea6ff41",
+          "source_member": "qt-everywhere-src-6.11.1/qt3d/src/3rdparty/imgui/LICENSE.imstb.txt"
+        }
+      ],
+      "source_path": "qt3d/src/3rdparty/imgui/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the upstream is unknown",
+        "Copyright": "Copyright (C) 2000  Ming-Che Chuang\nCopyright (C) 2001, 2002  James Su, Turbolinux Inc.\nCopyright (C) 2002  WU Yi, HancomLinux Inc.\nCopyright (C) 2001, 2002  Anthony Fok, ThizLinux Laboratory Ltd.",
+        "Description": "The Big5 codecs (QBig5Codec, QBig5hkscsCodec)\nprovide conversion to and from the Big5 encodings.",
+        "Files": "qbig5codec.cpp",
+        "Id": "qbig5codecs",
+        "License": "BSD 2-clause \"Simplified\" License",
+        "LicenseFile": "LICENSE.QBIG5CODEC.txt",
+        "LicenseId": "BSD-2-Clause",
+        "Name": "Text Codecs: Big5, Big5-HKSCS",
+        "QDocModule": "qtcore5compat",
+        "QtUsage": "Used in Qt Core if ICU is not used. Configure with -icu to avoid."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt5compat/src/core5/codecs/LICENSE.QBIG5CODEC.txt",
+          "sha256": "425475b78739a2985e61c619ba833af364bba405c69e9cf2eb027e5790cc00c8",
+          "source_member": "qt-everywhere-src-6.11.1/qt5compat/src/core5/codecs/LICENSE.QBIG5CODEC.txt"
+        }
+      ],
+      "source_path": "qt5compat/src/core5/codecs/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the upstream is unknown",
+        "Copyright": "Copyright (C) 2000 TurboLinux, Inc.  Written by Justin Yu and Sean Chen.\nCopyright (C) 2001, 2002 Turbolinux, Inc.  Written by James Su.\nCopyright (C) 2001, 2002 ThizLinux Laboratory Ltd.  Written by Anthony Fok.",
+        "Description": "The GBK codec provides conversion to and from the Chinese\nGB18030/GBK/GB2312 encoding.",
+        "Files": "qgb18030codec.cpp",
+        "Id": "qbkcodec",
+        "License": "BSD 2-clause \"Simplified\" License",
+        "LicenseFile": "LICENSE.QBKCODEC.txt",
+        "LicenseId": "BSD-2-Clause",
+        "Name": "Text Codec: GBK",
+        "QDocModule": "qtcore5compat",
+        "QtUsage": "Used in Qt Core if ICU is not used. Configure with -icu to avoid."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt5compat/src/core5/codecs/LICENSE.QBKCODEC.txt",
+          "sha256": "a2cc13f96cc199017b0e41c4a44faef0cce9a024fac0710e39d8fc499d738bff",
+          "source_member": "qt-everywhere-src-6.11.1/qt5compat/src/core5/codecs/LICENSE.QBKCODEC.txt"
+        }
+      ],
+      "source_path": "qt5compat/src/core5/codecs/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the upstream is unknown",
+        "Copyright": "Copyright (C) 1999 Serika Kurusugawa.",
+        "Description": "The EUC-JP text codec provides conversion to and from EUC-JP,\nthe main legacy encoding for Unix machines in Japan.",
+        "Files": "qeucjpcodec.cpp",
+        "Id": "qeucjpcodec",
+        "License": "BSD 2-clause \"Simplified\" License",
+        "LicenseFile": "LICENSE.QEUCJPCODEC.txt",
+        "LicenseId": "BSD-2-Clause",
+        "Name": "Text Codec: EUC-JP",
+        "QDocModule": "qtcore5compat",
+        "QtUsage": "Used in Qt Core if ICU is not used. Configure with -icu to avoid."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt5compat/src/core5/codecs/LICENSE.QEUCJPCODEC.txt",
+          "sha256": "a2a58c25c18cc5c203b2ebf7a706f6baeb93d43fc443bc095acded6d259842ea",
+          "source_member": "qt-everywhere-src-6.11.1/qt5compat/src/core5/codecs/LICENSE.QEUCJPCODEC.txt"
+        }
+      ],
+      "source_path": "qt5compat/src/core5/codecs/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the upstream is unknown",
+        "Copyright": "Copyright (C) 1999-2000 Mizi Research Inc.",
+        "Description": "The EUC-KR text codec provides conversion to and from EUC-KR, KR,\nthe main legacy encoding for Unix machines in Korea.",
+        "Files": "qeuckrcodec.cpp",
+        "Id": "qeuckrcodec",
+        "License": "BSD 2-clause \"Simplified\" License",
+        "LicenseFile": "LICENSE.QEUCKRCODEC.txt",
+        "LicenseId": "BSD-2-Clause",
+        "Name": "Text Codec: EUC-KR",
+        "QDocModule": "qtcore5compat",
+        "QtUsage": "Used in Qt Core if ICU is not used. Configure with -icu to avoid."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt5compat/src/core5/codecs/LICENSE.QEUCKRCODEC.txt",
+          "sha256": "1c1a8f5823b81498368ba5ff489f1c05fb61a71dcbe4ebd8138bde86837ade2c",
+          "source_member": "qt-everywhere-src-6.11.1/qt5compat/src/core5/codecs/LICENSE.QEUCKRCODEC.txt"
+        }
+      ],
+      "source_path": "qt5compat/src/core5/codecs/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the upstream is unknown",
+        "Copyright": "Copyright (C) 1999 Serika Kurusugawa.",
+        "Description": "The ISO 2022-JP (JIS) text codec provides conversion to and from ISO 2022-JP.",
+        "Files": "qjiscodec.cpp",
+        "Id": "qjiscodec",
+        "License": "BSD 2-clause \"Simplified\" License",
+        "LicenseFile": "LICENSE.QJISCODEC.txt",
+        "LicenseId": "BSD-2-Clause",
+        "Name": "Text Codec: ISO 2022-JP (JIS)",
+        "QDocModule": "qtcore5compat",
+        "QtUsage": "Used in Qt Core if ICU is not used. Configure with -icu to avoid."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt5compat/src/core5/codecs/LICENSE.QJISCODEC.txt",
+          "sha256": "a2a58c25c18cc5c203b2ebf7a706f6baeb93d43fc443bc095acded6d259842ea",
+          "source_member": "qt-everywhere-src-6.11.1/qt5compat/src/core5/codecs/LICENSE.QJISCODEC.txt"
+        }
+      ],
+      "source_path": "qt5compat/src/core5/codecs/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the upstream is unknown",
+        "Copyright": "Copyright (C) 1999 Serika Kurusugawa.",
+        "Description": "The Shift-JIS text codec provides conversion to and from Shift-JIS.",
+        "Files": "qsjiscodec.cpp",
+        "Id": "qsjiscodec",
+        "License": "BSD 2-clause \"Simplified\" License",
+        "LicenseFile": "LICENSE.QSJISCODEC.txt",
+        "LicenseId": "BSD-2-Clause",
+        "Name": "Text Codec: Shift-JIS",
+        "QDocModule": "qtcore5compat",
+        "QtUsage": "Used in Qt Core if ICU is not used. Configure with -icu to avoid."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt5compat/src/core5/codecs/LICENSE.QSJISCODEC.txt",
+          "sha256": "a2a58c25c18cc5c203b2ebf7a706f6baeb93d43fc443bc095acded6d259842ea",
+          "source_member": "qt-everywhere-src-6.11.1/qt5compat/src/core5/codecs/LICENSE.QSJISCODEC.txt"
+        }
+      ],
+      "source_path": "qt5compat/src/core5/codecs/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the upstream is unknown",
+        "Copyright": "Copyright (C) 2000 Hans Petter Bieker.",
+        "Description": "The TSCII text codec provides conversion to and from the Tamil TSCII\nencoding.",
+        "Files": "qtsciicodec.cpp",
+        "Id": "qtsciicodec",
+        "License": "BSD 2-clause \"Simplified\" License",
+        "LicenseFile": "LICENSE.QTSCIICODEC.txt",
+        "LicenseId": "BSD-2-Clause",
+        "Name": "Text Codec: TSCII",
+        "QDocModule": "qtcore5compat",
+        "QtUsage": "Used in Qt Core."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qt5compat/src/core5/codecs/LICENSE.QTSCIICODEC.txt",
+          "sha256": "e749770c43d1287fa0c0855b2fefea4efa34e6cfa806cf3dc1efa5351a7774bc",
+          "source_member": "qt-everywhere-src-6.11.1/qt5compat/src/core5/codecs/LICENSE.QTSCIICODEC.txt"
+        }
+      ],
+      "source_path": "qt5compat/src/core5/codecs/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright (c) 2017-2025 Advanced Micro Devices, Inc. All rights reserved.",
+        "Description": "Vulkan Memory Allocator",
+        "Homepage": "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator",
+        "Id": "vulkanmemoryallocator",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Vulkan Memory Allocator",
+        "PURL": "pkg:github/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator@v$<VERSION>",
+        "QDocModule": "qtgui",
+        "QtUsage": "Memory management for the Vulkan backend of QRhi.",
+        "Version": "3.2.1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt",
+          "sha256": "846d97c8b74ccaa92b9ad031140a04363b3b3985f318094552f297b8bda1c68e",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/VulkanMemoryAllocator/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:blake2:blake2:*:*:*:*:*:*:*:*",
+        "Copyright": "Copyright 2012, Samuel Neves <sneves@dei.uc.pt>",
+        "Description": "BLAKE2 is a cryptographic hash function faster than MD5, SHA-1, SHA-2, and SHA-3, yet is at least as secure as the latest standard SHA-3.",
+        "DownloadLocation": "https://github.com/BLAKE2/BLAKE2/tree/ed1974ea83433eba7b2d95c5dcd9ac33cb847913",
+        "Files": "src/blake2b-ref.c src/blake2s-ref.c src/blake2.h src/blake2-impl.h",
+        "Homepage": "https://blake2.net/",
+        "Id": "blake2",
+        "License": "Creative Commons Zero v1.0 Universal or Apache License 2.0",
+        "LicenseFile": "COPYING",
+        "LicenseId": "CC0-1.0 OR Apache-2.0",
+        "Name": "BLAKE2 (reference implementation)",
+        "PURL": "pkg:github/BLAKE2/BLAKE2@$<VERSION>",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QCryptographicHash).",
+        "Version": "ed1974ea83433eba7b2d95c5dcd9ac33cb847913"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/blake2/COPYING",
+          "sha256": "4103f471877ed0bae500752c5fcd7ecca409d4a4a8dc2ad40437daba60f1a2bc",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/blake2/COPYING"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/blake2/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:google:double-conversion:$<VERSION>:*:*:*:*:*:*:*",
+        "Copyright": "Copyright 2006-2012, the V8 project authors",
+        "DownloadLocation": "https://github.com/google/double-conversion/releases/tag/v3.4.0",
+        "Homepage": "https://github.com/google/double-conversion",
+        "Id": "doubleconversion",
+        "License": "BSD 3-clause \"New\" or \"Revised\" License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles",
+        "PURL": "pkg:github/google/double-conversion@v$<VERSION>",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core. Configure with -system-doubleconversion or -no-doubleconversion to avoid.",
+        "Version": "3.4.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/double-conversion/LICENSE",
+          "sha256": "4af93c12062c58058378de2397dc1c92bbff9ddfb1d583a01c84127557ce97ca",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/double-conversion/LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/double-conversion/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "treat as final, no relevant PURL or CPE found",
+        "Copyright": "Copyright (c) 2001 Robert Penner",
+        "Files": "easing.cpp",
+        "Homepage": "http://robertpenner.com/easing/",
+        "Id": "easing",
+        "License": "BSD 3-clause \"New\" or \"Revised\" License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "Easing Equations by Robert Penner",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QEasingCurve)."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/easing/LICENSE",
+          "sha256": "92fac99458f1754b73edf50f9c9983e0efaa06ad96e2afd5e538c79f45b4b191",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/easing/LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/easing/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright 2019 Google LLC",
+        "Description": "A parser for emoji sequences.",
+        "DownloadLocation": "https://github.com/google/emoji-segmenter/releases/tag/0.4.0",
+        "Homepage": "https://github.com/google/emoji-segmenter",
+        "Id": "emoji-segmenter",
+        "License": "Apache License 2.0",
+        "LicenseId": "Apache-2.0",
+        "Name": "Emoji Segmenter",
+        "PURL": "pkg:github/google/emoji-segmenter@$<VERSION>",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used in QtGui for parsing complex emoji sequences. Can be configured using the -emojisegmenter option.",
+        "SecurityCritical": true,
+        "Version": "0.4.0"
+      },
+      "legal_files": [],
+      "source_path": "qtbase/src/3rdparty/emoji-segmenter/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No upstream; treat as final, no relevant PURL or CPE found",
+        "Copyright": "Copyright (C) 2016 Intel Corporation\nCopyright (C) 2015 Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com",
+        "Files": [
+          "forkfd.c",
+          "forkfd.h",
+          "forkfd_gcc.h"
+        ],
+        "Id": "forkfd",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "MIT",
+        "Name": "forkfd",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used on most Unix platforms in Qt Core."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/forkfd/LICENSE",
+          "sha256": "d0d683ae18e78fbef90eb41168fb781920da2d12bf80704490f0882915c18ae0",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/forkfd/LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/forkfd/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": [
+          "cpe:2.3:a:freetype:freetype:$<VERSION>:*:*:*:*:*:*:*"
+        ],
+        "Copyright": [
+          "Copyright (c) 2007-2014 Adobe Systems Incorporated",
+          "Copyright (c) 2004-2026 Albert Chin-A-Young",
+          "Copyright (c) 2018-2026 Armin Hasitzka, David Turner, Robert Wilhelm, and Werner Lemberg",
+          "Copyright (c) 2000 Computing Research Labs, New Mexico State University",
+          "Copyright (c) 1996-2026 David Turner, Robert Wilhelm, Dominik Röttsches, and Werner Lemberg",
+          "Copyright (c) 2004-2026 David Turner, Robert Wilhelm, Werner Lemberg and George Williams",
+          "Copyright (c) 2022-2026 David Turner, Robert Wilhelm, Werner Lemberg, and Moazin Khatti",
+          "Copyright (c) 2008-2026 David Turner, Robert Wilhelm, Werner Lemberg, and suzuki toshiya",
+          "Copyright (c) 2003-2026 David Turner, Robert Wilhelm, and Werner Lemberg",
+          "Copyright (c) 2005-2026 David Turner",
+          "Copyright (c) 2007-2026 Derek Clegg and Michael Toftdal",
+          "Copyright (c) 2007 Dmitry Timoshkov for Codeweavers",
+          "Copyright (c) 2001-2015 Francesco Zappa Nardelli",
+          "Copyright (c) 2005, 2007, 2008, 2013 George Williams",
+          "Copyright (c) 2013-2026 Google, Inc. Google Author(s) Behdad Esfahbod and Stuart Gill",
+          "Copyright (c) 2013-2022 Google, Inc.",
+          "Copyright (c) 2003 Huw D M Davies for Codeweavers",
+          "Copyright (c) 2010-2026 Joel Klinghed",
+          "Copyright (c) 1996-2026 Just van Rossum, David Turner, Robert Wilhelm, and Werner Lemberg",
+          "Copyright (c) 2003-2026 Masatake YAMATO and Redhat K.K.",
+          "Copyright (c) 2004-2026 Masatake YAMATO, Redhat K.K, David Turner, Robert Wilhelm, and Werner Lemberg",
+          "Copyright (c) 2019-2026 Nikhil Ramakrishnan, David Turner, Robert Wilhelm, and Werner Lemberg",
+          "Copyright (c) 2009-2026 Oran Agra and Mickey Gabel",
+          "Copyright (c) 2007-2026 Rahul Bhalerao <rahul.bhalerao@redhat.com>",
+          "Copyright (c) 2002-2026 Roberto Alameda",
+          "Copyright (c) 2015-2026 Werner Lemberg",
+          "Copyright (c) 2004-2026 suzuki toshiya, Masatake YAMATO, Red Hat K.K., David Turner, Robert Wilhelm, and Werner Lemberg",
+          "Copyright (c) 2019 nyorain",
+          "Copyright (c) 2022-2026 David Turner, Robert Wilhelm, Werner Lemberg, George Williams, and Dominik Röttsches",
+          "Copyright (C) 2009, 2023  Red Hat, Inc."
+        ],
+        "Description": "FreeType is a freely available software library to render fonts.",
+        "DownloadLocation": "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.gz",
+        "Homepage": "http://www.freetype.org",
+        "Id": "freetype",
+        "License": "Freetype Project License or GNU General Public License v2.0 only",
+        "LicenseFile": "LICENSE.txt",
+        "LicenseId": "FTL OR GPL-2.0-only",
+        "Name": "Freetype 2",
+        "PURL": [
+          "pkg:github/freetype/freetype@VER-$<VERSION_DASHED>"
+        ],
+        "QDocModule": "qtgui",
+        "QtUsage": "Optionally used in Qt GUI and platform plugins. Configure with -no-freetype, or -system-freetype to avoid.",
+        "SecurityCritical": true,
+        "Version": "2.14.3"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/freetype/LICENSE.txt",
+          "sha256": "bf543cdda11864477b8d2ca2aa9afc2aaa8f9133461b4d962ed6ec73646256a1",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/freetype/LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/freetype/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": [
+          "Copyright (c) 2000 Computing Research Labs, New Mexico State University",
+          "Copyright (c) 2001-2014 Francesco Zappa Nardelli"
+        ],
+        "Description": "FreeType is a freely available software library to render fonts.",
+        "Homepage": "http://www.freetype.org",
+        "Id": "freetype-bdf",
+        "License": "MIT License",
+        "LicenseFile": "BDF-LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Freetype 2 - Bitmap Distribution Format (BDF) support",
+        "Path": "src/bdf",
+        "QDocModule": "qtgui",
+        "QtUsage": "Optionally used in Qt GUI and platform plugins. Configure with -no-freetype, or -system-freetype to avoid."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/freetype/BDF-LICENSE.txt",
+          "sha256": "e4e792f29e66750f2e410fd7b50a567652c180f6ee15e1a4dfa0bb5cde524537",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/freetype/BDF-LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/freetype/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": [
+          "Copyright (c) 2001, 2012 David Turner, Robert Wilhelm, and Werner Lemberg",
+          "Copyright (c) 2000-2014 Francesco Zappa Nardelli",
+          "Copyright (c) 1990, 1994, 1998 The Open Group"
+        ],
+        "Description": "FreeType is a freely available software library to render fonts.",
+        "Homepage": "http://www.freetype.org",
+        "Id": "freetype-pcf",
+        "License": "MIT License and MIT Open Group variant",
+        "LicenseFile": "PCF-LICENSE.txt",
+        "LicenseId": "MIT AND MIT-open-group",
+        "Name": "Freetype 2 - Portable Compiled Format (PCF) support",
+        "Path": "src/pcf",
+        "QDocModule": "qtgui",
+        "QtUsage": "Optionally used in Qt GUI and platform plugins. Configure with -no-freetype, or -system-freetype to avoid."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/freetype/PCF-LICENSE.txt",
+          "sha256": "6938597bfdeca0db191a8f9ede52eaf2482c2c71a0094c084747a1235f9958fe",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/freetype/PCF-LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/freetype/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler",
+        "Description": "FreeType is a freely available software library to render fonts.",
+        "Homepage": "http://www.freetype.org",
+        "Id": "freetype-zlib",
+        "License": "zlib License",
+        "LicenseFile": "ZLIB-LICENSE.txt",
+        "LicenseId": "Zlib",
+        "Name": "Freetype 2 - zlib",
+        "Path": "src/gzip",
+        "QDocModule": "qtgui",
+        "QtUsage": "Optionally used in Qt GUI and platform plugins. Configure with -no-freetype, or -system-freetype to avoid."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/freetype/ZLIB-LICENSE.txt",
+          "sha256": "2b1f5d615382a151af3eb71462ad17d89e2efee8fa7664058d35d3d9237ebb19",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/freetype/ZLIB-LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/freetype/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:harfbuzz_project:harfbuzz:$<VERSION>:*:*:*:*:*:*:*",
+        "Copyright": [
+          "Copyright © 2010-2022  Google, Inc.",
+          "Copyright © 2015-2020  Ebrahim Byagowi",
+          "Copyright © 2019,2020  Facebook, Inc.",
+          "Copyright © 2012,2015  Mozilla Foundation",
+          "Copyright © 2011  Codethink Limited",
+          "Copyright © 2008,2010  Nokia Corporation and/or its subsidiary(-ies)",
+          "Copyright © 2009  Keith Stribley",
+          "Copyright © 2011  Martin Hosken and SIL International",
+          "Copyright © 2007  Chris Wilson",
+          "Copyright © 2005,2006,2020,2021,2022,2023  Behdad Esfahbod",
+          "Copyright © 2004,2007,2008,2009,2010,2013,2021,2022,2023  Red Hat, Inc.",
+          "Copyright © 1998-2005  David Turner and Werner Lemberg",
+          "Copyright © 2016  Igalia S.L.",
+          "Copyright © 2022  Matthias Clasen",
+          "Copyright © 2018,2021  Khaled Hosny",
+          "Copyright © 2018,2019,2020  Adobe, Inc",
+          "Copyright © 2013-2015  Alexei Podtelezhnikov"
+        ],
+        "Description": "HarfBuzz is an OpenType text shaping engine.",
+        "DownloadLocation": "https://github.com/harfbuzz/harfbuzz/releases/tag/14.2.0",
+        "Homepage": "http://harfbuzz.org",
+        "Id": "harfbuzz-ng",
+        "License": "MIT License",
+        "LicenseFile": "COPYING",
+        "LicenseId": "MIT",
+        "Name": "HarfBuzz-NG",
+        "PURL": "pkg:github/harfbuzz/harfbuzz@$<VERSION>",
+        "QDocModule": "qtgui",
+        "QtUsage": "Optionally used in Qt GUI. Configure with -system-harfbuzz to force the use of the system library, or -qt-harfbuzz to link statically to the library that is bundled with your Qt version.",
+        "SecurityCritical": true,
+        "Version": "14.2.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/harfbuzz-ng/COPYING",
+          "sha256": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/harfbuzz-ng/COPYING"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/harfbuzz-ng/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No upstream: treat as final, no relevant CPE found",
+        "Copyright": "Copyright International Color Consortium, 2015",
+        "Description": "An ICC color profile for PDF/A-1b compatible PDF files.",
+        "Files": "sRGB2014.icc",
+        "Homepage": "http://www.color.org/",
+        "Id": "icc-srgb-color-profile",
+        "License": "International Color Consortium License",
+        "LicenseFile": "LICENSE.txt",
+        "LicenseId": "LicenseRef-ICC-License",
+        "Name": "sRGB color profile icc file",
+        "PURL": "pkg:generic/icc-sRGB-color-profile?download_url=http://www.color.org/",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used in Qt Gui (Embedded into PDF/A-1b files generated by QPrinter/QPdfWriter)."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/icc/LICENSE.txt",
+          "sha256": "9e34ff47b3a44814e183342e7e198d127a6740e29d20e8381fba7688dafc79dd",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/icc/LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/icc/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:libjpeg-turbo:libjpeg-turbo:$<VERSION>:*:*:*:*:*:*:*",
+        "CopyrightFile": "COPYRIGHT.txt",
+        "Description": "The Independent JPEG Group's JPEG software",
+        "DownloadLocation": "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.4/libjpeg-turbo-3.1.4.tar.gz",
+        "Homepage": "http://libjpeg-turbo.virtualgl.org/",
+        "Id": "libjpeg",
+        "License": "Independent JPEG Group License and BSD 3-Clause \"New\" or \"Revised\" License",
+        "LicenseFiles": [
+          "LICENSE",
+          "ijg-license.txt"
+        ],
+        "LicenseId": "IJG AND BSD-3-Clause",
+        "Name": "LibJPEG-turbo",
+        "PURL": "pkg:github/libjpeg-turbo/libjpeg-turbo@$<VERSION>",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used in the qjpeg image plugin. Configure with -system-libjpeg or -no-libjpeg to avoid.",
+        "SecurityCritical": true,
+        "Version": "3.1.4"
+      },
+      "legal_files": [
+        {
+          "kind": "CopyrightFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/libjpeg/COPYRIGHT.txt",
+          "sha256": "67464ebd2f477d2f631234df7761ab578a17a07ea96fc9174c99638b9cefff6a",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/libjpeg/COPYRIGHT.txt"
+        },
+        {
+          "kind": "LicenseFiles",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/libjpeg/LICENSE",
+          "sha256": "e10114e6e40f3d0311c401ca25245ac5ef459a43c20f976fd63f03e816f5741f",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/libjpeg/LICENSE"
+        },
+        {
+          "kind": "LicenseFiles",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/libjpeg/ijg-license.txt",
+          "sha256": "1cb448f5e2e6d3aca60943f4eee1a04675628dc0266a074a42bc1560ebc28d61",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/libjpeg/ijg-license.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/libjpeg/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:libpng:libpng:$<VERSION>:*:*:*:*:*:*:*",
+        "Copyright": [
+          "Copyright (c) 1995-2026 The PNG Reference Library Authors",
+          "Copyright (c) 2000-2026 Cosmin Truta",
+          "Copyright (c) 1998-2018 Glenn Randers-Pehrson",
+          "Copyright (c) 1996-1997 Andreas Dilger",
+          "Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.",
+          "Copyright (c) 2000-2017 Simon-Pierre Cadieux",
+          "Copyright (c) 2000-2017 Eric S. Raymond",
+          "Copyright (c) 2000-2017 Mans Rullgard",
+          "Copyright (c) 2000-2017 Gilles Vollant",
+          "Copyright (c) 2000-2017 James Yu",
+          "Copyright (c) 2000-2017 Mandar Sahastrabuddhe",
+          "Copyright (c) 1998-2000 Tom Lane",
+          "Copyright (c) 1998-2000 Willem van Schaik",
+          "Copyright (c) 1996-1997 John Bowler",
+          "Copyright (c) 1996-1997 Kevin Bracey",
+          "Copyright (c) 1996-1997 Sam Bushell",
+          "Copyright (c) 1996-1997 Magnus Holmgren",
+          "Copyright (c) 1996-1997 Greg Roelofs",
+          "Copyright (c) 1996-1997 Tom Tanner",
+          "Copyright (c) 1995-1996 Dave Martindale",
+          "Copyright (c) 1995-1996 Paul Schmidt",
+          "Copyright (c) 1995-1996 Tim Wegner"
+        ],
+        "Description": "libpng is the official PNG reference library.",
+        "DownloadLocation": "https://download.sourceforge.net/libpng/libpng-1.6.58.tar.xz",
+        "Homepage": "http://www.libpng.org/pub/png/libpng.html",
+        "Id": "libpng",
+        "License": "libpng License and PNG Reference Library version 2",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "Libpng AND libpng-2.0",
+        "Name": "LibPNG",
+        "PURL": "pkg:github/pnggroup/libpng@v$<VERSION>",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used in the qpng image plugin. Configure with -system-libpng or -no-libpng to avoid.",
+        "SecurityCritical": true,
+        "Version": "1.6.58"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/libpng/LICENSE",
+          "sha256": "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/libpng/LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/libpng/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright 2014-2016 The Chromium Authors. All rights reserved.",
+        "Description": "Libpsl allows checking domains against the Public Suffix List.",
+        "Files": [
+          "src/lookup_string_in_fixed_set.c",
+          "src/psl-make-dafsa"
+        ],
+        "Homepage": "https://github.com/rockdaboot/libpsl",
+        "Id": "libpsl",
+        "License": "BSD 3-clause \"New\" or \"Revised\" License",
+        "LicenseFile": "src/LICENSE.chromium",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "libpsl - C library to handle the Public Suffix List",
+        "PURL": "pkg:github/rockdaboot/libpsl@$<VERSION>",
+        "QDocModule": "qtnetwork",
+        "QtUsage": "Used to compress the embedded copy of publicsuffix list and\nto lookup entries in it.",
+        "Version": "664f3dc85259ec65e30248a61fa1c45b7b0e4c3f"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/libpsl/src/LICENSE.chromium",
+          "sha256": "1d7f52747a9169751cdf2641a8299c0098e9ecdf9429296ffd55bdb14c9ed5b3",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/libpsl/src/LICENSE.chromium"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/libpsl/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "Updated by util/update_public_suffix_list.sh; if you add fields here, update the script, too!",
+        "Copyright": "The list was originally provided by Jo Hermans <jo.hermans@gmail.com>.\nIt is now maintained on github (https://github.com/publicsuffix/list).",
+        "Description": "The Public Suffix List is an initiative of Mozilla,\nbut is maintained as a community resource. It is available for use in any software,\nbut was originally created to meet the needs of browser manufacturers.\nIt allows browsers to, for example:\n\n- Avoid privacy-damaging \"supercookies\" being set for high-level domain name suffixes\n\n- Highlight the most important part of a domain name in the user interface\n\n- Accurately sort history entries by site",
+        "DownloadLocation": "https://publicsuffix.org/list/public_suffix_list.dat",
+        "Files": "psl_data.cpp",
+        "Homepage": "http://publicsuffix.org/",
+        "Id": "psl-data",
+        "License": "Mozilla Public License 2.0",
+        "LicenseFile": "PSL-LICENSE.txt",
+        "LicenseId": "MPL-2.0",
+        "Name": "The Public Suffix List",
+        "PURL": "pkg:generic/psl-data@944fb53321606f08740f04ef7c386f64df34ff76?download_url=https://publicsuffix.org/list/public_suffix_list.dat",
+        "QDocModule": "qtnetwork",
+        "QtUsage": "Used in Qt Network to avoid setting \"supercookies\" in the cookie jar\nsupported by Qt (by the QNetworkCookieJar class).",
+        "Version": "2026-01-16_13-11-47_UTC"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/libpsl/PSL-LICENSE.txt",
+          "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/libpsl/PSL-LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/libpsl/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "Treat as final version; no upstream known, no relevant CPE or PURL found",
+        "Copyright": "Written by Alexander Peslyak - better known as Solar Designer <solar@openwall.com> - in 2001, and placed in the public domain. There's absolutely no warranty.",
+        "Description": "An OpenSSL-compatible implementation of the RSA Data Security, Inc. MD4 Message-Digest Algorithm.",
+        "Id": "md4",
+        "License": "Public Domain",
+        "LicenseId": "CC0-1.0",
+        "Name": "MD4",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QCryptographicHash)."
+      },
+      "legal_files": [],
+      "source_path": "qtbase/src/3rdparty/md4/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:md4c_project:md4c:$<VERSION>:*:*:*:*:*:*:*",
+        "Copyright": "Copyright © 2016-2024 Martin Mitáš",
+        "Description": "A CommonMark-compliant Markdown parser.",
+        "DownloadLocation": "https://github.com/mity/md4c/releases/tag/release-0.5.2",
+        "Homepage": "https://github.com/mity/md4c",
+        "Id": "md4c",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.md",
+        "LicenseId": "MIT",
+        "Name": "MD4C",
+        "PURL": "pkg:github/mity/md4c@release-$<VERSION>",
+        "QDocModule": "qtgui",
+        "QtUsage": "Optionally used in QTextDocument if configured with textmarkdownreader.",
+        "SecurityCritical": true,
+        "Version": "0.5.2"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/md4c/LICENSE.md",
+          "sha256": "d30937367d5413e7eaa218b1640b8946ff76fd34d97152f6979fd96169d5d0fc",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/md4c/LICENSE.md"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/md4c/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "Treat as final version; no upstream known, no relevant CPE or PURL found",
+        "Copyright": "Written by Colin Plumb in 1993, no copyright is claimed. Ian Jackson <ian@chiark.greenend.org.uk>.",
+        "Description": "MD5 message-digest algorithm.",
+        "Id": "md5",
+        "License": "Public Domain",
+        "LicenseId": "CC0-1.0",
+        "Name": "MD5",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QCryptographicHash)."
+      },
+      "legal_files": [],
+      "source_path": "qtbase/src/3rdparty/md5/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:pcre:pcre2:$<VERSION>:*:*:*:*:*:*:*",
+        "Copyright": [
+          "Copyright (c) 1997-2007 University of Cambridge",
+          "Copyright (c) 2007-2024 Philip Hazel",
+          "Copyright (c) 2010-2024 Zoltan Herczeg"
+        ],
+        "Description": "The PCRE library is a set of functions that implement regular expression pattern matching using the same syntax and semantics as Perl 5.",
+        "DownloadLocation": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.bz2",
+        "Homepage": "http://www.pcre.org/",
+        "Id": "pcre2",
+        "License": "BSD 3-clause \"New\" or \"Revised\" License with PCRE2 binary-like Packages Exception",
+        "LicenseFile": "LICENCE.md",
+        "LicenseId": "LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception",
+        "Name": "PCRE2",
+        "PURL": "pkg:github/PCRE2Project/pcre2@pcre2-$<VERSION>",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QRegularExpression).",
+        "SecurityCritical": true,
+        "Version": "10.47"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/pcre2/LICENCE.md",
+          "sha256": "197d8a73ffee0d6b09adba2f9c677b5f5aede24edf89258a68e48248d010d811",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/pcre2/LICENCE.md"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/pcre2/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:pcre:pcre2:$<VERSION>:*:*:*:*:*:*:*",
+        "Copyright": "Copyright Zoltan Herczeg",
+        "Description": "The PCRE library is a set of functions that implement regular expression pattern matching using the same syntax and semantics as Perl 5.",
+        "DownloadLocation": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.bz2",
+        "Homepage": "http://www.pcre.org/",
+        "Id": "pcre2-sljit",
+        "License": "BSD 2-clause \"Simplified\" License",
+        "LicenseFile": "LICENSE-SLJIT",
+        "LicenseId": "BSD-2-Clause",
+        "Name": "PCRE2 - Stack-less Just-In-Time Compiler",
+        "PURL": "pkg:github/PCRE2Project/pcre2@pcre2-$<VERSION>",
+        "Path": "deps/sljit",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QRegularExpression).",
+        "Version": "10.47"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/pcre2/LICENSE-SLJIT",
+          "sha256": "5f216505c0f6ea3273caec89e766eef93cdeb7bbb0c429f9360116d7c938feeb",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/pcre2/LICENSE-SLJIT"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/pcre2/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright © 2009 Nokia Corporation",
+        "Description": "pixman is a library that provides low-level pixel manipulation features such as image compositing and trapezoid rasterization.",
+        "Homepage": "http://www.pixman.org/",
+        "Id": "pixman",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "MIT",
+        "Name": "Pixman",
+        "PURL": "pkg:generic/pixman@$<VERSION>?download_url=http://www.pixman.org/",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used in Qt GUI on ARM NEON.",
+        "Version": "0.17.12"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/pixman/LICENSE",
+          "sha256": "942c4f2a80394d3f53599b8382e9f27349b95c45d92b69b84f26d404f4dd74a5",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/pixman/LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/pixman/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "The RFC actually contains the code, embedded in RFC-boilerplate; presumably we extracted it; treat as final, no relevant CPE or PURL found",
+        "Copyright": "Copyright (c) 2011 IETF Trust and the persons identified as authors of the code.",
+        "Description": "Implements the Secure Hash Algorithms SHA 384 and SHA-521",
+        "Id": "rfc6234",
+        "License": "BSD 3-clause \"New\" or \"Revised\" License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "Secure Hash Algorithms SHA-384 and SHA-512",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QCryptographicHash and QMessageAuthenticationCode)"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/rfc6234/LICENSE",
+          "sha256": "7ccebd514aaabc86192f957d773cebf06577c12fe9f25ecd419c6cac5da7a14c",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/rfc6234/LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/rfc6234/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": [
+          "Copyright (C) Dominik Reichl <dominik.reichl@t-online.de>",
+          "Copyright (C) 2016 The Qt Company Ltd"
+        ],
+        "Description": "Implements the Secure Hash Algorithms SHA 1",
+        "Homepage": "http://www.dominik-reichl.de/projects/csha1/",
+        "Id": "sha1",
+        "License": "Public Domain",
+        "LicenseId": "LicenseRef-SHA1-Public-Domain",
+        "Name": "Secure Hash Algorithm SHA-1",
+        "PURL": "pkg:generic/csha1?download_url=https://www.dominik-reichl.de/projects/csha1/",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QCryptographicHash)."
+      },
+      "legal_files": [],
+      "source_path": "qtbase/src/3rdparty/sha1/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright (c) 1998-2013, Brian Gladman, Worcester, UK. All rights reserved.",
+        "Description": "SHA-3, originally known as Keccak, is a cryptographic hash function.",
+        "Files": "brg_endian.h",
+        "Id": "sha3_endian",
+        "License": "BSD 2-clause \"Simplified\" License",
+        "LicenseFile": "BRG_ENDIAN_LICENSE",
+        "LicenseId": "BSD-2-Clause",
+        "Name": "Secure Hash Algorithm SHA-3 - brg_endian",
+        "PURL": "pkg:github/BrianGladman/sha@$<VERSION>",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QCryptographicHash).",
+        "Version": "1.0.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/sha3/BRG_ENDIAN_LICENSE",
+          "sha256": "2fed6f252ca4a7e813811de3cd3cd08183edd4138bdee909410ef6eee394e82c",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/sha3/BRG_ENDIAN_LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/sha3/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Guido Bertoni, Joan Daemen, Michaël Peeters and Gilles Van Assche.\nTo the extent possible under law, the implementers have waived all copyright\nand related or neighboring rights to the source code in this file.",
+        "Description": "SHA-3, originally known as Keccak, is a cryptographic hash function.",
+        "Files": [
+          "KeccakF-1600-32-rvk.macros",
+          "KeccakF-1600-32.macros",
+          "KeccakF-1600-64.macros",
+          "KeccakF-1600-interface.h",
+          "KeccakF-1600-opt32.c",
+          "KeccakF-1600-opt64.c",
+          "KeccakF-1600-unrolling.macros",
+          "KeccakNISTInterface.c",
+          "KeccakNISTInterface.h",
+          "KeccakSponge.c",
+          "KeccakSponge.h"
+        ],
+        "Id": "sha3_keccak",
+        "License": "Creative Commons Zero v1.0 Universal",
+        "LicenseFile": "CC0_LICENSE",
+        "LicenseId": "CC0-1.0",
+        "Name": "Secure Hash Algorithm SHA-3 - Keccak",
+        "PURL": "pkg:generic/sha3_keccak@$<VERSION>?download_url=https://keccak.team/obsolete/KeccakReferenceAndOptimized-3.2.zip",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QCryptographicHash).",
+        "Version": "3.2"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/sha3/CC0_LICENSE",
+          "sha256": "1f2786e2c5befeb4dcba6638db6528bf96ef5d2cf24bc85ab5a81ef00abef59d",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/sha3/CC0_LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/sha3/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": [
+          "Copyright (C) 2012-2014 Jean-Philippe Aumasson",
+          "Copyright (C) 2012-2014 Daniel J. Bernstein <djb@cr.yp.to>",
+          "Copyright (C) 2016 Intel Corporation"
+        ],
+        "Description": "Implements the SipHash algorithm.",
+        "DownloadLocation": "https://raw.githubusercontent.com/veorq/SipHash/adcbf09b1684a718f594faa650ffc56bacdb0777/siphash24.c",
+        "Files": "siphash.cpp",
+        "Homepage": "https://131002.net/siphash/",
+        "Id": "siphash",
+        "License": "Creative Commons Zero v1.0 Universal",
+        "LicenseId": "CC0-1.0",
+        "Name": "SipHash Algorithm",
+        "PURL": "pkg:github/veorq/SipHash@adcbf09b1684a718f594faa650ffc56bacdb0777",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QHash)"
+      },
+      "legal_files": [],
+      "source_path": "qtbase/src/3rdparty/siphash/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:sqlite:sqlite:$<VERSION>:*:*:*:*:*:*:*",
+        "Copyright": "The authors disclaim copyright to the source code. However, a license can be obtained if needed.",
+        "Description": "SQLite is a small C library that implements a self-contained, embeddable, zero-configuration SQL database engine.",
+        "DownloadLocation": "https://www.sqlite.org/2026/sqlite-amalgamation-3530000.zip",
+        "Homepage": "https://www.sqlite.org/",
+        "Id": "sqlite",
+        "License": "SQLite Blessing",
+        "LicenseId": "blessing",
+        "Name": "SQLite",
+        "PURL": "pkg:github/sqlite/sqlite@version-$<VERSION>",
+        "QDocModule": "qtsql",
+        "QtUsage": "Used in Qt SQL Lite plugin. Configure Qt with -system-sqlite or -no-sqlite to avoid.",
+        "SecurityCritical": true,
+        "Version": "3.53.0"
+      },
+      "legal_files": [],
+      "source_path": "qtbase/src/3rdparty/sqlite/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:tinycbor:tinycbor:$<VERSION>:*:*:*:*:*:*:*",
+        "Copyright": "Copyright (C) 2015-2025 Intel Corporation",
+        "Description": "Concise Binary Object Representation (CBOR) Library",
+        "DownloadLocation": "https://github.com/intel/tinycbor/archive/v7.0/tinycbor-7.0.tar.gz",
+        "Homepage": "https://github.com/intel/tinycbor",
+        "Id": "tinycbor",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "MIT",
+        "Name": "TinyCBOR",
+        "PURL": "pkg:github/intel/tinycbor@v$<VERSION>",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used for QCborStreamReader and QCborStreamWriter.",
+        "SecurityCritical": true,
+        "Version": "7.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/tinycbor/LICENSE",
+          "sha256": "3c6ba0b5bfa7830505301ffb336a17b0748e0d61c4d34216e9dc98f10e40395e",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/tinycbor/LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/tinycbor/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright 2019 Sebastian Wick\nCopyright 2019 Erwin Burema\nCopyright 2020 AMD\nCopyright 2020-2024 Collabora, Ltd.\nCopyright 2024 Xaver Hugl\nCopyright 2022-2025 Red Hat, Inc.",
+        "Description": "An extension to use different colorspaces from sRGB",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/1.45/staging/color-management/color-management-v1.xml",
+        "Files": "color-management-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-color-management-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Color Management Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin.",
+        "Version": "1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/color-management/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2022 Kenny Levinsen",
+        "Description": "Send a preferred scale to different clients",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/1.31/unstable/fractional-scale/fractional-scale-v1.xml",
+        "Files": "fractional-scale-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "fractional-scale-v1",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Fractional Scale Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin",
+        "Version": "1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/fractional-scale/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2016 Yong Bakos\nCopyright © 2015 Jason Ekstrand\nCopyright © 2015 Jonas Ådahl",
+        "Description": "A Wayland shell for displaying a single surface per output",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/unstable/fullscreen-shell/fullscreen-shell-unstable-v1.xml",
+        "Files": "fullscreen-shell-unstable-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-fullscreen-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Fullscreen Shell Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin.",
+        "Version": "unstable v1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/fullscreen-shell/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2014, 2015 Collabora, Ltd.",
+        "Description": "The linux dmabuf protocol is a way to create dmabuf-based wl_buffers",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml",
+        "Files": "linux-dmabuf-unstable-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-linux-dmabuf-unstable-v1",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Linux Dmabuf Unstable V1 Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor",
+        "Version": "unstable v1, version 3"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/linux-dmabuf/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2015, 2016 Red Hat",
+        "Description": "",
+        "DownloadLocation": "https://cgit.freedesktop.org/wayland/wayland-protocols/plain/unstable/pointer-gestures/pointer-gestures-unstable-v1.xml",
+        "Files": "pointer-gestures-unstable-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-pointer-gestures-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Pointer Gestures Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin",
+        "Version": "unstable v1, version 2"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/pointer-gestures/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2024 Neal Gompa\nCopyright © 2024 Xaver Hugl\nCopyright © 2024 Matthias Klumpp\nCopyright © 2024 Vlad Zahorodnii",
+        "Description": "",
+        "DownloadLocation": "https://cgit.freedesktop.org/wayland/wayland-protocols/plain/staging/pointer-warp/pointer-warp-v1.xml",
+        "Files": "pointer-warp-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-pointer-warp-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Pointer Warp Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin",
+        "Version": "version 1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/pointer-warp/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2013, 2014 Collabora, Ltd.",
+        "Description": "The presentaton time protocol is a way to get presentation timing feedback.",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/stable/presentation-time/presentation-time.xml",
+        "Files": "presentation-time.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "presentation-time.xml",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Presentation Time Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor",
+        "Version": "1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/presentation-time/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2013-2014 Collabora, Ltd.",
+        "Description": "The Wayland scaler extension allows a client to scale or crop a surface without modifying the buffer",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/weston/raw/1.11/protocol/scaler.xml",
+        "Files": "scaler.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-scaler-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Scaler Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor API",
+        "Version": "2"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/scaler/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright 2018 Mike Blumenkrantz\nCopyright 2018 Samsung Electronics Co., Ltd\nCopyright 2018 Red Hat Inc.",
+        "Description": "An extension to restore window positions",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/experimental/xx-session-management/xx-session-management-v1.xml?ref_type=heads",
+        "Files": "xx-session-management-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-session-management-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Session Management Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin.",
+        "Version": "experimental V1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/session-management/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright 2014 © Stephen \"Lyude\" Chandler Paul\nCopyright 2015-2016 © Red Hat, Inc.",
+        "Description": "",
+        "DownloadLocation": "https://cgit.freedesktop.org/wayland/wayland-protocols/plain/unstable/tablet/tablet-unstable-v2.xml",
+        "Files": "tablet-unstable-v2.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-tablet-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Tablet Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin",
+        "Version": "unstable v2, version 1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/tablet/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2012, 2013 Intel Corporation",
+        "Description": "Adds support for text input and input methods to applications running on Wayland servers that only support text-input-unstable-v1.",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/unstable/text-input/text-input-unstable-v1.xml",
+        "Files": "text-input-unstable-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-text-input-unstable-v1",
+        "License": "MIT License",
+        "LicenseFile": "../../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Text Input Protocol v1",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin",
+        "Version": "unstable v1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/text-input/v1/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2012, 2013 Intel Corporation\nCopyright © 2015, 2016 Jan Arne Petersen",
+        "Description": "Adds support for text input and input methods to applications.",
+        "Files": "text-input-unstable-v2.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-text-input-unstable-v2",
+        "License": "HPND License",
+        "LicenseFile": "HPND_LICENSE.txt",
+        "LicenseId": "HPND",
+        "Name": "Wayland Text Input Protocol v2",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor, and the Qt Wayland platform plugin.",
+        "Version": "unstable v2"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/text-input/v2/HPND_LICENSE.txt",
+          "sha256": "8172d52f3b7bba7d10af2f9134c63d0f699ba6b20a47e35f5ac45654c500bfd7",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/text-input/v2/HPND_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/text-input/v2/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2012, 2013 Intel Corporation\nCopyright © 2015, 2016 Jan Arne Petersen\nCopyright © 2017, 2018 Red Hat, Inc.\nCopyright © 2018       Purism SPC",
+        "Description": "Adds support for compositors to act as input methods and send text to applications.",
+        "DownloadLocation": "https://cgit.freedesktop.org/wayland/wayland-protocols/plain/unstable/text-input/text-input-unstable-v3.xml",
+        "Files": "text-input-unstable-v3.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-text-input-unstable-v3",
+        "License": "MIT License",
+        "LicenseFile": "../../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Text Input Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor, and the Qt Wayland platform plugin.",
+        "Version": "unstable v3"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/text-input/v3/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2013-2016 Collabora, Ltd.",
+        "Description": "The Wayland viewporter extension allows a client to scale or crop a surface without modifying the buffer",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/stable/viewporter/viewporter.xml",
+        "Files": "viewporter.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-viewporter-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Viewporter Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor API",
+        "Version": "1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/viewporter/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2008-2011 Kristian Høgsberg\nCopyright © 2010-2011 Intel Corporation\nCopyright © 2012-2013 Collabora, Ltd.",
+        "Description": "Wayland is a protocol for a compositor to talk to its clients.",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland/raw/1.24.0/protocol/wayland.xml",
+        "Files": "wayland.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor, and the Qt Wayland platform plugin.",
+        "Version": "1.24.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/wayland/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.",
+        "Description": "Allows clients to request that the compositor creates its EGLStream.",
+        "DownloadLocation": "https://raw.githubusercontent.com/NVIDIA/egl-wayland/1.1.1/wayland-eglstream/wayland-eglstream-controller.xml",
+        "Files": "wl-eglstream-controller.xml",
+        "Homepage": "https://github.com/NVIDIA/egl-wayland",
+        "Id": "wayland-eglstream-controller",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland EGLStream Controller Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor",
+        "Version": "1.1.1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/wl-eglstream/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2018 Simon Ser\nCopyright © 2019 Ivan Molodetskikht",
+        "Description": "This protocol allows a privileged client to control data devices.",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wlroots/wlr-protocols/-/raw/master/unstable/wlr-data-control-unstable-v1.xml",
+        "Files": "wlr-data-control-unstable-v1.xml",
+        "Homepage": "https://gitlab.freedesktop.org/wlroots/wlr-protocols/",
+        "Id": "wlr-data-control-unstable-v1-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wlr Data Control Unstable V1 Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin",
+        "Version": "2"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/wlr-data-control/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2015, 2016 Red Hat",
+        "Description": "The primary selection extension allows copying text by selecting it and pasting it with the middle mouse button.",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/unstable/primary-selection/primary-selection-unstable-v1.xml",
+        "Files": "wp-primary-selection-unstable-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-primary-selection-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Primary Selection Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin",
+        "Version": "1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/wp-primary-selection/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2020 Aleix Pol Gonzalez &lt;aleixpol@kde.org&gt;\nCopyright © 2020 Carlos Garnacho &lt;carlosg@gnome.org&gt;",
+        "Description": "The xdg-activation protocol provides a way for one client to pass focus to another.",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/staging/xdg-activation/xdg-activation-v1.xml",
+        "Files": "xdg-activation-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-xdg-activation",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland xdg-activation Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin",
+        "Version": "unstable v1, version 1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/xdg-activation/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2018 Simon Ser",
+        "Description": "The xdg-decoration protocol allows a compositor to announce support for server-side decorations.",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml",
+        "Files": "xdg-decoration-unstable-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-xdg-decoration-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland xdg-decoration Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor API, and the Qt Wayland platform plugin.",
+        "Version": "unstable v1, version 1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/xdg-decoration/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2023 Carlos Garnacho",
+        "Description": "Register toplevel as dialogs",
+        "DownloadLocation": "",
+        "Files": "xdg-dialog-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "xdg-dialog-v1",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland Dialog Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin",
+        "Version": "1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/xdg-dialog/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2015-2016 Red Hat Inc.",
+        "Description": "Allows referencing surfaces of different clients",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/1.25/unstable/xdg-foreign/xdg-foreign-unstable-v2.xml",
+        "Files": "xdg-foreign-unstable-v2.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "xdg-foreign-unstable-v2",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland XDG Foreign Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland platform plugin",
+        "Version": "1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/xdg-foreign/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2017 Red Hat Inc.",
+        "Description": "The XDG Output protocol is an extended way to describe output regions under Wayland",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.18/unstable/xdg-output/xdg-output-unstable-v1.xml",
+        "Files": "xdg-output-unstable-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-xdg-output-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland XDG Output Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor API, and the Qt Wayland platform plugin.",
+        "Version": "unstable v1, version 3"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/xdg-output/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2008-2013 Kristian Høgsberg\nCopyright © 2013      Rafael Antognolli\nCopyright © 2013      Jasper St. Pierre\nCopyright © 2010-2013 Intel Corporation\nCopyright © 2015-2017 Samsung Electronics Co., Ltd\nCopyright © 2015-2017 Red Hat Inc.\n",
+        "Description": "The XDG-Shell protocol is an extended way to manage surfaces under Wayland compositors.",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/tree/1.18/",
+        "Files": "xdg-shell.xml",
+        "Homepage": "https://gitlab.freedesktop.org/wayland/wayland-protocols/",
+        "Id": "wayland-xdg-shell-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland XDG Shell Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor, and the Qt Wayland platform plugin.",
+        "Version": "1.18"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/xdg-shell/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2016, 2023 Red Hat\n",
+        "Description": "The XDG-System-Bell protocol provides a mechanism for apps to provide visual notification feedback through the compositor.",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/tree/1.38/",
+        "Files": "xdg-system-bell-v1.xml",
+        "Homepage": "https://gitlab.freedesktop.org/wayland/wayland-protocols/",
+        "Id": "wayland-xdg-system-bell-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland XDG System Bell Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor, and the Qt Wayland platform plugin.",
+        "Version": "1.18"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/xdg-system-bell/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright © 2024 Matthias Klumpp 2024 David Edmundson",
+        "Description": "The xdg-toplevel-icon protocol allows a compositor to announce support for window icons.",
+        "DownloadLocation": "https://gitlab.freedesktop.org/wayland/wayland-protocols/raw/1.37/staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml",
+        "Files": "xdg-toplevel-icon-v1.xml",
+        "Homepage": "https://wayland.freedesktop.org",
+        "Id": "wayland-xdg-toplevel-icon-protocol",
+        "License": "MIT License",
+        "LicenseFile": "../MIT_LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland xdg-toplevel-icon Protocol",
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor API, and the Qt Wayland platform plugin.",
+        "Version": "version 1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt",
+          "sha256": "a8341b9c90ef447a77f55d550e6691e370d3ac15d60edb584def356e348ab828",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/wayland/protocols/MIT_LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/wayland/protocols/xdg-toplevel-icon/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": [
+          "Copyright (C) 2001-2006 Bart Massey, Jamey Sharp, and Josh Triplett.",
+          "Copyright (C) 2006 Peter Hutterer",
+          "Copyright (C) 2013 Daniel Martin"
+        ],
+        "Description": "XInput 2 extension for XCB (The X protocol C-language Binding) library.",
+        "Homepage": "https://xcb.freedesktop.org/",
+        "Id": "xcb-xinput",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "MIT",
+        "Name": "XCB-XInput",
+        "PURL": "pkg:generic/xcb-xinput?download_url=http://xcb.freedesktop.org/",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used in XCB platform plugin if xcb-xinput was not present on the system\n during Qt configuration or -bundled-xcb-xinput switch was used. To force using xcb-xinput from\n the system, pass -no-bundled-xcb-xinput."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/xcb/LICENSE",
+          "sha256": "82775191bc05f85b40404d77bb69b1edeaeb4033f48387e9e5eab4dd67f5d6f1",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/xcb/LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/xcb/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:zlib:zlib:$<VERSION>:*:*:*:*:*:*:*",
+        "Copyright": "(C) 1995-2026 Jean-loup Gailly and Mark Adler",
+        "Description": "zlib is a general purpose data compression library.",
+        "DownloadLocation": "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz",
+        "Homepage": "https://zlib.net/",
+        "Id": "zlib",
+        "License": "zlib License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "Zlib",
+        "Name": "Data Compression Library (zlib)",
+        "PURL": "pkg:github/madler/zlib@v$<VERSION>",
+        "QDocModule": "qtcore",
+        "QtUsage": "Optionally used in Qt Core and development tools. Configure with -system-zlib to avoid.",
+        "SecurityCritical": true,
+        "Version": "1.3.2"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/zlib/LICENSE",
+          "sha256": "d7e3139972874dc8abdbbfce27ec1e6f942b28279dd7d27453630a8b4610e080",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/zlib/LICENSE"
+        }
+      ],
+      "source_path": "qtbase/src/3rdparty/zlib/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "To the extent possible under law, Sy Brand has waived all copyright and related or neighboring rights to the expected library. This work is published from: United Kingdom.",
+        "Description": "Single header implementation of std::expected with functional-style extensions.",
+        "DownloadLocation": "https://github.com/TartanLlama/expected/blob/41d3e1f48d682992a2230b2a715bca38b848b269/include/tl/expected.hpp",
+        "Files": [
+          "qexpected_p.h"
+        ],
+        "Homepage": "https://github.com/TartanLlama/expected/",
+        "Id": "tlexpected",
+        "License": "Creative Commons Zero v1.0 Universal",
+        "LicenseId": "CC0-1.0",
+        "Name": "tl::expected",
+        "QDocModule": "qtcore",
+        "QtUsage": "Available as a private type in all Qt modules",
+        "Version": "41d3e1f48d682992a2230b2a715bca38b848b269"
+      },
+      "legal_files": [],
+      "source_path": "qtbase/src/corelib/global/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "Treat as final version; no upstream known, no relevant CPE and PURL found",
+        "Copyright": "Copyright (c) 2007-2008, Apple, Inc.",
+        "Description": "Implementation of QAbstractEventDispatcher for macOS.",
+        "Files": "qeventdispatcher_cf_p.h",
+        "Id": "qeventdispatcher_cf",
+        "License": "BSD 3-clause \"New\" or \"Revised\" License",
+        "LicenseFile": "LICENSE.QEVENTDISPATCHER_CF.txt",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "QEventDispatcher on macOS",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core on macOS."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/corelib/kernel/LICENSE.QEVENTDISPATCHER_CF.txt",
+          "sha256": "e9e5b9f66d21c0e88a4179525ab39cd8d7eac9af78a8404f322c32b0874783d5",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/corelib/kernel/LICENSE.QEVENTDISPATCHER_CF.txt"
+        }
+      ],
+      "source_path": "qtbase/src/corelib/kernel/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:apache:tika:*:*:*:*:*:*:*:*",
+        "Comment": {
+          "Files": "For update, see qtbase/src/corelib/mimetypes/3rdparty/process_tika_mimetypes.py"
+        },
+        "Copyright": "Copyright 2026 The Apache Software Foundation",
+        "Description": "The Apache Tika MimeTypes list many known MIME types and how to match files (using globs and/or 'magic' rules for the file contents)",
+        "DownloadLocation": "https://github.com/apache/tika/blob/408c26e1e03e018a623e732dff6fb047a2fb8e19/tika-core/src/main/resources/org/apache/tika/mime/tika-mimetypes.xml",
+        "Files": [
+          "tika-mimetypes.xml"
+        ],
+        "Homepage": "https://github.com/apache/tika/tree/main/tika-core/src/main/resources/org/apache/tika/mime",
+        "Id": "tika-mimetypes",
+        "License": "Apache License 2.0",
+        "LicenseId": "Apache-2.0",
+        "Name": "Apache Tika MimeType Definitions",
+        "PURL": "pkg:github/apache/tika@$<VERSION>#tika-core/src/main/resources/org/apache/tika/mime/tika-mimetypes.xml",
+        "QDocModule": "qtcore",
+        "QtUsage": "Qt Core uses a copy of the Apache Tika MimeType Definitions if shared-mime-info isn't installed on the system.",
+        "Version": "408c26e1e03e018a623e732dff6fb047a2fb8e19"
+      },
+      "legal_files": [],
+      "source_path": "qtbase/src/corelib/mimetypes/3rdparty/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": {
+          "Version": [
+            "Don't use the Unicode standard version;",
+            "UCD has its own 'Revision' numbers",
+            "see the 'UAX #44, UCD' page (https://www.unicode.org/reports/tr44/)"
+          ]
+        },
+        "Copyright": "Copyright (C) 1991-2025 Unicode, Inc.",
+        "Description": "The Unicode Character Database (UCD) is a set of files that\n define the Unicode character properties and internal mappings.",
+        "Files": [
+          "qunicodetables_p.h",
+          "qunicodetables.cpp"
+        ],
+        "Homepage": "https://www.unicode.org/ucd/",
+        "Id": "unicode-character-database",
+        "License": "Unicode License Agreement - Data Files and Software (2016)",
+        "LicenseId": "Unicode-3.0",
+        "Name": "Unicode Character Database (UCD)",
+        "QDocModule": "qtcore",
+        "QtUsage": "Qt Core uses data obtained from UCD files for working with characters and strings.",
+        "SecurityCritical": false,
+        "Version": "36"
+      },
+      "legal_files": [],
+      "source_path": "qtbase/src/corelib/text/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": {
+          "Files": "For update, see qtbase/util/locale_database/cldr2qlocalexml.py",
+          "General": "no relevant CPE and PURL found"
+        },
+        "Copyright": "Copyright (C) 2004-2025 Unicode, Inc.",
+        "Description": "The Unicode CLDR provides key building blocks for software to support the\n world's languages, with the largest and most extensive standard repository of locale data\n available.",
+        "Files": [
+          "qlocale_data_p.h",
+          "../time/qtimezoneprivate_data_p.h",
+          "../time/qtimezonelocale_data_p.h",
+          "../time/qhijricalendar_data_p.h",
+          "../time/qjalalicalendar_data_p.h",
+          "../time/qromancalendar_data_p.h",
+          "../../../util/locale_database/testlocales/localemodel.cpp"
+        ],
+        "Homepage": "https://cldr.unicode.org/",
+        "Id": "unicode-cldr",
+        "License": "Unicode License v3",
+        "LicenseId": "Unicode-3.0",
+        "Name": "Unicode Common Locale Data Repository (CLDR)",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt Core (QTimeZone, QLocale).",
+        "SecurityCritical": false,
+        "Version": "v48.1"
+      },
+      "legal_files": [],
+      "source_path": "qtbase/src/corelib/text/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:freedesktop:dbus:$<VERSION>:*:*:*:*:*:*:*",
+        "Comment": "Fragments from various upstream files, see comments in ...",
+        "Copyright": [
+          "Copyright (C) 2002, 2003 CodeFactory AB",
+          "Copyright (C) 2004, 2005 Red Hat, Inc."
+        ],
+        "Description": "D-Bus is a message bus system, a simple way for applications to talk to one another.",
+        "Files": "dbus_minimal_p.h",
+        "Homepage": "https://www.freedesktop.org/wiki/Software/dbus/",
+        "Id": "libdbus-1-headers",
+        "License": "Academic Free License v2.1, or GNU General Public License v2.0 or later",
+        "LicenseFile": "LICENSE.LIBDBUS-1.txt",
+        "LicenseId": "AFL-2.1 OR GPL-2.0-or-later",
+        "Name": "libdbus-1 headers",
+        "PURL": "pkg:github/d-bus/dbus@dbus-$<VERSION>",
+        "QDocModule": "qtdbus",
+        "QtUsage": "Qt D-Bus uses constants and typedefs from libdbus-1 headers.",
+        "Version": "1.13.12"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/dbus/LICENSE.LIBDBUS-1.txt",
+          "sha256": "ad90aa08bb1a9b7056aa51e2e215b36630855457cde5dffd36aa0faa7b169f24",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/dbus/LICENSE.LIBDBUS-1.txt"
+        }
+      ],
+      "source_path": "qtbase/src/dbus/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright (c) 2013-2014 The Khronos Group Inc.",
+        "Description": "OpenGL ES 2 header generated from the Khronos OpenGL / OpenGL ES XML API Registry.",
+        "Files": "qopengles2ext.h",
+        "Homepage": "https://www.khronos.org/",
+        "Id": "opengl-es2-headers",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.KHRONOS.txt",
+        "LicenseId": "MIT",
+        "Name": "OpenGL ES 2 Headers",
+        "PURL": "pkg:generic/khronos-opengl-es2-headers?download_url=https://www.khronos.org/?revision=27673",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used on Windows and Linux in the OpenGL related headers of Qt GUI.",
+        "Version": "Revision 27673"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/gui/opengl/LICENSE.KHRONOS.txt",
+          "sha256": "2e484f3c26ff5008c704a3ca9dd809d43f24a004a1abb6c202660fbff0d19715",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/gui/opengl/LICENSE.KHRONOS.txt"
+        }
+      ],
+      "source_path": "qtbase/src/gui/opengl/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright (c) 2013-2014 The Khronos Group Inc.",
+        "Description": "OpenGL header generated from the Khronos OpenGL / OpenGL ES XML API Registry.",
+        "Files": "qopenglext.h",
+        "Homepage": "https://www.khronos.org/",
+        "Id": "opengl-headers",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.KHRONOS.txt",
+        "LicenseId": "MIT",
+        "Name": "OpenGL Headers",
+        "PURL": "pkg:generic/khronos-opengl-headers?download_url=https://www.khronos.org/?revision=27684",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used on Windows and Linux in the OpenGL related headers of Qt GUI.",
+        "Version": "Revision 27684"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/gui/opengl/LICENSE.KHRONOS.txt",
+          "sha256": "2e484f3c26ff5008c704a3ca9dd809d43f24a004a1abb6c202660fbff0d19715",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/gui/opengl/LICENSE.KHRONOS.txt"
+        }
+      ],
+      "source_path": "qtbase/src/gui/opengl/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright 2000-2016 by David Turner, Robert Wilhelm, and Werner Lemberg.",
+        "Description": "FreeType is a freely available software library to render fonts.",
+        "Files": "qgrayraster.c",
+        "Homepage": "http://www.freetype.org",
+        "Id": "grayraster",
+        "License": "Freetype Project License or GNU General Public License v2.0 only",
+        "LicenseFile": "../../3rdparty/freetype/LICENSE.txt",
+        "LicenseId": "FTL OR GPL-2.0-only",
+        "Name": "Anti-aliasing rasterizer from FreeType 2",
+        "PURL": "pkg:generic/freetype-grayraster?download_url=https://www.freetype.org/",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used in Qt GUI."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/3rdparty/freetype/LICENSE.txt",
+          "sha256": "bf543cdda11864477b8d2ca2aa9afc2aaa8f9133461b4d962ed6ec73646256a1",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/3rdparty/freetype/LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/gui/painting/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE or PURL found",
+        "Copyright": [
+          "Copyright (C) 2004, 2005 Daniel M. Duley.",
+          "(C) Carsten Haitzler and various contributors.",
+          "(C) Willem Monsuwe <willem@stack.nl>"
+        ],
+        "Description": "Normal smoothscale method, based on Imlib2's smoothscale.",
+        "Files": "qimagescale.cpp",
+        "Id": "smooth-scaling-algorithm",
+        "License": "BSD 2-clause \"Simplified\" License and Imlib2 License",
+        "LicenseFile": "LICENSE.QIMAGETRANSFORM.txt",
+        "LicenseId": "BSD-2-Clause AND Imlib2",
+        "Name": "Smooth Scaling Algorithm",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used in Qt Gui (QImage::transformed() functions)."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/gui/painting/LICENSE.QIMAGETRANSFORM.txt",
+          "sha256": "46b3cbfa2f2946b93291506351e9be1dd0a28d2a53260f5aa488abd36fbeca9d",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/gui/painting/LICENSE.QIMAGETRANSFORM.txt"
+        }
+      ],
+      "source_path": "qtbase/src/gui/painting/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": [
+          "Copyright (c) 1987, 1988 X Consortium",
+          "Copyright 1987, 1988 by Digital Equipment Corporation, Maynard, Massachusetts."
+        ],
+        "Description": "Code from X11's region.h, Region.c, poly.h, and PolyReg.c",
+        "Files": "qregion.cpp",
+        "Homepage": "https://www.x.org/",
+        "Id": "xserverhelper",
+        "License": "X11 License and Historical Permission Notice and Disclaimer",
+        "LicenseFile": "LICENSE.XCONSORTIUM.txt",
+        "LicenseId": "X11 AND HPND",
+        "Name": "X Server helper",
+        "PURL": "pkg:generic/xserverhelper?download_url=https://www.x.org/",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used in Qt GUI (QRegion)."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/gui/painting/LICENSE.XCONSORTIUM.txt",
+          "sha256": "a216b01291eb38fc1af93cfccf1fc67b48d9923612e517c2a695e95b3f03c22c",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/gui/painting/LICENSE.XCONSORTIUM.txt"
+        }
+      ],
+      "source_path": "qtbase/src/gui/painting/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright (c) 2015 Microsoft",
+        "Description": "Compute shader for mipmap generation from MiniEngine in DirectX-Graphics-Samples",
+        "Files": [
+          "mipmap.hlsl"
+        ],
+        "Homepage": "https://github.com/microsoft/DirectX-Graphics-Samples",
+        "Id": "rhi-miniengine-d3d12-mipmap",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.MiniEngine.txt",
+        "LicenseId": "MIT",
+        "Name": "Mipmap generator for D3D12",
+        "PURL": "pkg:github/microsoft/DirectX-Graphics-Samples@$<VERSION>",
+        "QDocModule": "qtgui",
+        "QtUsage": "Compute shader for mipmap generation with Direct 3D 12",
+        "Version": "0aa79bad78992da0b6a8279ddb9002c1753cb849"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/gui/rhi/LICENSE.MiniEngine.txt",
+          "sha256": "cf248820bf1178370bb4f1670a59f8748d46bc96d0f64080cd631511c6046409",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/gui/rhi/LICENSE.MiniEngine.txt"
+        }
+      ],
+      "source_path": "qtbase/src/gui/rhi/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright 2002, 2003, 2005, 2006, 2008, 2010, 2015 Adobe Systems",
+        "Description": "Provides standardized names for glyphs.",
+        "Files": "qfontsubset_agl.cpp",
+        "Homepage": "https://github.com/adobe-type-tools/agl-aglfn",
+        "Id": "aglfn",
+        "License": "BSD 3-Clause \"New\" or \"Revised\" License",
+        "LicenseFile": "LICENSE.AGLFN.txt",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "Adobe Glyph List For New Fonts",
+        "PURL": "pkg:github/adobe-type-tools/agl-aglfn@$<VERSION>",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used by PDF generator to make it easier for reader applications to resolve  the original contents of rendered text.",
+        "Version": "1.7"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/gui/text/LICENSE.AGLFN.txt",
+          "sha256": "40818155548ff41c67d3a40edf355e9658992b292c227f4c1147425cedc746c6",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/gui/text/LICENSE.AGLFN.txt"
+        }
+      ],
+      "source_path": "qtbase/src/gui/text/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": "cpe:2.3:a:khronos:vulkan:1.4.308:*:*:*:*:*:*:*",
+        "Copyright": "Copyright (c) 2015-2025 The Khronos Group Inc.",
+        "Description": "Vulkan XML API Registry.",
+        "Files": "vk.xml",
+        "Homepage": "https://www.khronos.org/",
+        "Id": "vulkan-xml-spec",
+        "License": "Apache License 2.0 or MIT License",
+        "LicenseFile": "LICENSE.txt",
+        "LicenseId": "Apache-2.0 OR MIT",
+        "Name": "Vulkan API Registry",
+        "PURL": "pkg:github/KhronosGroup/Vulkan-Docs@v$<VERSION>?download_url=https://github.com/KhronosGroup/Vulkan-Docs/blob/v1.4.308/xml/vk.xml",
+        "QDocModule": "qtgui",
+        "QtUsage": "Used to dynamically generate the sources for the QVulkan(Device)Functions classes.",
+        "Version": "1.4.308"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtbase/src/gui/vulkan/LICENSE.txt",
+          "sha256": "5f618873b0cdd1e84c611c5529212c2524bfc887bdfd7d1f3b568bad3c649612",
+          "source_member": "qt-everywhere-src-6.11.1/qtbase/src/gui/vulkan/LICENSE.txt"
+        }
+      ],
+      "source_path": "qtbase/src/gui/vulkan/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": "Copyright (c) 2013 Mikko Mononen",
+        "Description": "NanoVG is small antialiased vector graphics rendering library modeled after the HTML5 canvas API.",
+        "Homepage": "https://github.com/memononen/nanovg",
+        "Id": "nanovg",
+        "License": "zlib License",
+        "LicenseFile": "LICENSE.NanoVG.txt",
+        "LicenseId": "Zlib",
+        "Name": "NanoVG",
+        "PURL": [
+          "pkg:github/memononen/nanovg@$<VERSION>"
+        ],
+        "QDocModule": "qtcanvaspainter",
+        "QtUsage": "Qt Canvas Painter's renderer is based on NanoVG.",
+        "Version": "f93799c"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtcanvaspainter/src/canvaspainter/engine/LICENSE.NanoVG.txt",
+          "sha256": "d1c46d70e4e62e6324ff845bc8f4831912e33a940a5e7949298250be74ef47aa",
+          "source_member": "qt-everywhere-src-6.11.1/qtcanvaspainter/src/canvaspainter/engine/LICENSE.NanoVG.txt"
+        }
+      ],
+      "source_path": "qtcanvaspainter/src/canvaspainter/engine/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the dependency is huge, and would show a lot of false positives, at this point it should be considered as part of Qt",
+        "Copyright": [
+          "Copyright (C) 2003-2018 Apple Inc. All rights reserved.",
+          "Copyright (C) 2007 Justin Haygood (jhaygood@reaktix.com)",
+          "Copyright (C) 2007-2009 Torch Mobile, Inc. All rights reserved. (http://www.torchmobile.com/)",
+          "Copyright (C) 2009, 2010 University of Szeged",
+          "Copyright (C) 2009-2011 STMicroelectronics. All rights reserved.",
+          "Copyright (C) 2010 MIPS Technologies, Inc. All rights reserved.",
+          "Copyright (C) 2010 Peter Varga (pvarga@inf.u-szeged.hu), University of Szeged",
+          "Copyright (C) 2010 MIPS Technologies, Inc. All rights reserved.",
+          "Copyright (C) 2010, 2011 Research In Motion Limited. All rights reserved.",
+          "Copyright (C) 2011 Google Inc. All rights reserved.",
+          "Copyright (C) 2013 Samsung Electronics. All rights reserved.",
+          "Copyright (C) 2015 Cisco Systems, Inc. All rights reserved.",
+          "Copyright (c) 2002-2009 Vivek Thampi"
+        ],
+        "Homepage": "https://trac.webkit.org/wiki/JavaScriptCore",
+        "Id": "masm",
+        "License": "BSD 2-clause \"Simplified\" License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "BSD-2-Clause",
+        "Name": "JavaScriptCore Macro Assembler",
+        "QDocModule": "qtqml",
+        "QtUsage": "Used in Qt QML."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtdeclarative/src/3rdparty/masm/LICENSE",
+          "sha256": "9ba0c20a2972274f27e975d79ed3582e322d6891338266a52e2d3a9417fc0a72",
+          "source_member": "qt-everywhere-src-6.11.1/qtdeclarative/src/3rdparty/masm/LICENSE"
+        }
+      ],
+      "source_path": "qtdeclarative/src/3rdparty/masm/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": [
+          "Copyright (c) Facebook, Inc. and its affiliates.",
+          "Copyright (c) Meta Platforms, Inc. and affiliates."
+        ],
+        "Description": "Facebook's Yoga is an open-source layout engine written in C/C++ that implements a subset of CSS Flexbox. It's designed to be embedded into various frameworks and platforms, providing a fast and efficient way to manage user interface layouts across different environments.",
+        "DownloadLocation": "https://github.com/facebook/yoga/tree/v2.0.1",
+        "Homepage": "https://www.yogalayout.dev/",
+        "Id": "yoga",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "MIT",
+        "Name": "Yoga",
+        "PURL": [
+          "pkg:github/facebook/yoga@v$<VERSION>"
+        ],
+        "QDocModule": "qtquick",
+        "QtUsage": "Used in QtQuick.Layouts",
+        "Version": "2.0.1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtdeclarative/src/3rdparty/yoga/LICENSE",
+          "sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85",
+          "source_member": "qt-everywhere-src-6.11.1/qtdeclarative/src/3rdparty/yoga/LICENSE"
+        }
+      ],
+      "source_path": "qtdeclarative/src/3rdparty/yoga/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the dependency is a single file",
+        "Copyright": "Copyright (c) 2014-2016 Google, Inc",
+        "Description": "Shadow values for the elevation effect.",
+        "Files": "impl/ElevationEffect.qml",
+        "Homepage": "https://angularjs.org/",
+        "Id": "shadow_angular_material",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.ANGULARJS.txt",
+        "LicenseId": "MIT",
+        "Name": "Shadow values from Angular Material",
+        "QDocModule": "qtquickcontrols",
+        "QtUsage": "Used in the Material Style of Qt Quick Controls."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtdeclarative/src/quickcontrols/material/LICENSE.ANGULARJS.txt",
+          "sha256": "a1c1daa9eec4db907907c0ccc42a4843bb996410f888b972a39fe152e829bc3d",
+          "source_member": "qt-everywhere-src-6.11.1/qtdeclarative/src/quickcontrols/material/LICENSE.ANGULARJS.txt"
+        }
+      ],
+      "source_path": "qtdeclarative/src/quickcontrols/material/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": [
+          "cpe:2.3:a:libtiff:libtiff:$<VERSION>:*:*:*:*:*:*:*"
+        ],
+        "Copyright": "Copyright (c) 1988-1997 Sam Leffler\nCopyright (c) 1991-1997 Silicon Graphics, Inc.",
+        "Description": "",
+        "DownloadLocation": "https://download.osgeo.org/libtiff/tiff-4.7.1.tar.gz",
+        "Homepage": "http://www.simplesystems.org/libtiff/",
+        "Id": "libtiff",
+        "License": "libtiff License",
+        "LicenseFile": "COPYRIGHT",
+        "LicenseId": "libtiff",
+        "Name": "TIFF Software Distribution (libtiff)",
+        "PURL": [
+          "pkg:gitlab/libtiff/libtiff@v$<VERSION>"
+        ],
+        "QDocModule": "qtimageformats",
+        "QtUsage": "Used in the qtiff image plugin if no system libtiff is found.",
+        "SecurityCritical": true,
+        "Version": "4.7.1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtimageformats/src/3rdparty/libtiff/COPYRIGHT",
+          "sha256": "fbd6fed7938541d2c809c0826225fc85e551fdbfa8732b10f0c87e0847acafd7",
+          "source_member": "qt-everywhere-src-6.11.1/qtimageformats/src/3rdparty/libtiff/COPYRIGHT"
+        }
+      ],
+      "source_path": "qtimageformats/src/3rdparty/libtiff/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": [
+          "cpe:2.3:a:webmproject:libwebp:$<VERSION>:*:*:*:*:*:*:*"
+        ],
+        "Copyright": "Copyright (c) 2010, Google Inc. All rights reserved.",
+        "Description": "WebP is a new image format that provides lossless and lossy compression for images on the web.",
+        "DownloadLocation": "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz",
+        "Homepage": "https://developers.google.com/speed/webp/",
+        "Id": "libwebp",
+        "License": "BSD 3-clause \"New\" or \"Revised\" License",
+        "LicenseFile": "COPYING",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "WebP (libwebp)",
+        "PURL": [
+          "pkg:github/webmproject/libwebp@$v<VERSION>"
+        ],
+        "QDocModule": "qtimageformats",
+        "QtUsage": "Used in the qwebp image plugin if no system libwebp is found.",
+        "SecurityCritical": true,
+        "Version": "1.6.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtimageformats/src/3rdparty/libwebp/COPYING",
+          "sha256": "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf",
+          "source_member": "qt-everywhere-src-6.11.1/qtimageformats/src/3rdparty/libwebp/COPYING"
+        }
+      ],
+      "source_path": "qtimageformats/src/3rdparty/libwebp/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Description": "Public domain, single file audio decoding libraries for C and C++",
+        "DownloadLocation": "https://github.com/mackron/dr_libs/releases/wav-0.14.5",
+        "Homepage": "https://github.com/mackron/dr_libs",
+        "Id": "dr_libs",
+        "License": "The Unlicense or MIT No Attribution",
+        "LicenseFiles": [
+          "LICENSE"
+        ],
+        "LicenseId": "Unlicense OR MIT-0",
+        "Name": "DR Libs",
+        "PURL": "pkg:github/mackron/dr_libs@wav-$<VERSION>",
+        "QDocModule": "qtmultimedia",
+        "QtUsage": "Wave file decoder for QSoundEffect",
+        "SecurityCritical": true,
+        "Version": "0.14.5"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFiles",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/dr_libs/LICENSE",
+          "sha256": "dd1c647e6f767f8ff4b2dfae0fed314726600a01e0cf1ef556afddd5fa96ff15",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/dr_libs/LICENSE"
+        }
+      ],
+      "source_path": "qtmultimedia/src/3rdparty/dr_libs/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "CopyrightFile": "COPYRIGHTS",
+        "Description": "The Eigen C++ linear algebra library.",
+        "DownloadLocation": "https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.bz2",
+        "Homepage": "https://eigen.tuxfamily.org/",
+        "Id": "eigen",
+        "License": "Mozilla Public License 2.0 and BSD 3-Clause \"New\" or \"Revised\" License",
+        "LicenseFiles": [
+          "COPYING.APACHE",
+          "COPYING.MINPACK",
+          "COPYING.MPL2",
+          "COPYING.BSD"
+        ],
+        "LicenseId": "MPL-2.0 AND BSD-3-Clause",
+        "Name": "Eigen",
+        "PURL": [
+          "pkg:github/eigen-mirror/eigen@$<VERSION>"
+        ],
+        "QDocModule": "qtspatialaudio",
+        "QtUsage": "Used for mathematics to support spatial audio.",
+        "SecurityCritical": false,
+        "Version": "5.1.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFiles",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/eigen/COPYING.APACHE",
+          "sha256": "03379001a7b12a2ec997a25554247d985270b353c10d5bafee9ac8d6519820b7",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/eigen/COPYING.APACHE"
+        },
+        {
+          "kind": "LicenseFiles",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/eigen/COPYING.BSD",
+          "sha256": "51928dce36213c5333ba3172e847d735d4c6e9b7ff2722a326c49067155b82eb",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/eigen/COPYING.BSD"
+        },
+        {
+          "kind": "LicenseFiles",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/eigen/COPYING.MINPACK",
+          "sha256": "c87b7f8ee88f6195e91743820c00354833583aef091b72e2d4a49c8e28e798a0",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/eigen/COPYING.MINPACK"
+        },
+        {
+          "kind": "LicenseFiles",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/eigen/COPYING.MPL2",
+          "sha256": "66a3107d5ad6a058aab753eaac2047ccb2ed0e39465dd0fe5844da3e300d5172",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/eigen/COPYING.MPL2"
+        },
+        {
+          "kind": "CopyrightFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/eigen/COPYRIGHTS",
+          "sha256": "ebf65756959aabc5e321d98c04ddf528b80b6982ffec355f3c743ea24018d263",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/eigen/COPYRIGHTS"
+        }
+      ],
+      "source_path": "qtmultimedia/src/3rdparty/eigen/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": [
+          "cpe:2.3:a:ffmpeg:ffmpeg:$<VERSION>:*:*:*:*:*:*:*"
+        ],
+        "Copyright": "Copyright (c) 2000-2023 the FFmpeg developers",
+        "Description": "FFmpeg is a collection of libraries and tools to process multimedia content such as audio, video, subtitles, and related metadata.",
+        "DownloadLocation": "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n7.1.3.tar.gz",
+        "Homepage": "https://ffmpeg.org/",
+        "Id": "ffmpeg",
+        "License": "GNU Lesser General Public License v2.1 or later and BSD 3-Clause \"New\" or \"Revised\" License and BSD 2-Clause \"Simplified\" License and BSD Source Code Attribution and ISC License and MIT License and Mozilla Public License 2.0",
+        "LicenseId": "LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-Source-Code AND ISC AND MIT AND MPL-2.0",
+        "Name": "FFmpeg",
+        "PURL": [
+          "pkg:github/FFmpeg/FFmpeg@n$<VERSION>"
+        ],
+        "QDocModule": "qtmultimedia",
+        "QtUsage": "The FFmpeg media backend uses the \\l {https://ffmpeg.org}{FFmpeg framework}. FFmpeg is licensed under LGPLv2.1 or later versions of the licenses. Note that, while FFmpeg also features some optional components available under GPL or LGPLv3, the binaries that ship with Qt in the online installer do not contain these components. Build scripts for the prebuilt FFmpeg binaries can be found in the \\l{https://code.qt.io/cgit/qt/qt5.git/tree/coin/provisioning}{Qt git repository}. See the \\l {https://ffmpeg.org/legal.html}{FFmpeg licensing page} for further details.",
+        "SecurityCritical": true,
+        "Version": "7.1.3"
+      },
+      "legal_files": [],
+      "source_path": "qtmultimedia/src/3rdparty/ffmpeg/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE found",
+        "Copyright": "(C) Copyright John Maddock 2006. Copyright (c) 2006 Xiaogang Zhang",
+        "Description": "Boost is a set of libraries for the C++ programming language ",
+        "DownloadLocation": "https://www.boost.org/",
+        "Homepage": "https://www.boost.org/",
+        "Id": "ffmpeg-boost",
+        "License": "Boost Software License 1.0",
+        "LicenseId": "BSL-1.0",
+        "Name": "boost",
+        "QDocModule": "qtmultimedia",
+        "QtUsage": "The FFmpeg media backend uses algorithms from the Boost math library",
+        "SecurityCritical": false
+      },
+      "legal_files": [],
+      "source_path": "qtmultimedia/src/3rdparty/ffmpeg/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE found",
+        "Copyright": "Copyright (C) 1991-2020, Thomas G. Lane, Guido Vollbeding.",
+        "Description": "libjpeg is a widely used C library for reading and writing JPEG image files.",
+        "DownloadLocation": "https://libjpeg.sourceforge.net/",
+        "Homepage": "https://libjpeg.sourceforge.net/",
+        "Id": "ffmpeg-libjpeg",
+        "License": "Independent JPEG Group License",
+        "LicenseId": "IJG",
+        "Name": "libjpeg",
+        "QDocModule": "qtmultimedia",
+        "QtUsage": "The FFmpeg media backend uses modified code from libjpeg in `libavcodec/jfdctfst.c`, `libavcodec/jfdctint_template.c` and `libavcodec/jrevdct.c`. For list of modifications, see \\l {https://git.ffmpeg.org/ffmpeg.git}{FFmpeg source code management system}.",
+        "SecurityCritical": true
+      },
+      "legal_files": [],
+      "source_path": "qtmultimedia/src/3rdparty/ffmpeg/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE found",
+        "Copyright": "Copyright (C) 1995-2022 Jean-loup Gailly and Mark Adler.",
+        "Description": "Zlib is a software library used for data compression",
+        "DownloadLocation": "https://www.zlib.net/",
+        "Homepage": "https://www.zlib.net/",
+        "Id": "ffmpeg-zlib",
+        "License": "zlib License",
+        "LicenseId": "Zlib",
+        "Name": "zlib",
+        "QDocModule": "qtmultimedia",
+        "QtUsage": "The FFmpeg media backend uses the Adler-32 algorithm from zlib",
+        "SecurityCritical": false
+      },
+      "legal_files": [],
+      "source_path": "qtmultimedia/src/3rdparty/ffmpeg/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE found",
+        "CopyrightFile": "COPYRIGHTS",
+        "Description": "A pretty fast FFT.",
+        "DownloadLocation": "https://bitbucket.org/jpommier/pffft/get/02fe7715a5bf.zip",
+        "Homepage": "https://bitbucket.org/jpommier/pffft.git",
+        "Id": "pffft",
+        "License": "BSD 3-Clause \"New\" or \"Revised\" License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "pffft",
+        "QDocModule": "qtspatialaudio",
+        "QtUsage": "Used to support spatial audio.",
+        "SecurityCritical": false,
+        "Version": "02fe7715a5bf8bfd914681c53429600f94e0f536"
+      },
+      "legal_files": [
+        {
+          "kind": "CopyrightFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/pffft/COPYRIGHTS",
+          "sha256": "b522f821df94da3bad917e98ef04817b3af421c3b8c23e8247ae7e517b289934",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/pffft/COPYRIGHTS"
+        },
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/pffft/LICENSE",
+          "sha256": "a46200592eb193853527250da098e6bb0c75424e7a2c7db8da526c4f301c3d88",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/pffft/LICENSE"
+        }
+      ],
+      "source_path": "qtmultimedia/src/3rdparty/pffft/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "CopyrightFile": "COPYRIGHTS",
+        "Description": "3D audio support.",
+        "DownloadLocation": "https://github.com/resonance-audio/resonance-audio/tree/e225aedb5ec76ca6a0fe7079c0b84dbcbb490553",
+        "Homepage": "https://resonance-audio.github.io/resonance-audio/",
+        "Id": "resonance-audio",
+        "License": "Apache License 2.0",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "Apache-2.0",
+        "Name": "Resonance Audio",
+        "PURL": [
+          "pkg:github/resonance-audio/resonance-audio@$<VERSION>"
+        ],
+        "QDocModule": "qtspatialaudio",
+        "QtUsage": "Used to implement spatial audio.",
+        "SecurityCritical": true,
+        "Version": "e225aedb5ec76ca6a0fe7079c0b84dbcbb490553"
+      },
+      "legal_files": [
+        {
+          "kind": "CopyrightFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/resonance-audio/COPYRIGHTS",
+          "sha256": "2513c5ad87ce9e7feed2c9a159d336f0a0d12ff93adcd411f7a15a1ab678f7ac",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/resonance-audio/COPYRIGHTS"
+        },
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/resonance-audio/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/resonance-audio/LICENSE"
+        }
+      ],
+      "source_path": "qtmultimedia/src/3rdparty/resonance-audio/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": "Copyright (c) 2022 Geraint Luff / Signalsmith Audio Ltd.",
+        "Description": "This is a C++11 header-only class for pitch-shifting and time-stretching.",
+        "DownloadLocation": "https://signalsmith-audio.co.uk/code/stretch.git",
+        "Homepage": "https://signalsmith-audio.co.uk/code/stretch.git",
+        "Id": "signalsmith-stretch",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.txt",
+        "LicenseId": "MIT",
+        "Name": "Signalsmith Stretch",
+        "PURL": "pkg:github/signalsmith-audio/signalsmith-stretch@$<VERSION>",
+        "QDocModule": "qtmultimedia",
+        "QtUsage": "Used in the FFMpeg media backend for pitch compensation (QMediaPlayer).",
+        "SecurityCritical": false,
+        "Version": "1.0.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtmultimedia/src/3rdparty/signalsmith-stretch/LICENSE.txt",
+          "sha256": "ee2ef82481ffb445ecdd4b3a4c1f82c0cddb2da8fe39d8e8dc384fffb3e7f06f",
+          "source_member": "qt-everywhere-src-6.11.1/qtmultimedia/src/3rdparty/signalsmith-stretch/LICENSE.txt"
+        }
+      ],
+      "source_path": "qtmultimedia/src/3rdparty/signalsmith-stretch/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright (c) 2006-2016, Matthew Conte",
+        "Description": "O(1) arena allocator, suitable for use on real-time threads",
+        "DownloadLocation": "https://github.com/mattconte/tlsf.git",
+        "Homepage": "https://github.com/mattconte/tlsf",
+        "Id": "tlfs",
+        "License": "BSD 3-Clause \"New\" or \"Revised\" License",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "Two-Level Segregated Fit",
+        "PURL": "pkg:github.com/mattconte/tlsf@deff9ab509341f264addbd3c8ada533678591905",
+        "QDocModule": "qtmultimedia",
+        "QtUsage": "Used in the QSoundEffect player.",
+        "SecurityCritical": true,
+        "Version": "v3.1"
+      },
+      "legal_files": [],
+      "source_path": "qtmultimedia/src/3rdparty/tlsf/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": "Copyright (c) 2014 Bitfighter developers",
+        "Description": "Clip2Tri can be used together with Clipper for robust triangulation.",
+        "Homepage": "https://github.com/raptor/clip2tri",
+        "Id": "clip2tri",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "MIT",
+        "Name": "Clip2Tri Polygon Triangulation Library",
+        "PURL": [
+          "pkg:github/raptor/clip2tri@f62a734d22733814b8a970ed8a68a4d94c24fa5f"
+        ],
+        "QDocModule": "qtpositioning",
+        "QtUsage": "Used in the QML plugin of Qt Location and in Qt Positioning.",
+        "Version": "commit f62a734d22733814b8a970ed8a68a4d94c24fa5f"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtpositioning/src/3rdparty/clip2tri/LICENSE",
+          "sha256": "4f03032b43817e39a77e291cd57aefb4c8159957ca522f4f1cdcac8db5e563aa",
+          "source_member": "qt-everywhere-src-6.11.1/qtpositioning/src/3rdparty/clip2tri/LICENSE"
+        }
+      ],
+      "source_path": "qtpositioning/src/3rdparty/clip2tri/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE found",
+        "Copyright": "Copyright Angus Johnson 2010-2017",
+        "Description": "The Clipper library performs line & polygon clipping - intersection, union, difference & exclusive-or, and line & polygon offsetting.",
+        "Homepage": "https://sourceforge.net/projects/polyclipping/",
+        "Id": "clipper",
+        "License": "Boost Software License 1.0",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "BSL-1.0",
+        "Name": "Clipper Polygon Clipping Library",
+        "QDocModule": "qtpositioning",
+        "QtUsage": "Used in the QML plugin of Qt Location and in Qt Positioning.",
+        "Version": "6.4.2"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtpositioning/src/3rdparty/clipper/LICENSE",
+          "sha256": "eca9b9180a47709678f85448d1f447f503ac86e1b3543c4bf0a3879a715fb802",
+          "source_member": "qt-everywhere-src-6.11.1/qtpositioning/src/3rdparty/clipper/LICENSE"
+        }
+      ],
+      "source_path": "qtpositioning/src/3rdparty/clipper/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": "Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors",
+        "Description": "Poly2Tri is a sweepline constrained Delaunay Polygon Triangulation Library.",
+        "Homepage": "https://github.com/greenm01/poly2tri",
+        "Id": "poly2tri",
+        "License": "BSD 3-clause \"New\" or \"Revised\" License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "Poly2Tri Polygon Triangulation Library",
+        "PURL": [
+          "pkg:github/greenm01/poly2tri@a922022da4c0d3a55b1d6b6d634219caea653053"
+        ],
+        "QDocModule": "qtpositioning",
+        "QtUsage": "Used in the QML plugin of Qt Location and in Qt Positioning.",
+        "Version": "commit a922022da4c0d3a55b1d6b6d634219caea653053"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtpositioning/src/3rdparty/poly2tri/LICENSE",
+          "sha256": "a4d34b9e99a7f11d095ba330da5a4723ec00b019ae1ba42cba46ad1d89902c4e",
+          "source_member": "qt-everywhere-src-6.11.1/qtpositioning/src/3rdparty/poly2tri/LICENSE"
+        }
+      ],
+      "source_path": "qtpositioning/src/3rdparty/poly2tri/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": [
+          "cpe:2.3:a:assimp:assimp:$<VERSION>:*:*:*:*:*:*:*"
+        ],
+        "Copyright": "Copyright (c) 2006-2026, assimp team",
+        "Description": "assimp (Open Asset Import Library) is a portable open source library to import various well-known 3D model formats in a uniform manner.",
+        "DownloadLocation": "https://github.com/assimp/assimp/releases/tag/v6.0.4",
+        "Homepage": "http://www.assimp.org/",
+        "Id": "assimp",
+        "License": "BSD 3-clause \"New\" or \"Revised\" Licensee",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "Open Asset Import Library",
+        "PURL": [
+          "pkg:github/assimp/assimp@v$<VERSION>"
+        ],
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Used for importing assets for use with Qt Quick 3D",
+        "SecurityCritical": true,
+        "Version": "6.0.4"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtquick3d/src/3rdparty/assimp/LICENSE",
+          "sha256": "c3ed04bcbea49f521e4ab32c638fa86b13ebc7b8e1a8972807265079fcd1e6b9",
+          "source_member": "qt-everywhere-src-6.11.1/qtquick3d/src/3rdparty/assimp/LICENSE"
+        }
+      ],
+      "source_path": "qtquick3d/src/3rdparty/assimp/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": "Copyright 2009-2021 Intel Corporation",
+        "Description": "Intel Embree is a collection of high performance ray tracing kernels that helps graphics application engineers to improve the performance of their photorealistic rendering application.",
+        "Homepage": "https://www.embree.org/",
+        "Id": "embree",
+        "License": "Apache License 2.0",
+        "LicenseFile": "LICENSE.txt",
+        "LicenseId": "Apache-2.0",
+        "Name": "Intel Embree",
+        "PURL": [
+          "pkg:github/RenderKit/embree@$v<VERSION>"
+        ],
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Used for baking lightmaps in Qt Quick 3D",
+        "Version": "3.13.3"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtquick3d/src/3rdparty/embree/LICENSE.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "source_member": "qt-everywhere-src-6.11.1/qtquick3d/src/3rdparty/embree/LICENSE.txt"
+        }
+      ],
+      "source_path": "qtquick3d/src/3rdparty/embree/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": "Copyright (c) 2016-2026 Arseny Kapoulkine",
+        "Description": "Provides algorithms to help optimize meshes for GPU render stages, reduce the mesh complexity and storage overhead.",
+        "Homepage": "https://github.com/zeux/meshoptimizer",
+        "Id": "meshoptimizer",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.md",
+        "LicenseId": "MIT",
+        "Name": "meshoptimizer",
+        "PURL": [
+          "pkg:github/zeux/meshoptimizer@v$<VERSION>"
+        ],
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Used to generate Level of Detail meshes for Models in Qt Quick 3D",
+        "Version": "1.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtquick3d/src/3rdparty/meshoptimizer/LICENSE.md",
+          "sha256": "e4a26033e3551fb2722888949fbb41e77aee628e8e8f04dcffeee301aa7e5634",
+          "source_member": "qt-everywhere-src-6.11.1/qtquick3d/src/3rdparty/meshoptimizer/LICENSE.md"
+        }
+      ],
+      "source_path": "qtquick3d/src/3rdparty/meshoptimizer/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": "Copyright (c) 2016 Mitchell Dowd",
+        "Description": "JJNIPP is just a C++ wrapper for the standard Java Native Interface (JNI).",
+        "Homepage": "https://github.com/mitchdowd/jnipp",
+        "Id": "jnipp",
+        "License": "MIT License",
+        "LicenseFile": "src/external/jnipp/LICENSE",
+        "LicenseId": "MIT",
+        "Name": "Java Native Interface for C++",
+        "PURL": [
+          "pkg:github/mitchdowd/jnipp@v$<VERSION>"
+        ],
+        "Path": "src/external/jnipp",
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Used the bundled OpenXR Loader inside of QtQuick3DXr on Android.",
+        "Version": "1.0.0"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtquick3d/src/3rdparty/openxr/src/external/jnipp/LICENSE",
+          "sha256": "3f46b895fbd843c7abe5b49fa0b699a5093fc8b345940a7c587948c57cc8f270",
+          "source_member": "qt-everywhere-src-6.11.1/qtquick3d/src/3rdparty/openxr/src/external/jnipp/LICENSE"
+        }
+      ],
+      "source_path": "qtquick3d/src/3rdparty/openxr/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": [
+          "cpe:2.3:a:jsoncpp_project:jsoncpp:$<VERSION>:*:*:*:*:*:*:*"
+        ],
+        "Copyright": "Copyright (c) 2007-2010 Baptiste Lepilleur and The JsonCpp Authors",
+        "Description": "JsonCpp is a C++ library that allows manipulating JSON values, including serialization and deserialization to and from strings.",
+        "Homepage": "https://github.com/open-source-parsers/jsoncpp",
+        "Id": "jsoncpp",
+        "License": "MIT License",
+        "LicenseFile": "src/external/jsoncpp/LICENSE",
+        "LicenseId": "MIT",
+        "Name": "JsonCpp",
+        "PURL": [
+          "pkg:github/open-source-parsers/jsoncpp@$<VERSION>"
+        ],
+        "Path": "src/external/jsoncpp",
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Used by the bundled OpenXR Loader inside of QtQuick3DXr to read JSON configuration files.",
+        "Version": "1.9.6"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtquick3d/src/3rdparty/openxr/src/external/jsoncpp/LICENSE",
+          "sha256": "cec0db5f6d7ed6b3a72647bd50aed02e13c3377fd44382b96dc2915534c042ad",
+          "source_member": "qt-everywhere-src-6.11.1/qtquick3d/src/3rdparty/openxr/src/external/jsoncpp/LICENSE"
+        }
+      ],
+      "source_path": "qtquick3d/src/3rdparty/openxr/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": "Copyright (c) 2017-2025, The Khronos Group Inc.\nCopyright (c) 2017-2019, Valve Corporation\nCopyright (c) 2017-2019, LunarG, Inc.",
+        "Description": "OpenXR SDK for developing XR applications",
+        "Homepage": "https://www.khronos.org/openxr/",
+        "Id": "openxr",
+        "License": "Apache License 2.0",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "Apache-2.0",
+        "Name": "OpenXR SDK",
+        "PURL": [
+          "pkg:github/KhronosGroup/OpenXR-SDK@release-$<VERSION>"
+        ],
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Use by QtQuick3DXr module to interact with an OpenXR runtime.",
+        "Version": "1.1.54"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtquick3d/src/3rdparty/openxr/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "source_member": "qt-everywhere-src-6.11.1/qtquick3d/src/3rdparty/openxr/LICENSE"
+        }
+      ],
+      "source_path": "qtquick3d/src/3rdparty/openxr/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "CPE": [
+          "cpe:2.3:a:tinyexr_project:tinyexr:$<VERSION>:*:*:*:*:*:*:*"
+        ],
+        "Copyright": "Copyright (c) 2014 - 2021, Syoyo Fujita and many contributors.",
+        "Description": "tinyexr is a small, single header-only library to load and save OpenEXR (.exr) images.",
+        "DownloadLocation": "https://github.com/syoyo/tinyexr/releases/tag/v1.0.13",
+        "Homepage": "https://github.com/syoyo/tinyexr",
+        "Id": "tinyexr",
+        "License": "BSD 3-clause \"New\" or \"Revised\" License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "Tiny OpenEXR",
+        "PURL": [
+          "pkg:github/syoyo/tinyexr@$v<VERSION>"
+        ],
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Used to open OpenEXR image files in Qt Quick 3D",
+        "SecurityCritical": true,
+        "Version": "1.0.13"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtquick3d/src/3rdparty/tinyexr/LICENSE",
+          "sha256": "b90388aaadc2b6f77a5c01278697a2a0539eab471a3befc6a081728becdc3390",
+          "source_member": "qt-everywhere-src-6.11.1/qtquick3d/src/3rdparty/tinyexr/LICENSE"
+        }
+      ],
+      "source_path": "qtquick3d/src/3rdparty/tinyexr/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": "Copyright (c) 2018-2020 Jonathan Young",
+        "Description": "xatlas is a small C++11 library with no external dependencies that generates unique texture coordinates suitable for baking lightmaps or texture painting.",
+        "Homepage": "https://github.com/jpcy/xatlas",
+        "Id": "xatlas",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE",
+        "LicenseId": "MIT",
+        "Name": "xatlas",
+        "PURL": [
+          "pkg:github/jpcy/xatlas@$<VERSION>"
+        ],
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Used for lightmap UV set generation in Qt Quick 3D",
+        "Version": "16ace528acd2cf1f16a7c0dde99c42c486488dbe"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtquick3d/src/3rdparty/xatlas/LICENSE",
+          "sha256": "2c16d5b1c2808277fe975b4f70f0fd9afc9b3bcf04e6c676665a82cb2d5579e3",
+          "source_member": "qt-everywhere-src-6.11.1/qtquick3d/src/3rdparty/xatlas/LICENSE"
+        }
+      ],
+      "source_path": "qtquick3d/src/3rdparty/xatlas/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE found",
+        "Copyright": [
+          "Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.",
+          "Copyright (c) 2014-2022 Godot Engine contributors"
+        ],
+        "Description": "Generates a procedural skymap.",
+        "Files": "proceduralskytexturedata.cpp",
+        "Homepage": "https://godotengine.org/",
+        "Id": "proceduralsky",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.GODOT.txt",
+        "LicenseId": "MIT",
+        "Name": "Godot Engine: ProceduralSky",
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Used in the Qt Quick 3D module."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtquick3d/src/helpers/LICENSE.GODOT.txt",
+          "sha256": "966313e8129db5d0b3b081d1a50ae107da9a3da2d8faa05899e3042a33192525",
+          "source_member": "qt-everywhere-src-6.11.1/qtquick3d/src/helpers/LICENSE.GODOT.txt"
+        }
+      ],
+      "source_path": "qtquick3d/src/helpers/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "Generated blue noise texture distributed under CC0-1.0.",
+        "Copyright": "Public Domain (CC0-1.0)",
+        "Description": "A blue noise texture used for shadow mapping",
+        "Files": "res/textures/blue_noise.png",
+        "Homepage": "https://momentsingraphics.de/BlueNoise.html",
+        "Id": "blue-noise-texture",
+        "License": "Creative Commons Zero v1.0 Universal",
+        "LicenseId": "CC0-1.0",
+        "Name": "Blue Noise Texture",
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Blue noise texture used for shadow mapping"
+      },
+      "legal_files": [],
+      "source_path": "qtquick3d/src/runtimerender/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Copyright": "Copyright 2009-2021 Intel Corporation",
+        "Description": "Closest point on triangle algorithm from Intel® Embree",
+        "DownloadLocation": "https://github.com/RenderKit/embree/blob/master/tutorials/common/math/closest_point.h",
+        "Files": "rendererimpl/qssgrenderer.cpp",
+        "Id": "closest-point-on-triangle",
+        "License": "Apache License Version 2.0",
+        "LicenseId": "Apache-2.0",
+        "Name": "closestPointOnTriangle",
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Used in the Qt Quick 3D module."
+      },
+      "legal_files": [],
+      "source_path": "qtquick3d/src/runtimerender/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE found",
+        "Copyright": [
+          "Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.",
+          "Copyright (c) 2014-2022 Godot Engine contributors"
+        ],
+        "Description": "Simple fog support.",
+        "Files": "res/effectlib/fog.glsllib",
+        "Homepage": "https://godotengine.org/",
+        "Id": "fog",
+        "License": "MIT License",
+        "LicenseFile": "LICENSE.GODOT.txt",
+        "LicenseId": "MIT",
+        "Name": "Godot Engine: Fog",
+        "QDocModule": "qtquick3d",
+        "QtUsage": "Used in the Qt Quick 3D module."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtquick3d/src/runtimerender/LICENSE.GODOT.txt",
+          "sha256": "966313e8129db5d0b3b081d1a50ae107da9a3da2d8faa05899e3042a33192525",
+          "source_member": "qt-everywhere-src-6.11.1/qtquick3d/src/runtimerender/LICENSE.GODOT.txt"
+        }
+      ],
+      "source_path": "qtquick3d/src/runtimerender/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": [
+          "Copyright (C) Dominik Reichl <dominik.reichl@t-online.de>",
+          "Copyright (C) 2016 The Qt Company Ltd"
+        ],
+        "Description": "Implements the Secure Hash Algorithms SHA 1",
+        "Homepage": "http://www.dominik-reichl.de/projects/csha1/",
+        "Id": "sha1",
+        "License": "Public Domain",
+        "LicenseId": "LicenseRef-SHA1-Public-Domain",
+        "Name": "Secure Hash Algorithm SHA-1",
+        "PURL": "pkg:generic/csha1?download_url=https://www.dominik-reichl.de/projects/csha1/",
+        "QDocModule": "qtcore",
+        "QtUsage": "Used in Qt SCXML (Qt moc copy)."
+      },
+      "legal_files": [],
+      "source_path": "qtscxml/src/3rdparty/sha1/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "CopyrightFile": "COPYRIGHT.txt",
+        "Description": "A practical tool and library for performing reflection on SPIR-V and disassembling SPIR-V back to high level languages.",
+        "Homepage": "https://github.com/KhronosGroup/SPIRV-Cross",
+        "Id": "spirvcross",
+        "License": "Apache License 2.0 and MIT Khronos - old variant",
+        "LicenseId": "Apache-2.0 AND LicenseRef-MIT-Khronos-old",
+        "Name": "SPIRV-Cross",
+        "PURL": [
+          "pkg:github/KhronosGroup/SPIRV-Cross@$<VERSION>"
+        ],
+        "QDocModule": "qtshadertools",
+        "QtUsage": "Shader code generation.",
+        "Version": "998146d76fc5cbb2726f44c55e25fa28a573a782"
+      },
+      "legal_files": [
+        {
+          "kind": "CopyrightFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtshadertools/src/3rdparty/SPIRV-Cross/COPYRIGHT.txt",
+          "sha256": "afe3458e2431963def8b2c1520d342566725a07b46344aa34c5d327531bf2873",
+          "source_member": "qt-everywhere-src-6.11.1/qtshadertools/src/3rdparty/SPIRV-Cross/COPYRIGHT.txt"
+        }
+      ],
+      "source_path": "qtshadertools/src/3rdparty/SPIRV-Cross/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "CopyrightFile": "COPYRIGHT.txt",
+        "Description": "An OpenGL and OpenGL ES shader front end and validator.",
+        "Homepage": "https://github.com/KhronosGroup/glslang",
+        "Id": "glslang",
+        "License": "BSD 3-Clause \"New\" or \"Revised\" License, and MIT Khronos - old variant, and Apache License 2.0, and GNU General Public License v3.0 or later with Bison exception 2.2, and AML glslang variant License",
+        "LicenseFile": "LICENSE.txt",
+        "LicenseId": "BSD-3-Clause AND LicenseRef-MIT-Khronos-old AND Apache-2.0 AND GPL-3.0-or-later WITH Bison-exception-2.2 AND AML-glslang",
+        "Name": "glslang",
+        "PURL": [
+          "pkg:github/KhronosGroup/glslang@$<VERSION>"
+        ],
+        "QDocModule": "qtshadertools",
+        "QtUsage": "Compile GLSL to SPIR-V.",
+        "Version": "16.1.0"
+      },
+      "legal_files": [
+        {
+          "kind": "CopyrightFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtshadertools/src/3rdparty/glslang/COPYRIGHT.txt",
+          "sha256": "7a0986b241205c038dcea76b343dd9b7030a424b644a7d59585200824831dae8",
+          "source_member": "qt-everywhere-src-6.11.1/qtshadertools/src/3rdparty/glslang/COPYRIGHT.txt"
+        },
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtshadertools/src/3rdparty/glslang/LICENSE.txt",
+          "sha256": "adb783e734e906d1f46db5df29991dbde84bdb0ceab502ac2febb44fe3c2b5f4",
+          "source_member": "qt-everywhere-src-6.11.1/qtshadertools/src/3rdparty/glslang/LICENSE.txt"
+        }
+      ],
+      "source_path": "qtshadertools/src/3rdparty/glslang/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant PURL or CPE set, because the dependency is a single file",
+        "Copyright": "Copyright 2002 USC/Information Sciences Institute",
+        "Description": "Some code for arc handling is derived from code from the XSVG project.",
+        "Files": "qsvghandler.cpp",
+        "Id": "xsvg",
+        "License": "Historical Permission Notice and Disclaimer - sell variant",
+        "LicenseFile": "LICENSE.XSVG.txt",
+        "LicenseId": "HPND-sell-variant",
+        "Name": "XSVG",
+        "QDocModule": "qtsvg",
+        "QtUsage": "Used in the Qt SVG library."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtsvg/src/svg/LICENSE.XSVG.txt",
+          "sha256": "3a946598a9f674d44df764279ca0b85b5d6faba08f3bc75d8e0fcf6cd729a9bd",
+          "source_member": "qt-everywhere-src-6.11.1/qtsvg/src/svg/LICENSE.XSVG.txt"
+        }
+      ],
+      "source_path": "qtsvg/src/svg/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "Copyright": "Copyright (c) 2013, Yuri Kobets (tordex)",
+        "Description": "litehtml is the lightweight HTML rendering engine with CSS2/CSS3 support.",
+        "Homepage": "https://github.com/litehtml/litehtml",
+        "Id": "litehtml",
+        "License": "BSD 3-Clause \"New\" or \"Revised\" License",
+        "LicenseFile": "litehtml/LICENSE",
+        "LicenseId": "BSD-3-Clause",
+        "Name": "litehtml",
+        "PURL": [
+          "pkg:github/litehtml/litehtml@v$<VERSION>"
+        ],
+        "Path": "litehtml",
+        "QDocModule": "qtassistant",
+        "QtParts": [
+          "tools"
+        ],
+        "QtUsage": "Used in Qt Assistant.",
+        "Version": "0.9"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qttools/src/assistant/qlitehtml/src/3rdparty/litehtml/LICENSE",
+          "sha256": "71bd488e77ee821bf38d89e2b8a9c5ebe687553fcae9cefa00a96499792a3e23",
+          "source_member": "qt-everywhere-src-6.11.1/qttools/src/assistant/qlitehtml/src/3rdparty/litehtml/LICENSE"
+        }
+      ],
+      "source_path": "qttools/src/assistant/qlitehtml/src/3rdparty/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "No relevant CPE found",
+        "CopyrightFile": "GUMBO-AUTHORS.txt",
+        "Description": "Gumbo is an implementation of the HTML5 parsing algorithm implemented as a pure C99 library with no outside dependencies.",
+        "Homepage": "https://github.com/google/gumbo-parser",
+        "Id": "litehtml-gumbo",
+        "License": "Apache License 2.0 AND MIT",
+        "LicenseId": "Apache-2.0 AND MIT",
+        "Name": "Gumbo",
+        "PURL": [
+          "pkg:github/google/gumbo-parser@$<VERSION>"
+        ],
+        "Path": "litehtml/src/gumbo",
+        "QDocModule": "qtassistant",
+        "QtParts": [
+          "tools"
+        ],
+        "QtUsage": "Used in Qt Assistant.",
+        "Version": "0.10.1"
+      },
+      "legal_files": [
+        {
+          "kind": "CopyrightFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qttools/src/assistant/qlitehtml/src/3rdparty/GUMBO-AUTHORS.txt",
+          "sha256": "01728bacf4137aeb434d81a19d9542928d0937976c8f6b54ae0475b5376aa0ee",
+          "source_member": "qt-everywhere-src-6.11.1/qttools/src/assistant/qlitehtml/src/3rdparty/GUMBO-AUTHORS.txt"
+        }
+      ],
+      "source_path": "qttools/src/assistant/qlitehtml/src/3rdparty/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the dependency is huge, and would show a lot of false positives, at this point it should be considered as part of Qt",
+        "Copyright": "Copyright (C) 2008-2012  OMRON SOFTWARE Co., Ltd.",
+        "Description": "OpenWnn is a Japanese keyboard/IME from the Android Open Source Project.",
+        "Id": "openwnn",
+        "License": "Apache License 2.0",
+        "LicenseFile": "NOTICE",
+        "LicenseId": "Apache-2.0",
+        "Name": "OpenWnn",
+        "QDocModule": "qtvirtualkeyboard",
+        "QtUsage": "Optionally used in Qt Virtual Keyboard."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtvirtualkeyboard/src/plugins/openwnn/3rdparty/openwnn/NOTICE",
+          "sha256": "05cc719deafd0ab083b03296bb2911de10d116953b626a7629b9ca59938038b1",
+          "source_member": "qt-everywhere-src-6.11.1/qtvirtualkeyboard/src/plugins/openwnn/3rdparty/openwnn/NOTICE"
+        }
+      ],
+      "source_path": "qtvirtualkeyboard/src/plugins/openwnn/3rdparty/openwnn/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the dependency is huge, and would show a lot of false positives, at this point it should be considered as part of Qt",
+        "Copyright": "Copyright (C) 2009 The Android Open Source Project",
+        "Description": "PinyinIME is an input method engine for Pinyin (the official romanization system for Standard Chinese\nin mainland China, Malaysia, Singapore, and Taiwan) from the Android Open Source Project.",
+        "Id": "pinyin",
+        "License": "Apache License 2.0",
+        "LicenseFile": "NOTICE",
+        "LicenseId": "Apache-2.0",
+        "Name": "PinyinIME",
+        "QDocModule": "qtvirtualkeyboard",
+        "QtUsage": "Optionally used in Qt Virtual Keyboard."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtvirtualkeyboard/src/plugins/pinyin/3rdparty/pinyin/NOTICE",
+          "sha256": "554aa1a1047c04056ad6206ce942a43f11c2b2daa0c01cb029f2b165072342d8",
+          "source_member": "qt-everywhere-src-6.11.1/qtvirtualkeyboard/src/plugins/pinyin/3rdparty/pinyin/NOTICE"
+        }
+      ],
+      "source_path": "qtvirtualkeyboard/src/plugins/pinyin/3rdparty/pinyin/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant PURL or CPE set, because the dependency is huge, and would show a lot of false positives, at this point it should be considered as part of Qt",
+        "Copyright": [
+          "Copyright 2010 Google Inc.",
+          "Copyrighy (c) 1999 TaBE Project.",
+          "Copyright (c) 1999 Pai-Hsiang Hsiao.",
+          "Copyright (c) 1999 Computer Systems and Communication Lab, Institute of Information Science, Academia Sinica.",
+          "Copyright 1996 Chih-Hao Tsai @ Beckman Institute, University of Illinois"
+        ],
+        "Description": "Traditional Chinese IME (tcime) is an input method engine for traditional Chinese.",
+        "Id": "tcime",
+        "License": "Apache License 2.0 and BSD 3-clause \"New\" or \"Revised\" License",
+        "LicenseFile": "COPYING",
+        "LicenseId": "Apache-2.0 AND BSD-3-Clause",
+        "Name": "Traditional Chinese IME (tcime)",
+        "QDocModule": "qtvirtualkeyboard",
+        "QtUsage": "Optionally used in Qt Virtual Keyboard."
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtvirtualkeyboard/src/plugins/tcime/3rdparty/tcime/COPYING",
+          "sha256": "9400a6128693d2f25653698e695f554660c71efccc8c21af28bf143e35199db6",
+          "source_member": "qt-everywhere-src-6.11.1/qtvirtualkeyboard/src/plugins/tcime/3rdparty/tcime/COPYING"
+        }
+      ],
+      "source_path": "qtvirtualkeyboard/src/plugins/tcime/3rdparty/tcime/qt_attribution.json"
+    },
+    {
+      "attribution": {
+        "Comment": "no relevant CPE found",
+        "Copyright": "Copyright (C) 2013 DENSO CORPORATION\nCopyright (c) 2013 BMW Car IT GmbH",
+        "Description": "\"Wayland IVI Extension\" is forked from IVI Layer Management to define a common set of APIs by wayland style protocol and provide reference implementation which can be loaded on Weston.",
+        "DownloadLocation": "https://github.com/GENIVI/wayland-ivi-extension/releases/tag/1.9.1",
+        "Files": "ivi-controller.xml ivi-application.xml",
+        "Homepage": "https://at.projects.genivi.org/wiki/display/WIE/Wayland+IVI+Extension+Home",
+        "Id": "wayland-ivi-extension-protocol",
+        "License": "MIT License",
+        "LicenseFile": "MIT.txt",
+        "LicenseId": "MIT",
+        "Name": "Wayland IVI Extension Protocol",
+        "PURL": [
+          "pkg:github/GENIVI/wayland-ivi-extension@$<VERSION>"
+        ],
+        "QDocModule": "qtwaylandcompositor",
+        "QtUsage": "Used in the Qt Wayland Compositor, and the Qt Wayland platform plugin.",
+        "Version": "1.9.1"
+      },
+      "legal_files": [
+        {
+          "kind": "LicenseFile",
+          "path": "licenses/desktop/qt-6.11.1/third-party-source-files/qtwayland/src/3rdparty/protocol/ivi/MIT.txt",
+          "sha256": "d040359701c01996a017d5c515678929cd1b0625e64cb86db44025fbb6cdf1fc",
+          "source_member": "qt-everywhere-src-6.11.1/qtwayland/src/3rdparty/protocol/ivi/MIT.txt"
+        }
+      ],
+      "source_path": "qtwayland/src/3rdparty/protocol/ivi/qt_attribution.json"
+    }
+  ],
+  "schema_version": 1,
+  "scope": "Conservative Qt 6.11.1 source-attribution superset for top-level modules represented in the complete locked Linux PySide6 wheels. It is not the wheel publisher exact-build SBOM and may over-disclose source records absent from the publisher build configuration.",
+  "selection": {
+    "excluded_path_parts": [
+      "cmake",
+      "examples",
+      "testinternal",
+      "testlib",
+      "tests",
+      "util"
+    ],
+    "excluded_platform_or_tool_prefixes": [
+      "qtbase/src/plugins/platforms/cocoa/",
+      "qtbase/src/3rdparty/android/",
+      "qtbase/src/3rdparty/gradle/",
+      "qtbase/src/3rdparty/wasm/",
+      "qtbase/src/3rdparty/wintab/",
+      "qtbase/src/3rdparty/D3D12MemoryAllocator/",
+      "qtbase/src/3rdparty/wayland/protocols/appmenu/",
+      "qtconnectivity/src/tools/",
+      "qtsensors/src/plugins/sensors/android/",
+      "qttools/src/qdoc/"
+    ],
+    "included_top_level_modules": [
+      "qt3d",
+      "qt5compat",
+      "qtbase",
+      "qtcanvaspainter",
+      "qtconnectivity",
+      "qtdeclarative",
+      "qtimageformats",
+      "qtlottie",
+      "qtmultimedia",
+      "qtpositioning",
+      "qtquick3d",
+      "qtscxml",
+      "qtsensors",
+      "qtshadertools",
+      "qtsvg",
+      "qttools",
+      "qtvirtualkeyboard",
+      "qtwayland",
+      "qtwebengine"
+    ]
+  },
+  "source_archive": {
+    "filename": "qt-everywhere-src-6.11.1.tar.xz",
+    "sha256": "252acef8c5ae68074d91cadba2ee4a83465051bbb970dd26e8f0daa0f3904e03"
+  }
+}

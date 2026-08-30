@@ -1,0 +1,242 @@
+{
+  "chromium": {
+    "legal_files": [
+      "licenses/desktop/qt-6.11.1/qtwebengine/chrome-VERSION",
+      "licenses/desktop/qt-6.11.1/qtwebengine/chromium-source-credits.html",
+      "licenses/desktop/qt-6.11.1/qtwebengine/CHROMIUM_VERSION",
+      "licenses/desktop/qt-6.11.1/qtwebengine/LICENSE.Chromium"
+    ],
+    "payload_files": [
+      {
+        "path": "PySide6/QtWebEngineCore.abi3.so",
+        "sha256": "1f32acbf1472ef13478bd568252fc6f88bfca8aa78d2f39c8fc3603363844fcd",
+        "size": 635112
+      },
+      {
+        "path": "PySide6/QtWebEngineQuick.abi3.so",
+        "sha256": "368a27445f4c7284383e969c1519f9553909490508fd49d816ad4084e128e29f",
+        "size": 126936
+      },
+      {
+        "path": "PySide6/QtWebEngineWidgets.abi3.so",
+        "sha256": "73a71bf157ff8340824624d5d751fefa21c2c348c909217b48b0d3d628ab024d",
+        "size": 134040
+      },
+      {
+        "path": "PySide6/Qt/lib/libQt6WebEngineCore.so.6",
+        "sha256": "74fa8e89da01e6c4d33853334df91c20856b925454b1f9fe0a24404cb390a3ae",
+        "size": 203926472
+      },
+      {
+        "path": "PySide6/Qt/libexec/QtWebEngineProcess",
+        "sha256": "145380e9af7cee480b1ef8630497383a8d7afadd4d9bd72dc7548e68cb598759",
+        "size": 18297
+      },
+      {
+        "path": "PySide6/Qt/resources/icudtl.dat",
+        "sha256": "5070de99fbd8a48378543511fb7a072f85bf36f94b4f4e1d420d54be1435d6f1",
+        "size": 10467680
+      },
+      {
+        "path": "PySide6/Qt/resources/qtwebengine_devtools_resources.pak",
+        "sha256": "627ae3552710683b3175d7035d17c9697d12a789fc1d8d185dcc6da1d437186a",
+        "size": 11698496
+      },
+      {
+        "path": "PySide6/Qt/resources/qtwebengine_resources.pak",
+        "sha256": "83d29cd5dd95b86e760669c881c9d3609497a72c7b50bd2a2ba50200e761574d",
+        "size": 2452064
+      },
+      {
+        "path": "PySide6/Qt/resources/qtwebengine_resources_100p.pak",
+        "sha256": "27d3eb71d18cf0fd61a1ff86a0aa3c5a6d4bff7f8396df04fd15d5001a7f070a",
+        "size": 151476
+      },
+      {
+        "path": "PySide6/Qt/resources/qtwebengine_resources_200p.pak",
+        "sha256": "f82017b6312998c7411bdadad7c1f235353024441c5c3a907f0da538a6ba52de",
+        "size": 197297
+      },
+      {
+        "path": "PySide6/Qt/resources/v8_context_snapshot.bin",
+        "sha256": "d256cba1882ef2fbab480b41caef344129b008e38c08fbb40c6218efd70c294e",
+        "size": 694265
+      }
+    ],
+    "qt_webengine_version": "6.11.1",
+    "runtime_version": "140.0.7339.225",
+    "security_patch_version": "148.0.7778.96",
+    "source_based_on_version": "140.0.7339.264",
+    "source_credits": {
+      "component_count": 262,
+      "path": "licenses/desktop/qt-6.11.1/qtwebengine/chromium-source-credits.html",
+      "scope": "Conservative Linux source-tree superset generated without the unavailable wheel publisher GN dependency graph."
+    }
+  },
+  "distribution": {
+    "name": "PySide6_Addons",
+    "version": "6.11.1"
+  },
+  "exact_build_sbom_available": false,
+  "ffmpeg": {
+    "aggregate_attribution_expression": "LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-Source-Code AND ISC AND MIT AND MPL-2.0 AND IJG AND Zlib AND BSL-1.0",
+    "components": [
+      {
+        "copyright": "Copyright (c) 2000-2023 the FFmpeg developers",
+        "download_location": "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n7.1.3.tar.gz",
+        "id": "ffmpeg",
+        "license_id": "LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-Source-Code AND ISC AND MIT AND MPL-2.0",
+        "name": "FFmpeg",
+        "version": "7.1.3"
+      },
+      {
+        "copyright": "(C) Copyright John Maddock 2006. Copyright (c) 2006 Xiaogang Zhang",
+        "download_location": "https://www.boost.org/",
+        "id": "ffmpeg-boost",
+        "license_id": "BSL-1.0",
+        "name": "boost"
+      },
+      {
+        "copyright": "Copyright (C) 1991-2020, Thomas G. Lane, Guido Vollbeding.",
+        "download_location": "https://libjpeg.sourceforge.net/",
+        "id": "ffmpeg-libjpeg",
+        "license_id": "IJG",
+        "name": "libjpeg"
+      },
+      {
+        "copyright": "Copyright (C) 1995-2022 Jean-loup Gailly and Mark Adler.",
+        "download_location": "https://www.zlib.net/",
+        "id": "ffmpeg-zlib",
+        "license_id": "Zlib",
+        "name": "zlib"
+      }
+    ],
+    "configure": "--disable-programs --disable-doc --disable-debug --enable-network --disable-lzma --enable-pic --disable-vulkan --disable-v4l2-m2m --disable-decoder=truemotion1 --enable-shared --disable-static --enable-openssl --prefix=/usr/local/FFmpeg-n7.1.3",
+    "dynamic_system_dependencies": [
+      "libbz2.so.1",
+      "libm.so.6",
+      "libz.so.1"
+    ],
+    "legal_files": [
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.BSD-2-Clause.txt",
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.BSD-3-Clause.txt",
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.BSD-Source-Code.txt",
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.BSL-1.0.txt",
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.IJG.txt",
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.ISC.txt",
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.LGPL-2.1-or-later.txt",
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.MIT.txt",
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.MPL-2.0.txt",
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.Zlib.txt",
+      "licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/qt_attribution.json"
+    ],
+    "payload_files": [
+      {
+        "path": "PySide6/Qt/lib/libQt6FFmpegStub-crypto.so.3",
+        "sha256": "bfad05612a07fbd8ca4b0b6cb7c0003df619147c5b147f8505e1c401d0dc93d4",
+        "size": 14376
+      },
+      {
+        "path": "PySide6/Qt/lib/libQt6FFmpegStub-ssl.so.3",
+        "sha256": "d5d4682a2bfd23bdc8e9af4688f2d2d34ee19b14082a3b73ecc68768d6ba15cd",
+        "size": 43472
+      },
+      {
+        "path": "PySide6/Qt/lib/libQt6FFmpegStub-va-drm.so.2",
+        "sha256": "f97c3d5f181c1dfedd6d284ffd1aee39ac0e852523f11086c172cd545e90a5af",
+        "size": 14664
+      },
+      {
+        "path": "PySide6/Qt/lib/libQt6FFmpegStub-va-x11.so.2",
+        "sha256": "fc5ff3674d246942c0feda7844b448e61012ef8a7b87183115082467562a4bd9",
+        "size": 14664
+      },
+      {
+        "path": "PySide6/Qt/lib/libQt6FFmpegStub-va.so.2",
+        "sha256": "93fee7b8b30c10aa22608cac9646f16f15834481af108b29800b51182b0ff61c",
+        "size": 31136
+      },
+      {
+        "path": "PySide6/Qt/lib/libavcodec.so.61.19.101",
+        "sha256": "8908da9951a6429cf0f7335aa7bf59eb06721d21ee47522ca50da33e385ada1b",
+        "size": 14858921
+      },
+      {
+        "path": "PySide6/Qt/lib/libavformat.so.61.7.100",
+        "sha256": "df0adf14c710a406fadc7db33ead002fdff5941cb80bf027e07eebbb2ba45140",
+        "size": 2724601
+      },
+      {
+        "path": "PySide6/Qt/lib/libavutil.so.59.39.100",
+        "sha256": "b0a4e34782bbe71ae9ed4c4b1e2664349d72e339adfc95ee774ed17a216faa6c",
+        "size": 1120353
+      },
+      {
+        "path": "PySide6/Qt/lib/libswresample.so.5.3.100",
+        "sha256": "c579167179dfbd91a2b562de0cfca640865d6f25ad037c712e423ed37968e41c",
+        "size": 124937
+      },
+      {
+        "path": "PySide6/Qt/lib/libswscale.so.8.3.100",
+        "sha256": "8e9dd747ceeb68feb8656185e89633dafc54ce8173cd05f27630e0486570d955",
+        "size": 612529
+      },
+      {
+        "path": "PySide6/Qt/plugins/multimedia/libffmpegmediaplugin.so",
+        "sha256": "f492c7eeec10f11f4c1aac68453083d6d776f2427252f0ab5d7e799b3d4b5e15",
+        "size": 769488
+      }
+    ],
+    "runtime_license": "LGPL version 2.1 or later",
+    "selected_license_expression": "LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-Source-Code AND ISC AND MIT AND MPL-2.0",
+    "source_sha256": "e0b04c4b43d7e6d67cb6710334fb513adf13ac860532f30e1d0ac4c231f232fb",
+    "source_url": "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n7.1.3.tar.gz",
+    "version": "7.1.3"
+  },
+  "platform": "linux-flatpak-x86_64",
+  "provenance_note": "The PySide wheel publisher did not include an exact-build SBOM. This inventory therefore combines exact binary inspection with attribution metadata from the verified Qt 6.11.1 source archive.",
+  "qt_source_attributions": {
+    "legal_file_count": 88,
+    "path": "licenses/desktop/qt-6.11.1/QT-THIRD-PARTY-ATTRIBUTIONS.json",
+    "record_count": 123,
+    "reviewed_license_expressions": [
+      "AFL-2.1 OR GPL-2.0-or-later",
+      "Apache-2.0",
+      "Apache-2.0 AND BSD-3-Clause",
+      "Apache-2.0 AND LicenseRef-MIT-Khronos-old",
+      "Apache-2.0 AND MIT",
+      "Apache-2.0 OR MIT",
+      "BSD-2-Clause",
+      "BSD-2-Clause AND Imlib2",
+      "BSD-3-Clause",
+      "BSD-3-Clause AND LicenseRef-MIT-Khronos-old AND Apache-2.0 AND GPL-3.0-or-later WITH Bison-exception-2.2 AND AML-glslang",
+      "BSL-1.0",
+      "CC0-1.0",
+      "CC0-1.0 OR Apache-2.0",
+      "FTL OR GPL-2.0-only",
+      "HPND",
+      "HPND-sell-variant",
+      "IJG",
+      "IJG AND BSD-3-Clause",
+      "LGPL-2.1-or-later AND BSD-3-Clause AND BSD-2-Clause AND BSD-Source-Code AND ISC AND MIT AND MPL-2.0",
+      "Libpng AND libpng-2.0",
+      "LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception",
+      "LicenseRef-ICC-License",
+      "LicenseRef-SHA1-Public-Domain",
+      "MIT",
+      "MIT AND MIT-open-group",
+      "MIT OR CC0-1.0",
+      "MPL-2.0",
+      "MPL-2.0 AND BSD-3-Clause",
+      "Unicode-3.0",
+      "Unlicense OR MIT-0",
+      "X11 AND HPND",
+      "Zlib",
+      "blessing",
+      "libtiff"
+    ],
+    "scope": "Conservative Qt 6.11.1 source-attribution superset for top-level modules represented in the complete locked Linux PySide6 wheels. It is not the wheel publisher exact-build SBOM and may over-disclose source records absent from the publisher build configuration."
+  },
+  "schema_version": 1,
+  "scope": "Binary inspection of the complete locked PySide6-Addons wheel installed by Flatpak."
+}

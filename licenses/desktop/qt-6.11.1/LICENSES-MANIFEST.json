@@ -1,0 +1,910 @@
+{
+  "archive_license_member_count": 402,
+  "files": [
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/AFL-2.1.txt",
+      "sha256": "93bb4f7417aa775bab9026cc3d0af28aeb64451fc5a8ec651876785edd8eaf9b",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/AFL-2.1.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/AML-glslang.txt",
+      "sha256": "b5545d31e12c303e8ee9a0cc203d0a2a8d6e02729dd450d4cda5f8ff0e1193d0",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/AML-glslang.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Apache-2.0-074e6e32c86a.txt",
+      "sha256": "074e6e32c86a4c0ef8b3ed25b721ca23aca83df277cd88106ef7177c354615ff",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtsensors/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qttools/src/assistant/qlitehtml/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/glib/src/LICENSES/Apache-2.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Apache-2.0-44b0a56e80b4.txt",
+      "sha256": "44b0a56e80b41a1b0a6bd1292515e806539fd97b30be54c2719e6c763190ab57",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/spirv-cross/src/LICENSES/Apache-2.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Apache-2.0-cfc7749b96f6.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/vulkan-headers/src/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/vulkan-utility-libraries/src/LICENSES/Apache-2.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Apache-2.0-e3ba223bb142.txt",
+      "sha256": "e3ba223bb1423f0aad8c3dfce0fe3148db48926d41e6fbc3afbbf5ff9e1c89cb",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtconnectivity/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtopenapi/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtscxml/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtvirtualkeyboard/LICENSES/Apache-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/Apache-2.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Bison-exception-2.2.txt",
+      "sha256": "193ff9d6e52b80b654fa9402ff351fd1f9f855381f31062a5b7400fd82409b29",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/Bison-exception-2.2.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Bitstream-Vera.txt",
+      "sha256": "7a083b136e64d064794c3419751e5c7dd10d2f64c108fe5ba161eae5e5958a93",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/Bitstream-Vera.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/blessing.txt",
+      "sha256": "592db1199aab67aafe4515db9808b420db122083807c5329b2f061951e79acbe",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/blessing.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/BSD-2-Clause.txt",
+      "sha256": "8fda146749ca071ac9cdce2e24d25444676ea48d1f9dccc2b7c15c054b717db8",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qt5compat/LICENSES/BSD-2-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/BSD-2-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/BSD-2-Clause.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/BSD-3-Clause.txt",
+      "sha256": "9f0490f18656c6f2435bd14f603ef0c96434d1825615363dce43abb42ed1dcce",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qt5compat/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtactiveqt/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtcanvaspainter/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtcharts/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtcoap/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtconnectivity/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtdatavis3d/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtgraphs/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtgrpc/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qthttpserver/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtimageformats/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtlanguageserver/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtlocation/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtlottie/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtmqtt/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtnetworkauth/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtopenapi/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtquick3dphysics/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtquickeffectmaker/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtquicktimeline/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtremoteobjects/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtscxml/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtsensors/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtserialbus/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtserialport/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtspeech/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtsvg/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qttasktree/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qttools/src/assistant/qlitehtml/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qttranslations/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtvirtualkeyboard/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtwayland/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtwebchannel/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtwebsockets/LICENSES/BSD-3-Clause.txt",
+        "qt-everywhere-src-6.11.1/qtwebview/LICENSES/BSD-3-Clause.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/BSD-4-Clause.txt",
+      "sha256": "83faa0d205c316ce3efeafee465b6a165914fb29595968c08dc6437021b7b6fd",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/BSD-4-Clause.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/BSL-1.0-3abd6471b9a9.txt",
+      "sha256": "3abd6471b9a9a08d65ce771143f8e278bb4c1aeb10c1c2d476935a6b049653f5",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/BSL-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/BSL-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/BSL-1.0.txt",
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/BSL-1.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/BSL-1.0-84c6ef3ea9e3.txt",
+      "sha256": "84c6ef3ea9e3254a54d0acf5d3e0c61ae011b8fef7dd6940591cf060e6380a8f",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/BSL-1.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/CC-BY-3.0.txt",
+      "sha256": "e6bc9e9c474700b708f568bac9e5a8a9bcb2b1dad53442f5ba449fcb848b8e76",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/CC-BY-3.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/CC-BY-4.0-0184bb911fad.txt",
+      "sha256": "0184bb911fad08c751c66ec52d6e4c815497fe3a65249bfddbdcffcf57439171",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/CC-BY-4.0.txt",
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/CC-BY-4.0.txt",
+        "qt-everywhere-src-6.11.1/qtlanguageserver/LICENSES/CC-BY-4.0.txt",
+        "qt-everywhere-src-6.11.1/qtopenapi/LICENSES/CC-BY-4.0.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/CC-BY-4.0.txt",
+        "qt-everywhere-src-6.11.1/qtquick3dphysics/LICENSES/CC-BY-4.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/CC-BY-4.0-b89aeb7c2a16.txt",
+      "sha256": "b89aeb7c2a164a0576786dd2a8b57f2fb628b23981f0a06bd77e2f99a9befa0f",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/spirv-cross/src/LICENSES/CC-BY-4.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/CC-BY-4.0-d557539df68e.txt",
+      "sha256": "d557539df68e771cc1eedcc91d13f70fca930e508d11eedcafa4b15db49e3744",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtlottie/LICENSES/CC-BY-4.0.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/spirv-headers/src/LICENSES/CC-BY-4.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/CC-BY-SA-4.0-5e436ff8ffbb.txt",
+      "sha256": "5e436ff8ffbb77d8607220e9bce20c8915d860010feeb6c1ebef5a85688e9b39",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/CC-BY-SA-4.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/CC-BY-SA-4.0-cde7883b9050.txt",
+      "sha256": "cde7883b9050a1104f4ac19a1572aafd6e5d7323b68351aaf51fbf4beba54966",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/CC-BY-SA-4.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/CC0-1.0.txt",
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/CC0-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/CC0-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtcoap/LICENSES/CC0-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/CC0-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/CC0-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/CC0-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/CC0-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/CC0-1.0.txt",
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/CC0-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/CC0-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/glib/src/LICENSES/CC0-1.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/FTL.txt",
+      "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/FTL.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/GFDL-1.3-no-invariants-only.txt",
+      "sha256": "110535522396708cea37c72a802c5e7e81391139f5f7985631c93ef242b206a4",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qt5compat/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtactiveqt/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtcanvaspainter/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtcharts/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtcoap/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtconnectivity/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtdatavis3d/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtgraphs/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtgrpc/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qthttpserver/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtimageformats/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtlanguageserver/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtlocation/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtlottie/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtmqtt/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtnetworkauth/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtopenapi/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtquick3dphysics/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtquickeffectmaker/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtquicktimeline/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtremoteobjects/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtscxml/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtsensors/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtserialbus/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtserialport/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtspeech/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtsvg/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qttasktree/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtvirtualkeyboard/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtwayland/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebchannel/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebsockets/LICENSES/GFDL-1.3-no-invariants-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebview/LICENSES/GFDL-1.3-no-invariants-only.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/GPL-2.0-only.txt",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qt5compat/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtconnectivity/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtgrpc/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtimageformats/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtlanguageserver/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtlocation/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtopenapi/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtremoteobjects/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtscxml/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtsensors/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtserialbus/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtserialport/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtspeech/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtsvg/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qttasktree/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwayland/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebchannel/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebsockets/LICENSES/GPL-2.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebview/LICENSES/GPL-2.0-only.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/GPL-2.0-or-later-8177f9751321.txt",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/GPL-2.0-or-later.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/GPL-2.0-or-later-aaf135472f81.txt",
+      "sha256": "aaf135472f81c5b4a0dca9367e5bb5e9750032b5bebe5442b36e4c0a47430df3",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/glib/src/LICENSES/GPL-2.0-or-later.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/GPL-3.0-only.txt",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qt5compat/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtactiveqt/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtcanvaspainter/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtcharts/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtcoap/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtconnectivity/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtdatavis3d/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtgraphs/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtgrpc/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qthttpserver/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtimageformats/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtlanguageserver/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtlocation/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtlottie/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtmqtt/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtnetworkauth/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtopenapi/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtquick3dphysics/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtquickeffectmaker/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtquicktimeline/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtremoteobjects/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtscxml/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtsensors/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtserialbus/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtserialport/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtspeech/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtsvg/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qttasktree/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qttools/src/assistant/qlitehtml/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qttranslations/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtvirtualkeyboard/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwayland/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebchannel/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebsockets/LICENSES/GPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebview/LICENSES/GPL-3.0-only.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/GPL-3.0-or-later.txt",
+      "sha256": "1a52218b744fa3a722df8d0477a2041571ec2cecdb9906cf1f626fc1a2cf0d6f",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/GPL-3.0-or-later.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/HPND-sell-variant.txt",
+      "sha256": "3a946598a9f674d44df764279ca0b85b5d6faba08f3bc75d8e0fcf6cd729a9bd",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtsvg/LICENSES/HPND-sell-variant.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/HPND.txt",
+      "sha256": "67ac968431270291f5e9cd3ed76705e1169f57082ee102093b2543b28cef63cf",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/HPND.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/IJG.txt",
+      "sha256": "1cb448f5e2e6d3aca60943f4eee1a04675628dc0266a074a42bc1560ebc28d61",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/IJG.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Imlib2.txt",
+      "sha256": "8846f2baba1a7f4c36f7ca19a923a000d8a21afa37cf0fe006f6ce88a6058a89",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/Imlib2.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/IPL-1.0.txt",
+      "sha256": "d5328e672fb1bff47ee18e890784541453380081cf3771bb7b3c06fc19c7d503",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/IPL-1.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/ISC.txt",
+      "sha256": "ae77a0527ac50ca4fb83b36bb1828e6ef9dfdacf4116a8942a304cdd22f51fd2",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/ISC.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LGPL-2.0-or-later.txt",
+      "sha256": "0d816b54ffd9a6cf3bb78f2241c4e45f099b92d36d76c6944c184daa90f65a62",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/LGPL-2.0-or-later.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LGPL-2.1-only.txt",
+      "sha256": "fa6f36630bb1e0c571d34b2bbdf188d08495c9dbf58f28cac112f303fc1f58fb",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/glib/src/LICENSES/LGPL-2.1-only.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LGPL-2.1-or-later-1ccf09bf2f59.txt",
+      "sha256": "1ccf09bf2f598308df4bed9cd8e9657dc5cd0973d2800318f2e241486e2edf3f",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/LGPL-2.1-or-later.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LGPL-2.1-or-later-5749785c8bde.txt",
+      "sha256": "5749785c8bdefafcb5d798270ed0a967036fe2ca63dcedade1627565dfef81d2",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/gvdb/src/LICENSES/LGPL-2.1-or-later.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LGPL-2.1-or-later-fa6f36630bb1.txt",
+      "sha256": "fa6f36630bb1e0c571d34b2bbdf188d08495c9dbf58f28cac112f303fc1f58fb",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/glib/src/LICENSES/LGPL-2.1-or-later.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LGPL-3.0-only.txt",
+      "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qt5compat/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtconnectivity/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtgrpc/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtimageformats/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtlanguageserver/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtlocation/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtopenapi/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtremoteobjects/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtscxml/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtsensors/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtserialbus/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtserialport/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtspeech/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtsvg/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qttasktree/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwayland/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebchannel/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebsockets/LICENSES/LGPL-3.0-only.txt",
+        "qt-everywhere-src-6.11.1/qtwebview/LICENSES/LGPL-3.0-only.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/libpng-2.0.txt",
+      "sha256": "7317e078e2d3b5d7ba5a6159e650945153262b44b76f6700f8e9edb261c5143e",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/libpng-2.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Libpng.txt",
+      "sha256": "58fe669792f9b4e0740bf75ecfe90b5326128bb2ce7e27e1c342abd9db4d8ea6",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/Libpng.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/libtiff.txt",
+      "sha256": "fbd6fed7938541d2c809c0826225fc85e551fdbfa8732b10f0c87e0847acafd7",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtimageformats/LICENSES/libtiff.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception.txt",
+      "sha256": "0526625fcc746a42d3f19a0ab357d3dc8479fdbe3bfd168825498f50215c7a63",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/LicenseRef-BSD-3-Clause-with-PCRE2-Binary-Like-Packages-Exception.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-ICC-License.txt",
+      "sha256": "9e34ff47b3a44814e183342e7e198d127a6740e29d20e8381fba7688dafc79dd",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/LicenseRef-ICC-License.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Image-Use-Policy.txt",
+      "sha256": "b35b5b98fb4fcb56257c7600377dc13f30c950be08a6a2eeb4f1b4515597503b",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/LicenseRef-Image-Use-Policy.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-KhronosFreeUse.txt",
+      "sha256": "fbeaca472f4f70e276dd1106ca5097435967a22ad6c1d8200aef7ad9f70aaf3f",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/spirv-cross/src/LICENSES/LicenseRef-KhronosFreeUse.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Lcs-Telegraphics.txt",
+      "sha256": "c10225ebbd5191bfdd761b0d7752c785f2453ab665d6c454473fb12d254668aa",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/LicenseRef-Lcs-Telegraphics.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Lottie-Simple-License-9.13.21.txt",
+      "sha256": "def7d63b97a23a053e4ba1767e26b160fb82a39a3db181abc6c570c55c55d06b",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtlottie/LICENSES/LicenseRef-Lottie-Simple-License-9.13.21.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-MIRAMAR.txt",
+      "sha256": "7f588e40af5a66d3b3bb45973d59ffc7be829ee7ca2c174e8567d362bcced491",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/LicenseRef-MIRAMAR.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-MIT-Khronos-old.txt",
+      "sha256": "fbeaca472f4f70e276dd1106ca5097435967a22ad6c1d8200aef7ad9f70aaf3f",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/LicenseRef-MIT-Khronos-old.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-old-glib-tests.txt",
+      "sha256": "fb261b2d5dbe76c4850f90da763210bc385e52428df6bbfd7b06295ac8a32914",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/glib/src/LICENSES/LicenseRef-old-glib-tests.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-protobuf.txt",
+      "sha256": "6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtgrpc/LICENSES/LicenseRef-protobuf.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Qt-Commercial-9b1f50aae626.txt",
+      "sha256": "9b1f50aae6267f9d5e0ceb6775ee86450262c25ec7c0573e151fe5d3f18a4700",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qt5compat/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtactiveqt/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtcanvaspainter/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtcharts/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtcoap/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtconnectivity/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtdatavis3d/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtgraphs/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtgrpc/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qthttpserver/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtimageformats/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtlanguageserver/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtlocation/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtlottie/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtmqtt/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtnetworkauth/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtopenapi/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtquick3dphysics/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtquickeffectmaker/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtquicktimeline/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtremoteobjects/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtscxml/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtsensors/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtserialbus/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtserialport/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtspeech/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtsvg/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qttasktree/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qttools/src/assistant/qlitehtml/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qttranslations/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtvirtualkeyboard/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtwayland/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtwebchannel/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtwebsockets/LICENSES/LicenseRef-Qt-Commercial.txt",
+        "qt-everywhere-src-6.11.1/qtwebview/LICENSES/LicenseRef-Qt-Commercial.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Qt-Commercial-bbde9cc52dad.txt",
+      "sha256": "bbde9cc52dad1dc444d92a5ff34157e20375d90c69de2a2fc1b9f62ed833c170",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/LicenseRef-Qt-Commercial.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-SHA1-Public-Domain.txt",
+      "sha256": "65d86b8ec6b1cd8b8f6e64fd8710274ba00d6a3c520e00dfdcd1c3d2071f3305",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/LicenseRef-SHA1-Public-Domain.txt",
+        "qt-everywhere-src-6.11.1/qtscxml/LICENSES/LicenseRef-SHA1-Public-Domain.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Tango-Icons-Public-Domain.txt",
+      "sha256": "4f740497cf8ad0e564de90d3416a06c3d6b1d69d6883fe539925e3353d68a466",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/LicenseRef-Tango-Icons-Public-Domain.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Linux-syscall-note.txt",
+      "sha256": "3f9e477523febab58de8b716ccfbcf02e6ef1c8e7728953905e8558637abe2a9",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/Linux-syscall-note.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LLVM-exception-e34c58338bd8.txt",
+      "sha256": "e34c58338bd89d43e709e226610d8f32b3e3c47f4ad9a99a8dc1d4ac7842488e",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/glib/src/LICENSES/LLVM-exception.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/LLVM-exception-f717ab4cf953.txt",
+      "sha256": "f717ab4cf953fd1003be7f1b7adc7f54dd8690a7ebfbc2c22710e920071ac486",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/LLVM-exception.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MIT-0.txt",
+      "sha256": "7d307b02b2d9365030747bded6dde5763208de9758c4173526ff033f655e7fe1",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/MIT-0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MIT-1ca3502222d9.txt",
+      "sha256": "1ca3502222d967f3be5751c55f6b7ee735b5383909c3b501495f54b216dbf227",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/vulkan-headers/src/LICENSES/MIT.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MIT-6d7c9e9d7d12.txt",
+      "sha256": "6d7c9e9d7d12c8d3753bdb24417b84819ba4d6c2f025c37948113d86dc81eef9",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/spirv-headers/src/LICENSES/MIT.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MIT-747411e4fafd.txt",
+      "sha256": "747411e4fafdb1d66c19f2310d69e8c715e775427dcadc9022d069a2159767b6",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtopenapi/LICENSES/MIT.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MIT-8f25018489d6.txt",
+      "sha256": "8f25018489d6fe0dec34a352314c38dc146247b7de65735790f4398a92afa84b",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/spirv-cross/src/LICENSES/MIT.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MIT-b05785f9f18e.txt",
+      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtdoc/LICENSES/MIT.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MIT-b85dcd3e453d.txt",
+      "sha256": "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qttools/src/assistant/qlitehtml/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/glib/src/LICENSES/MIT.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MIT-d040359701c0.txt",
+      "sha256": "d040359701c01996a017d5c515678929cd1b0625e64cb86db44025fbb6cdf1fc",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtlocation/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtlottie/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtwayland/LICENSES/MIT.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/MIT.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MIT-Khronos-old.txt",
+      "sha256": "3c58021633974f9ed3c3d445a374240a5244fd039628f4d7f6f3e674bc8e6694",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/MIT-Khronos-old.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MIT-open-group.txt",
+      "sha256": "c55d2ab72d8a4f9e9cd8fbd1379268e575e8cfa16874affa5899b75a6d754514",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/MIT-open-group.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MPL-1.1.txt",
+      "sha256": "6214f8b1300bb9f37b16ebc146f8f61af0187e0025042ff95c8b3030744a8795",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium/third_party/glib/src/LICENSES/MPL-1.1.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MPL-2.0-3f3d9e0024b1.txt",
+      "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/MPL-2.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/MPL-2.0-66a3107d5ad6.txt",
+      "sha256": "66a3107d5ad6a058aab753eaac2047ccb2ed0e39465dd0fe5844da3e300d5172",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/MPL-2.0.txt",
+        "qt-everywhere-src-6.11.1/qtopcua/LICENSES/MPL-2.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/OFL-1.1-1d361a8f8e8c.txt",
+      "sha256": "1d361a8f8e8ce6e68457dcd93fb56e162e6baa3bbb7e7573a290d44399f6b57e",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtcanvaspainter/LICENSES/OFL-1.1.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/OFL-1.1.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/OFL-1.1-82acb4bf0eca.txt",
+      "sha256": "82acb4bf0ecaf914d0ae8194015208aa9aff8dc21b5c18d247d5be3e1769aa0f",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtquickeffectmaker/LICENSES/OFL-1.1.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/OFL-1.1-ed0df7c746c3.txt",
+      "sha256": "ed0df7c746c39b27f297cc1bf5e8cdfa5b53c7056572092a77db02278435a689",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtpositioning/LICENSES/OFL-1.1.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Qt-GPL-exception-1.0.txt",
+      "sha256": "40678d338ce53cd93f8b22b281a2ecbcaa3ee65ce60b25ffb0c462b0530846b2",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qt3d/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qt5compat/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtactiveqt/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtcanvaspainter/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtcoap/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtconnectivity/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtdatavis3d/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtgraphs/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtgrpc/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtlottie/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtmultimedia/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtquick3d/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtquick3dphysics/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtremoteobjects/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtscxml/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtsensors/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtserialbus/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtshadertools/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qttools/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qttools/src/assistant/qlitehtml/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qttranslations/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtvirtualkeyboard/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtwayland/LICENSES/Qt-GPL-exception-1.0.txt",
+        "qt-everywhere-src-6.11.1/qtwebengine/LICENSES/Qt-GPL-exception-1.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/SPL-1.0.txt",
+      "sha256": "f58f2f30909982445f97f1a61667261920a7caeab21ef5bea1b740f5b144d141",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/SPL-1.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Unicode-3.0.txt",
+      "sha256": "80bb6294022d8764adb36a9d65ebb6bd94efb1865918a71e31e6c247607d7634",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/Unicode-3.0.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Unlicense.txt",
+      "sha256": "ffc5ee3c1dca43a6aa11ec05d67358dadc66bcf47e0196823ea754c8dfdb1229",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtdeclarative/LICENSES/Unlicense.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/X11.txt",
+      "sha256": "e2936c6509784b4f0ec27bac74182393866fad9422b29a70e085ff14aba87193",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/X11.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Xerox.txt",
+      "sha256": "b6bc52205d01e10cf43dbb7b8aec06dcaa3b21d1486e7c9c0bec329ee8244d8d",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/Xerox.txt"
+      ]
+    },
+    {
+      "path": "licenses/desktop/qt-6.11.1/LICENSES/Zlib.txt",
+      "sha256": "d7e3139972874dc8abdbbfce27ec1e6f942b28279dd7d27453630a8b4610e080",
+      "source_members": [
+        "qt-everywhere-src-6.11.1/qtbase/LICENSES/Zlib.txt",
+        "qt-everywhere-src-6.11.1/qtcanvaspainter/LICENSES/Zlib.txt"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "source_archive": "qt-everywhere-src-6.11.1.tar.xz",
+  "source_sha256": "252acef8c5ae68074d91cadba2ee4a83465051bbb970dd26e8f0daa0f3904e03",
+  "source_url": "https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz",
+  "unique_license_file_count": 83
+}

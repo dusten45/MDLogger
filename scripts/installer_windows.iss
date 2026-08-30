@@ -22,6 +22,21 @@
 #define MyAppPublisher "dusten45"
 #define MyAppURL "https://github.com/dusten45/MDLogger"
 
+; PyInstaller onedir의 필수 법률 구조가 없으면 installer 컴파일 자체를 중단한다.
+; 폴더 전체 복사만으로는 누락 파일을 탐지할 수 없으므로 대표 파일을 명시한다.
+#ifnexist "..\dist\MDLogger\LICENSE"
+    #error "dist\MDLogger\LICENSE is required"
+#endif
+#ifnexist "..\dist\MDLogger\THIRD_PARTY_NOTICES.txt"
+    #error "dist\MDLogger\THIRD_PARTY_NOTICES.txt is required"
+#endif
+#ifnexist "..\dist\MDLogger\licenses\inventory\desktop-windows.json"
+    #error "desktop Windows license inventory is required"
+#endif
+#ifnexist "..\dist\MDLogger\licenses\sources\desktop-source-offer.md"
+    #error "desktop corresponding-source information is required"
+#endif
+
 [Setup]
 ; 세계적으로 고유한 AppId. 최초 생성 후엔 바꾸지 않고 유지해야 갱신 시
 ; "같은 프로그램"으로 인식된다. (분산 배포 전엔 한번 생성해 상수로 고정)
@@ -36,6 +51,8 @@ AppUpdatesURL={#MyAppURL}
 ; DefaultDirName={localappdata}\Programs\{#MyAppName},
 ; PrivilegesRequired=lowest 로 바꾼다.
 DefaultDirName={autopf}\{#MyAppName}
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 ; Program Files 는 관리자 권한이 필요하므로 admin 이 안전하다.
@@ -44,6 +61,8 @@ PrivilegesRequired=admin
 ; 같은 그림의 .png(icon\MDLogger-icon.png)는 앱 자체/다른 OS 배포에서 쓴다.
 SetupIconFile=..\icon\MDLogger-icon.ico
 LicenseFile=..\LICENSE
+; 설치 완료 화면에서도 제3자 고지 위치를 바로 확인할 수 있게 한다.
+InfoAfterFile=..\dist\MDLogger\THIRD_PARTY_NOTICES.txt
 OutputDir=..\dist\installer
 OutputBaseFilename=MDLoggerSetup-{#MyAppVersion}
 Compression=lzma2
@@ -62,7 +81,9 @@ Name: "desktopicon"; Description: "바탕화면에 바로가기 만들기"; Grou
 ; Name: "startmenu"; Description: "시작 메뉴에 바로가기 만들기"; GroupDescription: "추가 작업:"
 
 [Files]
-; onedir 폴더 전체( _internal\ 포함)를 설치.
+; onedir 폴더 전체를 상대 경로 그대로 설치한다. PyInstaller spec이
+; LICENSE, THIRD_PARTY_NOTICES.txt, licenses\를 실행 파일과 같은 최상위에
+; 복사하고 기존 _internal\ 런타임 구조는 그대로 유지한다.
 ; 체크섬 manifest는 기본적으로 `dist\MDLogger.sha256`(폴더 바깥)에 있으므로
 ; 여기로 복사되지 않는다. 재차 잡는 Excludes 는 폴더 안에 .sha256 이
 ; 섞이는 경우를 위한 안전망이다(런타임에 불필요). 만약 릴리스 기록으로

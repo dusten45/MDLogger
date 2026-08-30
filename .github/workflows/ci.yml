@@ -25,6 +25,17 @@ jobs:
             - name: Install dependencies
               run: uv sync --group dev
 
+            - name: Regenerate desktop license artifacts
+              run: uv run python scripts/generate_desktop_licenses.py
+
+            - name: Verify generated desktop and repository notices are committed
+              run: |
+                  if test -n "$(git status --porcelain --untracked-files=all -- THIRD_PARTY_NOTICES.md THIRD_PARTY_NOTICES.txt flatpak/requirements-runtime.txt licenses/desktop licenses/inventory licenses/sources)"; then
+                    echo "Desktop license artifacts are modified, deleted, or untracked. Commit the regenerated artifacts." >&2
+                    git status --short --untracked-files=all -- THIRD_PARTY_NOTICES.md THIRD_PARTY_NOTICES.txt flatpak/requirements-runtime.txt licenses/desktop licenses/inventory licenses/sources
+                    exit 1
+                  fi
+
             - name: Ruff lint
               run: uv run ruff check .
 
@@ -91,6 +102,17 @@ jobs:
             - name: Web dependency security audit
               run: npm audit
 
+            - name: Regenerate web license artifacts
+              run: npm run generate:licenses
+
+            - name: Verify generated web license artifacts are committed
+              run: |
+                  if test -n "$(git status --porcelain --untracked-files=all -- licenses/inventory.json public/third-party-notices.txt public/licenses)"; then
+                    echo "Web license artifacts are modified, deleted, or untracked. Commit the regenerated artifacts." >&2
+                    git status --short --untracked-files=all -- licenses/inventory.json public/third-party-notices.txt public/licenses
+                    exit 1
+                  fi
+
             - name: Build static assets
               run: VITE_SUPABASE_URL=https://example.supabase.co VITE_SUPABASE_ANON_KEY=sb_publishable_test_not_a_secret_key_abcdefgh VITE_BUILD_ID=${{ github.sha }} npm run build
 
@@ -100,8 +122,87 @@ jobs:
             - name: Run web tests
               run: npm test
 
-            - name: Verify security headers are bundled
-              run: test -f dist/_headers
+            - name: Verify security and license documents are bundled
+              run: |
+                  test -f dist/_headers
+                  test -f dist/third-party-notices.txt
+                  test -d dist/licenses
+
+            - name: Verify production bundle license closure
+              run: npm run check:license-bundle
 
             - name: Scan web bundle for server secrets
               run: npm run check:secrets
+
+    windows-package:
+        name: Windows onedir license contents
+        runs-on: windows-latest
+        timeout-minutes: 30
+
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v4
+
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v4
+              with:
+                  python-version: "3.13"
+
+            - name: Install dependencies
+              run: uv sync --group dev
+
+            - name: Verify desktop license artifacts
+              run: uv run python scripts/generate_desktop_licenses.py --check
+
+            - name: Generate safe bundled configuration
+              shell: pwsh
+              env:
+                  MDLOGGER_SUPABASE_URL: https://example.supabase.co
+                  MDLOGGER_SUPABASE_ANON_KEY: sb_publishable_test_not_a_secret_key_abcdefgh
+              run: uv run python scripts/generate_build_config.py
+
+            - name: Build PyInstaller onedir
+              run: uv run pyinstaller --noconfirm --clean MDLogger.spec
+
+            - name: Verify onedir license contents and excluded palettes
+              shell: pwsh
+              run: |
+                  if (-not (Test-Path dist/MDLogger/LICENSE)) { throw "LICENSE missing" }
+                  if (-not (Test-Path dist/MDLogger/THIRD_PARTY_NOTICES.txt)) { throw "third-party notice missing" }
+                  if (-not (Test-Path dist/MDLogger/licenses/inventory/desktop-windows.json)) { throw "Windows resolver inventory missing" }
+                  if (Test-Path dist/MDLogger/licenses/inventory/desktop-linux.json) { throw "Linux resolver inventory must not be bundled on Windows" }
+                  if (Test-Path dist/MDLogger/licenses/inventory/qt-third-party-runtime-linux-flatpak.json) { throw "Linux Qt runtime evidence must not be treated as Windows payload evidence" }
+                  if (-not (Test-Path dist/MDLogger/licenses/sources/desktop-source-offer.md)) { throw "source instructions missing" }
+                  if (-not (Test-Path build/MDLogger/Analysis-00.toc)) { throw "PyInstaller Analysis TOC missing" }
+                  if (-not (Test-Path build/MDLogger/COLLECT-00.toc)) { throw "PyInstaller COLLECT TOC missing" }
+                  $analysis = Get-Content build/MDLogger/Analysis-00.toc -Raw
+                  if ($analysis -notmatch "PySide6") { throw "PyInstaller Analysis TOC does not contain PySide6 evidence" }
+                  $palettes = Get-ChildItem dist/MDLogger -Recurse -File | Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex") }
+                  if ($palettes) { throw "unverified pyqtgraph palettes were bundled" }
+
+            - name: Install Inno Setup
+              shell: pwsh
+              run: choco install innosetup --yes --no-progress --limit-output
+
+            - name: Compile Inno Setup installer
+              shell: pwsh
+              run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" scripts\installer_windows.iss'
+
+            - name: Install and verify Inno Setup payload
+              shell: pwsh
+              run: |
+                  $installer = Get-ChildItem dist/installer -Filter "MDLoggerSetup-*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                  if (-not $installer) { throw "Inno Setup installer output missing" }
+                  $installRoot = Join-Path $env:RUNNER_TEMP "MDLogger-inno-payload"
+                  & $installer.FullName /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installRoot"
+                  if ($LASTEXITCODE -ne 0) { throw "Inno Setup installer failed: $LASTEXITCODE" }
+                  if (-not (Test-Path "$installRoot/LICENSE")) { throw "Installed LICENSE missing" }
+                  if (-not (Test-Path "$installRoot/THIRD_PARTY_NOTICES.txt")) { throw "Installed third-party notice missing" }
+                  if (-not (Test-Path "$installRoot/licenses/desktop")) { throw "Installed desktop licenses missing" }
+                  if (-not (Test-Path "$installRoot/licenses/inventory/desktop-windows.json")) { throw "Installed Windows inventory missing" }
+                  $palettes = Get-ChildItem $installRoot -Recurse -File | Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex") }
+                  if ($palettes) { throw "Unverified pyqtgraph palettes were installed" }
+                  Remove-Item -LiteralPath $installRoot -Recurse -Force
+
+            - name: Scan Windows onedir for secrets
+              run: uv run python -m mdlogger.secret_scan dist/MDLogger

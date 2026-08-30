@@ -6,22 +6,26 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "tsc -b && vite build",
+        "build": "tsc -b && vite build --sourcemap",
         "lint": "eslint .",
         "generate:icons": "node scripts/generate-pwa-icons.mjs",
+        "generate:licenses": "node scripts/generate-third-party-notices.mjs",
         "preview": "vite preview",
-        "test": "vitest run && node --test scripts/check-secrets.node-test.mjs",
+        "test": "vitest run && node --test scripts/check-secrets.node-test.mjs scripts/generate-third-party-notices.node-test.mjs",
+        "check:licenses": "node scripts/generate-third-party-notices.mjs --check",
+        "check:license-artifacts": "node scripts/check-generated-license-artifacts.mjs",
+        "check:license-bundle": "node scripts/generate-third-party-notices.mjs --check-bundle dist",
+        "strip:source-maps": "node scripts/remove-source-maps.mjs dist",
         "check:secrets": "node scripts/check-secrets.mjs dist",
         "check:deploy-env": "node scripts/check-deploy-env.mjs",
-        "deploy": "npm run check:deploy-env && npm run build && npm run check:secrets && wrangler deploy",
+        "deploy": "npm run check:deploy-env && npm run check:licenses && npm run check:license-artifacts && npm run build && npm run check:license-bundle && npm run strip:source-maps && npm run check:secrets && wrangler deploy",
         "test:watch": "vitest"
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.45.4",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
-        "react-router-dom": "^7.18.2",
-        "vite-plugin-pwa": "^1.3.0"
+        "react-router-dom": "^7.18.2"
     },
     "devDependencies": {
         "@eslint/js": "^9.11.1",
@@ -41,6 +45,7 @@
         "typescript": "~5.6.2",
         "typescript-eslint": "^8.7.0",
         "vite": "^6.4.3",
+        "vite-plugin-pwa": "^1.3.0",
         "vitest": "^3.2.7",
         "wrangler": "^4.124.0"
     }

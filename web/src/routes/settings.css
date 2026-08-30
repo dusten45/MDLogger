@@ -118,3 +118,8 @@
 .settings-link-button:hover {
     border-color: var(--accent);
 }
+
+.settings-link-button:focus-visible {
+    outline: var(--focus-width) solid var(--focus-ring);
+    outline-offset: 2px;
+}

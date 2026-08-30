@@ -61,6 +61,11 @@ jobs:
                   test -n "$CLOUDFLARE_ACCOUNT_ID"
                   npm run check:deploy-env
 
+            - name: Verify committed web license artifacts
+              run: |
+                  npm run check:licenses
+                  npm run check:license-artifacts
+
             - name: Build static assets
               run: npm run build
 
@@ -70,8 +75,17 @@ jobs:
             - name: Run web tests
               run: npm test
 
-            - name: Verify security headers are bundled
-              run: test -f dist/_headers
+            - name: Verify security and license documents are bundled
+              run: |
+                  test -f dist/_headers
+                  test -f dist/third-party-notices.txt
+                  test -d dist/licenses
+
+            - name: Verify production bundle license closure
+              run: npm run check:license-bundle
+
+            - name: Remove license-evidence source maps before deployment
+              run: npm run strip:source-maps
 
             - name: Scan web bundle for server secrets
               run: npm run check:secrets

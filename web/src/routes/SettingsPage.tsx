@@ -543,6 +543,12 @@ export function SettingsPage() {
                     <Link to="/terms" className="settings-link-button">
                         서비스 이용약관
                     </Link>
+                    <a
+                        href="/third-party-notices.txt"
+                        className="settings-link-button"
+                    >
+                        오픈소스 라이선스
+                    </a>
                 </div>
             </section>
 

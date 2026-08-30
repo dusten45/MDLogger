@@ -38,7 +38,11 @@ from ..app_settings import (
     effective_reduce_motion,
 )
 from ..game_service import GameService
-from ..paths import PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL
+from ..paths import (
+    PRIVACY_POLICY_URL,
+    TERMS_OF_SERVICE_URL,
+    third_party_notices_path,
+)
 from ..remote.settings_sync import SettingsSyncClient, SettingsSyncError
 from ..settings import DEFAULT_MODE_LAST_USED, ModeSettings
 from .focus import restrict_focus_to_pointer
@@ -430,10 +434,32 @@ class SettingsWindow(QDialog):
             lambda: QDesktopServices.openUrl(QUrl(TERMS_OF_SERVICE_URL))
         )
         legal_buttons.addWidget(terms_btn)
+
+        licenses_btn = QPushButton("오픈소스 라이선스")
+        licenses_btn.setObjectName("settingsOpenSourceLicenses")
+        licenses_btn.clicked.connect(self._open_third_party_notices)
+        legal_buttons.addWidget(licenses_btn)
         layout.addLayout(legal_buttons)
 
         layout.addStretch(1)
         return page
+
+    def _open_third_party_notices(self) -> None:
+        notice_path = third_party_notices_path()
+        if notice_path is None:
+            QMessageBox.warning(
+                self,
+                "오픈소스 라이선스",
+                "제3자 라이선스 고지 파일을 찾을 수 없습니다. 앱을 다시 설치해 주세요.",
+            )
+            return
+
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(notice_path))):
+            QMessageBox.warning(
+                self,
+                "오픈소스 라이선스",
+                "제3자 라이선스 고지 파일을 기본 문서 뷰어로 열 수 없습니다.",
+            )
 
     # ----- 내비게이션 -----
     def _on_nav_changed(self, row: int) -> None:

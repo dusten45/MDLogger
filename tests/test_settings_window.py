@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pytest
 
@@ -561,6 +562,7 @@ def test_settings_window_has_legal_policy_links(qapp) -> None:
     notice = win.findChild(QLabel, "settingsUnofficialNotice")
     privacy_btn = win.findChild(QPushButton, "settingsPrivacyLink")
     terms_btn = win.findChild(QPushButton, "settingsTermsLink")
+    licenses_btn = win.findChild(QPushButton, "settingsOpenSourceLicenses")
 
     assert notice is not None
     assert notice.text() == (
@@ -573,4 +575,31 @@ def test_settings_window_has_legal_policy_links(qapp) -> None:
     assert privacy_btn.text() == "개인정보 처리방침"
     assert terms_btn is not None
     assert terms_btn.text() == "서비스 이용약관"
+    assert licenses_btn is not None
+    assert licenses_btn.text() == "오픈소스 라이선스"
+    win.close()
+
+
+def test_settings_window_opens_local_third_party_notices(
+    qapp,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    notice_path = tmp_path / "THIRD_PARTY_NOTICES.txt"
+    notice_path.write_text("제3자 라이선스 고지", encoding="utf-8")
+    opened_paths: list[str] = []
+    monkeypatch.setattr(
+        "mdlogger.ui.settings_window.third_party_notices_path",
+        lambda: notice_path,
+    )
+    monkeypatch.setattr(
+        "mdlogger.ui.settings_window.QDesktopServices.openUrl",
+        lambda url: opened_paths.append(url.toLocalFile()) or True,
+    )
+    win = _window(MemorySettingsStore())
+    licenses_btn = win.findChild(QPushButton, "settingsOpenSourceLicenses")
+
+    assert licenses_btn is not None
+    licenses_btn.click()
+    assert opened_paths == [str(notice_path)]
     win.close()

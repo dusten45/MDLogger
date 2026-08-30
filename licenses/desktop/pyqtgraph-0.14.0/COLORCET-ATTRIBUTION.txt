@@ -1,0 +1,16 @@
+ColorCET scientific colour maps
+
+The CET-*.csv colour-map data shipped in pyqtgraph 0.14.0 is attributed to
+Peter Kovesi and the ColorCET project:
+
+  Peter Kovesi, Good Colour Maps: How to Design Them,
+  arXiv:1509.03700 (2015).
+  https://colorcet.holoviz.org/
+  https://github.com/pyqtgraph/pyqtgraph/tree/pyqtgraph-0.14.0/pyqtgraph/colors/maps
+
+License: Creative Commons Attribution 4.0 International (CC-BY-4.0).
+The complete license text is in:
+
+  colors/maps/CC-BY license - applies to CET color map data.txt
+
+MDLogger and its packaging do not modify the CET colour-map data.

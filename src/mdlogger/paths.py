@@ -77,6 +77,16 @@ _PRIVATE_DIR_MODE = 0o700
 _PRIVATE_FILE_MODE = 0o600
 
 
+def third_party_notices_path() -> Path | None:
+    """현재 배포 형식에서 사용자가 열 수 있는 제3자 고지 파일을 찾는다."""
+
+    candidates = [
+        BASE_DIR / "THIRD_PARTY_NOTICES.txt",
+        Path("/app/share/doc/mdlogger/THIRD_PARTY_NOTICES.txt"),
+    ]
+    return next((path for path in candidates if path.is_file()), None)
+
+
 def secure_data_file(path: Path) -> None:
     """POSIX에서 사용자 데이터 파일을 현재 사용자만 읽고 쓰게 한다."""
     if os.name != "nt" and path.exists():

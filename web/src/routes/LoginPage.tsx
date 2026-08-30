@@ -273,8 +273,10 @@ export function LoginPage() {
 
             <footer className="auth-footer-links">
                 <Link to="/privacy">개인정보 처리방침</Link>
-                <span>·</span>
+                <span aria-hidden="true">·</span>
                 <Link to="/terms">이용약관</Link>
+                <span aria-hidden="true">·</span>
+                <a href="/third-party-notices.txt">오픈소스 라이선스</a>
             </footer>
         </div>
     );
