@@ -934,6 +934,11 @@
                 "value": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only"
             },
             "metadata_license_files": [],
+            "metadata_license_files_by_platform": {
+                "windows": [
+                    "pyside6_addons-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt"
+                ]
+            },
             "name": "PySide6-Addons",
             "platforms": ["linux", "windows"],
             "purpose": "Full Qt add-on modules and binaries installed by PySide6.",

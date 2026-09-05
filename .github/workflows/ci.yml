@@ -54,7 +54,7 @@ jobs:
               run: uv run ty check
 
             - name: Run tests
-              run: xvfb-run --auto-servernum uv run pytest
+              run: QT_QPA_PLATFORM=xcb xvfb-run --auto-servernum uv run pytest
 
             - name: Python dependency security audit
               run: uvx pip-audit

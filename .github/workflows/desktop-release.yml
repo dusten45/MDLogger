@@ -73,7 +73,7 @@ jobs:
                   uv run ruff check .
                   uv run ruff format --check .
                   uv run ty check
-                  xvfb-run --auto-servernum uv run pytest
+                  QT_QPA_PLATFORM=xcb xvfb-run --auto-servernum uv run pytest
 
             - name: Create immutable source archive
               run: |
