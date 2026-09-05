@@ -1,0 +1,450 @@
+name: Desktop release draft
+
+on:
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: "빌드할 existing annotated tag. 예: v1.2.3"
+                required: true
+                type: string
+            create_draft:
+                description: 모든 검증 후 GitHub Release draft 생성
+                required: true
+                default: true
+                type: boolean
+
+permissions:
+    contents: read
+
+concurrency:
+    group: desktop-release-${{ inputs.tag }}
+    cancel-in-progress: false
+
+jobs:
+    prepare:
+        name: Validate release source
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        outputs:
+            tag: ${{ steps.release-context.outputs.tag }}
+            version: ${{ steps.release-context.outputs.version }}
+            tag_object_sha: ${{ steps.release-context.outputs.tag_object_sha }}
+            commit_sha: ${{ steps.release-context.outputs.commit_sha }}
+            input_artifact_id: ${{ steps.upload-release-inputs.outputs.artifact-id }}
+
+        steps:
+            - name: Check out requested tag
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ inputs.tag }}
+                  fetch-depth: 0
+                  persist-credentials: false
+
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v4
+              with:
+                  python-version: "3.13"
+
+            - name: Install locked development dependencies
+              run: uv sync --locked --group dev
+
+            - name: Validate annotated tag and release version
+              env:
+                  RELEASE_TAG: ${{ inputs.tag }}
+              run: |
+                  mkdir -p "$RUNNER_TEMP/release-inputs"
+                  uv run python scripts/release/validate_release_version.py \
+                    --tag "$RELEASE_TAG" \
+                    --output "$RUNNER_TEMP/release-inputs/release-context.json"
+
+            - name: Verify committed desktop license artifacts
+              run: uv run python scripts/generate_desktop_licenses.py --check
+
+            - name: Re-run source quality gates
+              run: |
+                  uv run ruff check .
+                  uv run ruff format --check .
+                  uv run ty check
+                  uv run pytest
+
+            - name: Create immutable source archive
+              run: |
+                  uv run python scripts/release/create_source_archive.py \
+                    --context "$RUNNER_TEMP/release-inputs/release-context.json" \
+                    --output-dir "$RUNNER_TEMP/release-inputs"
+
+            - name: Export validated release identity
+              id: release-context
+              run: |
+                  python - "$RUNNER_TEMP/release-inputs/release-context.json" >> "$GITHUB_OUTPUT" <<'PY'
+                  import json
+                  import sys
+
+                  context = json.load(open(sys.argv[1], encoding="utf-8"))
+                  for name in ("tag", "version", "tag_object_sha", "commit_sha"):
+                      print(f"{name}={context[name]}")
+                  PY
+
+            - name: Upload immutable build inputs
+              id: upload-release-inputs
+              uses: actions/upload-artifact@v4
+              with:
+                  name: release-inputs-${{ github.run_id }}
+                  path: ${{ runner.temp }}/release-inputs
+                  if-no-files-found: error
+                  include-hidden-files: false
+                  retention-days: 30
+
+    windows:
+        name: Build Windows installer
+        needs: prepare
+        runs-on: windows-latest
+        timeout-minutes: 45
+        outputs:
+            artifact_id: ${{ steps.upload-windows-release.outputs.artifact-id }}
+        environment:
+            name: desktop-release-build
+        defaults:
+            run:
+                working-directory: ${{ runner.temp }}/release-source/MDLogger-${{ needs.prepare.outputs.version }}
+        env:
+            RELEASE_INPUTS: ${{ runner.temp }}/release-inputs
+            RELEASE_SOURCE: ${{ runner.temp }}/release-source/MDLogger-${{ needs.prepare.outputs.version }}
+            RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+            MDLOGGER_SUPABASE_URL: ${{ vars.MDLOGGER_SUPABASE_URL }}
+            MDLOGGER_SUPABASE_ANON_KEY: ${{ vars.MDLOGGER_SUPABASE_ANON_KEY }}
+
+        steps:
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v4
+              with:
+                  python-version: "3.13"
+
+            - name: Download immutable build inputs
+              uses: actions/download-artifact@v4
+              with:
+                  artifact-ids: ${{ needs.prepare.outputs.input_artifact_id }}
+                  path: ${{ runner.temp }}/release-inputs
+
+            - name: Verify and extract immutable source archive
+              shell: pwsh
+              working-directory: ${{ github.workspace }}
+              run: |
+                  $archive = Join-Path $env:RELEASE_INPUTS "MDLogger-$env:RELEASE_VERSION-source.tar.gz"
+                  $expected = (Get-Content -LiteralPath "$archive.sha256" -Raw).Split()[0]
+                  $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+                  if ($actual -cne $expected) { throw "Source archive checksum validation failed" }
+                  New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP/release-source" | Out-Null
+                  tar -xzf $archive -C "$env:RUNNER_TEMP/release-source"
+
+            - name: Install locked development dependencies
+              run: uv sync --locked --group dev
+
+            - name: Generate publishable bundled configuration
+              shell: pwsh
+              run: |
+                  if ([string]::IsNullOrWhiteSpace($env:MDLOGGER_SUPABASE_URL) -or [string]::IsNullOrWhiteSpace($env:MDLOGGER_SUPABASE_ANON_KEY)) {
+                    throw "desktop-release-build must define publishable Supabase variables"
+                  }
+                  uv run python scripts/generate_build_config.py
+
+            - name: Verify desktop license artifacts
+              run: uv run python scripts/generate_desktop_licenses.py --check
+
+            - name: Build PyInstaller onedir payload
+              run: uv run pyinstaller --noconfirm --clean MDLogger.spec
+
+            - name: Install Inno Setup
+              shell: pwsh
+              run: choco install innosetup --yes --no-progress --limit-output
+
+            - name: Compile versioned Inno Setup installer
+              shell: pwsh
+              run: |
+                  $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+                  if (-not (Test-Path -LiteralPath $iscc)) { throw "Inno Setup compiler is missing" }
+                  & $iscc "/DMyAppVersion=$env:RELEASE_VERSION" scripts\installer_windows.iss
+                  if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed" }
+
+            - name: Verify onedir and installed Windows payload
+              shell: pwsh
+              run: |
+                  $installer = Join-Path $env:RELEASE_SOURCE "dist\installer\MDLoggerSetup-$env:RELEASE_VERSION.exe"
+                  $installRoot = Join-Path $env:RUNNER_TEMP "MDLogger-installed-payload"
+                  $record = Join-Path $env:RUNNER_TEMP "windows-verification.json"
+                  & pwsh -NoProfile -File scripts\release\verify_windows_release.ps1 `
+                    -Onedir "dist\MDLogger" `
+                    -BuildDirectory "build\MDLogger" `
+                    -Installer $installer `
+                    -Version $env:RELEASE_VERSION `
+                    -InstallRoot $installRoot `
+                    -Record $record
+                  if ($LASTEXITCODE -ne 0) { throw "Windows release verification failed" }
+
+            - name: Upload Windows release artifact
+              id: upload-windows-release
+              uses: actions/upload-artifact@v4
+              with:
+                  name: windows-release-${{ github.run_id }}
+                  path: |
+                      ${{ env.RELEASE_SOURCE }}/dist/installer/MDLoggerSetup-${{ env.RELEASE_VERSION }}.exe
+                      ${{ env.RELEASE_SOURCE }}/dist/installer/MDLoggerSetup-${{ env.RELEASE_VERSION }}.exe.sha256
+                      ${{ runner.temp }}/windows-verification.json
+                  if-no-files-found: error
+                  include-hidden-files: false
+                  retention-days: 30
+
+            - name: Upload short-lived Windows debug artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: windows-debug-${{ github.run_id }}
+                  path: |
+                      ${{ env.RELEASE_SOURCE }}/dist/MDLogger
+                      ${{ env.RELEASE_SOURCE }}/build/MDLogger
+                  if-no-files-found: error
+                  include-hidden-files: false
+                  retention-days: 7
+
+    flatpak:
+        name: Build Flatpak bundle
+        needs: prepare
+        runs-on: ubuntu-latest
+        timeout-minutes: 60
+        outputs:
+            artifact_id: ${{ steps.upload-flatpak-release.outputs.artifact-id }}
+        environment:
+            name: desktop-release-build
+        defaults:
+            run:
+                working-directory: ${{ runner.temp }}/release-source/MDLogger-${{ needs.prepare.outputs.version }}
+        env:
+            RELEASE_INPUTS: ${{ runner.temp }}/release-inputs
+            RELEASE_SOURCE: ${{ runner.temp }}/release-source/MDLogger-${{ needs.prepare.outputs.version }}
+            RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+            FLATPAK_BUILD: ${{ runner.temp }}/flatpak-build
+            FLATPAK_REPO: ${{ runner.temp }}/flatpak-repo
+            FLATPAK_STATE: ${{ runner.temp }}/flatpak-state
+            MDLOGGER_SUPABASE_URL: ${{ vars.MDLOGGER_SUPABASE_URL }}
+            MDLOGGER_SUPABASE_ANON_KEY: ${{ vars.MDLOGGER_SUPABASE_ANON_KEY }}
+
+        steps:
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v4
+              with:
+                  python-version: "3.13"
+
+            - name: Download immutable build inputs
+              uses: actions/download-artifact@v4
+              with:
+                  artifact-ids: ${{ needs.prepare.outputs.input_artifact_id }}
+                  path: ${{ runner.temp }}/release-inputs
+
+            - name: Verify and extract immutable source archive
+              working-directory: ${{ github.workspace }}
+              run: |
+                  archive="$RELEASE_INPUTS/MDLogger-$RELEASE_VERSION-source.tar.gz"
+                  cd "$RELEASE_INPUTS"
+                  sha256sum --check "$(basename "$archive").sha256"
+                  mkdir -p "$RUNNER_TEMP/release-source"
+                  tar -xzf "$archive" -C "$RUNNER_TEMP/release-source"
+
+            - name: Install Flatpak builder and required SDK
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install --yes flatpak flatpak-builder
+                  flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+                  flatpak install --user --noninteractive --assumeyes flathub \
+                    org.freedesktop.Sdk//25.08 \
+                    org.freedesktop.Platform//25.08
+
+            - name: Install locked development dependencies
+              run: uv sync --locked --group dev
+
+            - name: Generate publishable bundled configuration
+              run: |
+                  test -n "$MDLOGGER_SUPABASE_URL"
+                  test -n "$MDLOGGER_SUPABASE_ANON_KEY"
+                  uv run python scripts/generate_build_config.py
+
+            - name: Verify desktop license artifacts
+              run: uv run python scripts/generate_desktop_licenses.py --check
+
+            - name: Build clean Flatpak image
+              run: |
+                  flatpak-builder --user --force-clean \
+                    --state-dir="$FLATPAK_STATE" \
+                    --repo="$FLATPAK_REPO" \
+                    "$FLATPAK_BUILD" \
+                    flatpak/io.github.dusten45.MDLogger.yaml
+
+            - name: Verify Flatpak image and bundle installation
+              run: |
+                  mkdir -p "$RUNNER_TEMP/linux-release"
+                  scripts/release/verify_flatpak_release.sh \
+                    --project-root "$RELEASE_SOURCE" \
+                    --build-dir "$FLATPAK_BUILD" \
+                    --repo "$FLATPAK_REPO" \
+                    --bundle "$RUNNER_TEMP/linux-release/MDLogger-$RELEASE_VERSION.flatpak" \
+                    --version "$RELEASE_VERSION" \
+                    --record "$RUNNER_TEMP/flatpak-verification.json"
+
+            - name: Upload Flatpak release artifact
+              id: upload-flatpak-release
+              uses: actions/upload-artifact@v4
+              with:
+                  name: flatpak-release-${{ github.run_id }}
+                  path: |
+                      ${{ runner.temp }}/linux-release/MDLogger-${{ env.RELEASE_VERSION }}.flatpak
+                      ${{ runner.temp }}/linux-release/MDLogger-${{ env.RELEASE_VERSION }}.flatpak.sha256
+                      ${{ runner.temp }}/flatpak-verification.json
+                  if-no-files-found: error
+                  include-hidden-files: false
+                  retention-days: 30
+
+    assemble-release:
+        name: Assemble verified release assets
+        needs:
+            - prepare
+            - windows
+            - flatpak
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        outputs:
+            release_asset_artifact_id: ${{ steps.upload-release-assets.outputs.artifact-id }}
+        env:
+            RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+            RELEASE_INPUTS: ${{ runner.temp }}/release-inputs
+            WINDOWS_ARTIFACTS: ${{ runner.temp }}/windows-artifacts
+            FLATPAK_ARTIFACTS: ${{ runner.temp }}/flatpak-artifacts
+            RELEASE_SOURCE: ${{ runner.temp }}/release-source/MDLogger-${{ needs.prepare.outputs.version }}
+            RELEASE_ASSETS: ${{ runner.temp }}/release-assets
+
+        steps:
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v4
+              with:
+                  python-version: "3.13"
+
+            - name: Download immutable build inputs
+              uses: actions/download-artifact@v4
+              with:
+                  artifact-ids: ${{ needs.prepare.outputs.input_artifact_id }}
+                  path: ${{ runner.temp }}/release-inputs
+
+            - name: Download Windows artifact
+              uses: actions/download-artifact@v4
+              with:
+                  artifact-ids: ${{ needs.windows.outputs.artifact_id }}
+                  path: ${{ runner.temp }}/windows-artifacts
+
+            - name: Download Flatpak artifact
+              uses: actions/download-artifact@v4
+              with:
+                  artifact-ids: ${{ needs.flatpak.outputs.artifact_id }}
+                  path: ${{ runner.temp }}/flatpak-artifacts
+
+            - name: Verify and extract immutable source archive
+              run: |
+                  cd "$RELEASE_INPUTS"
+                  sha256sum --check "MDLogger-$RELEASE_VERSION-source.tar.gz.sha256"
+                  mkdir -p "$RUNNER_TEMP/release-source"
+                  tar -xzf "MDLogger-$RELEASE_VERSION-source.tar.gz" -C "$RUNNER_TEMP/release-source"
+
+            - name: Install source-locked development dependencies
+              working-directory: ${{ env.RELEASE_SOURCE }}
+              run: uv sync --locked --group dev
+
+            - name: Recheck artifacts and create provenance manifest
+              working-directory: ${{ env.RELEASE_SOURCE }}
+              env:
+                  WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+              run: |
+                  mkdir -p "$RELEASE_ASSETS"
+                  cp "$WINDOWS_ARTIFACTS/MDLoggerSetup-$RELEASE_VERSION.exe" "$RELEASE_ASSETS/"
+                  cp "$WINDOWS_ARTIFACTS/MDLoggerSetup-$RELEASE_VERSION.exe.sha256" "$RELEASE_ASSETS/"
+                  cp "$FLATPAK_ARTIFACTS/MDLogger-$RELEASE_VERSION.flatpak" "$RELEASE_ASSETS/"
+                  cp "$FLATPAK_ARTIFACTS/MDLogger-$RELEASE_VERSION.flatpak.sha256" "$RELEASE_ASSETS/"
+                  cp "$RELEASE_INPUTS/MDLogger-$RELEASE_VERSION-source.tar.gz" "$RELEASE_ASSETS/"
+                  cp "$RELEASE_INPUTS/MDLogger-$RELEASE_VERSION-source.tar.gz.sha256" "$RELEASE_ASSETS/"
+                  uv run python scripts/release/create_release_manifest.py manifest \
+                    --context "$RELEASE_INPUTS/release-context.json" \
+                    --windows-installer "$RELEASE_ASSETS/MDLoggerSetup-$RELEASE_VERSION.exe" \
+                    --flatpak-bundle "$RELEASE_ASSETS/MDLogger-$RELEASE_VERSION.flatpak" \
+                    --source-archive "$RELEASE_ASSETS/MDLogger-$RELEASE_VERSION-source.tar.gz" \
+                    --source-provenance "$RELEASE_INPUTS/source-provenance.json" \
+                    --windows-record "$WINDOWS_ARTIFACTS/windows-verification.json" \
+                    --flatpak-record "$FLATPAK_ARTIFACTS/flatpak-verification.json" \
+                    --workflow-run-id "${{ github.run_id }}" \
+                    --workflow-run-url "$WORKFLOW_RUN_URL" \
+                    --output "$RELEASE_ASSETS/MDLogger-$RELEASE_VERSION-release-manifest.json"
+
+            - name: Upload final draft-release asset set
+              id: upload-release-assets
+              uses: actions/upload-artifact@v4
+              with:
+                  name: release-assets-${{ github.run_id }}
+                  path: ${{ runner.temp }}/release-assets
+                  if-no-files-found: error
+                  include-hidden-files: false
+                  retention-days: 30
+
+    publish-draft:
+        name: Create GitHub Release draft
+        needs:
+            - prepare
+            - assemble-release
+        if: ${{ inputs.create_draft }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        environment:
+            name: desktop-release
+        permissions:
+            contents: write
+        env:
+            GH_TOKEN: ${{ github.token }}
+            RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+            RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+            RELEASE_COMMIT_SHA: ${{ needs.prepare.outputs.commit_sha }}
+            TAG_OBJECT_SHA: ${{ needs.prepare.outputs.tag_object_sha }}
+            RELEASE_ASSETS: ${{ runner.temp }}/release-assets
+
+        steps:
+            - name: Download verified release assets
+              uses: actions/download-artifact@v4
+              with:
+                  artifact-ids: ${{ needs.assemble-release.outputs.release_asset_artifact_id }}
+                  path: ${{ runner.temp }}/release-assets
+
+            - name: Verify remote tag and create empty draft
+              run: |
+                  set -euo pipefail
+                  remote_tag_object="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')"
+                  test "$remote_tag_object" = "$TAG_OBJECT_SHA"
+                  if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json id >/dev/null 2>&1; then
+                    echo "A GitHub Release already exists for $RELEASE_TAG; refusing to overwrite it." >&2
+                    exit 1
+                  fi
+                  source_sha256="$(awk '{print $1}' "$RELEASE_ASSETS/MDLogger-$RELEASE_VERSION-source.tar.gz.sha256")"
+                  cat > "$RUNNER_TEMP/release-notes.md" <<EOF
+                  ## 변경 사항
+
+                  <!-- 공개 전에 직전 릴리스와 비교한 사용자용 변경 사항만 작성합니다. -->
+
+                  ## 빌드 정보
+
+                  - Source commit: \`$RELEASE_COMMIT_SHA\`
+                  - Source archive SHA-256: \`$source_sha256\`
+                  EOF
+                  gh release create "$RELEASE_TAG" \
+                    --repo "$GITHUB_REPOSITORY" \
+                    --draft \
+                    --title "MDLogger v$RELEASE_VERSION" \
+                    --notes-file "$RUNNER_TEMP/release-notes.md" \
+                    "$RELEASE_ASSETS/MDLoggerSetup-$RELEASE_VERSION.exe" \
+                    "$RELEASE_ASSETS/MDLoggerSetup-$RELEASE_VERSION.exe.sha256" \
+                    "$RELEASE_ASSETS/MDLogger-$RELEASE_VERSION.flatpak" \
+                    "$RELEASE_ASSETS/MDLogger-$RELEASE_VERSION.flatpak.sha256" \
+                    "$RELEASE_ASSETS/MDLogger-$RELEASE_VERSION-source.tar.gz" \
+                    "$RELEASE_ASSETS/MDLogger-$RELEASE_VERSION-source.tar.gz.sha256" \
+                    "$RELEASE_ASSETS/MDLogger-$RELEASE_VERSION-release-manifest.json"
+                  echo "Draft created. Add only user-visible changes under the 변경 사항 heading before publish."
