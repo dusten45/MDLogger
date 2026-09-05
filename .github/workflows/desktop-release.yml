@@ -106,10 +106,10 @@ jobs:
             name: desktop-release-build
         defaults:
             run:
-                working-directory: ${{ runner.temp }}/release-source/MDLogger-${{ needs.prepare.outputs.version }}
+                working-directory: ${{ github.workspace }}/.release-work/release-source/MDLogger-${{ needs.prepare.outputs.version }}
         env:
-            RELEASE_INPUTS: ${{ runner.temp }}/release-inputs
-            RELEASE_SOURCE: ${{ runner.temp }}/release-source/MDLogger-${{ needs.prepare.outputs.version }}
+            RELEASE_INPUTS: ${{ github.workspace }}/.release-work/release-inputs
+            RELEASE_SOURCE: ${{ github.workspace }}/.release-work/release-source/MDLogger-${{ needs.prepare.outputs.version }}
             RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
             MDLOGGER_SUPABASE_URL: ${{ vars.MDLOGGER_SUPABASE_URL }}
             MDLOGGER_SUPABASE_ANON_KEY: ${{ vars.MDLOGGER_SUPABASE_ANON_KEY }}
@@ -124,7 +124,7 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                   artifact-ids: ${{ needs.prepare.outputs.input_artifact_id }}
-                  path: ${{ runner.temp }}/release-inputs
+                  path: ${{ github.workspace }}/.release-work/release-inputs
 
             - name: Verify and extract immutable source archive
               shell: pwsh
@@ -134,8 +134,9 @@ jobs:
                   $expected = (Get-Content -LiteralPath "$archive.sha256" -Raw).Split()[0]
                   $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
                   if ($actual -cne $expected) { throw "Source archive checksum validation failed" }
-                  New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP/release-source" | Out-Null
-                  tar -xzf $archive -C "$env:RUNNER_TEMP/release-source"
+                  $sourceParent = Split-Path -Parent $env:RELEASE_SOURCE
+                  New-Item -ItemType Directory -Force -Path $sourceParent | Out-Null
+                  tar -xzf $archive -C $sourceParent
 
             - name: Install locked development dependencies
               run: uv sync --locked --group dev
@@ -216,14 +217,14 @@ jobs:
             name: desktop-release-build
         defaults:
             run:
-                working-directory: ${{ runner.temp }}/release-source/MDLogger-${{ needs.prepare.outputs.version }}
+                working-directory: ${{ github.workspace }}/.release-work/release-source/MDLogger-${{ needs.prepare.outputs.version }}
         env:
-            RELEASE_INPUTS: ${{ runner.temp }}/release-inputs
-            RELEASE_SOURCE: ${{ runner.temp }}/release-source/MDLogger-${{ needs.prepare.outputs.version }}
+            RELEASE_INPUTS: ${{ github.workspace }}/.release-work/release-inputs
+            RELEASE_SOURCE: ${{ github.workspace }}/.release-work/release-source/MDLogger-${{ needs.prepare.outputs.version }}
             RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-            FLATPAK_BUILD: ${{ runner.temp }}/flatpak-build
-            FLATPAK_REPO: ${{ runner.temp }}/flatpak-repo
-            FLATPAK_STATE: ${{ runner.temp }}/flatpak-state
+            FLATPAK_BUILD: ${{ github.workspace }}/.release-work/flatpak-build
+            FLATPAK_REPO: ${{ github.workspace }}/.release-work/flatpak-repo
+            FLATPAK_STATE: ${{ github.workspace }}/.release-work/flatpak-state
             MDLOGGER_SUPABASE_URL: ${{ vars.MDLOGGER_SUPABASE_URL }}
             MDLOGGER_SUPABASE_ANON_KEY: ${{ vars.MDLOGGER_SUPABASE_ANON_KEY }}
 
@@ -237,7 +238,7 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                   artifact-ids: ${{ needs.prepare.outputs.input_artifact_id }}
-                  path: ${{ runner.temp }}/release-inputs
+                  path: ${{ github.workspace }}/.release-work/release-inputs
 
             - name: Verify and extract immutable source archive
               working-directory: ${{ github.workspace }}
@@ -245,8 +246,8 @@ jobs:
                   archive="$RELEASE_INPUTS/MDLogger-$RELEASE_VERSION-source.tar.gz"
                   cd "$RELEASE_INPUTS"
                   sha256sum --check "$(basename "$archive").sha256"
-                  mkdir -p "$RUNNER_TEMP/release-source"
-                  tar -xzf "$archive" -C "$RUNNER_TEMP/release-source"
+                  mkdir -p "$(dirname "$RELEASE_SOURCE")"
+                  tar -xzf "$archive" -C "$(dirname "$RELEASE_SOURCE")"
 
             - name: Install Flatpak builder and required SDK
               run: |
@@ -313,11 +314,11 @@ jobs:
             release_asset_artifact_id: ${{ steps.upload-release-assets.outputs.artifact-id }}
         env:
             RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-            RELEASE_INPUTS: ${{ runner.temp }}/release-inputs
-            WINDOWS_ARTIFACTS: ${{ runner.temp }}/windows-artifacts
-            FLATPAK_ARTIFACTS: ${{ runner.temp }}/flatpak-artifacts
-            RELEASE_SOURCE: ${{ runner.temp }}/release-source/MDLogger-${{ needs.prepare.outputs.version }}
-            RELEASE_ASSETS: ${{ runner.temp }}/release-assets
+            RELEASE_INPUTS: ${{ github.workspace }}/.release-work/release-inputs
+            WINDOWS_ARTIFACTS: ${{ github.workspace }}/.release-work/windows-artifacts
+            FLATPAK_ARTIFACTS: ${{ github.workspace }}/.release-work/flatpak-artifacts
+            RELEASE_SOURCE: ${{ github.workspace }}/.release-work/release-source/MDLogger-${{ needs.prepare.outputs.version }}
+            RELEASE_ASSETS: ${{ github.workspace }}/.release-work/release-assets
 
         steps:
             - name: Set up uv
@@ -329,26 +330,26 @@ jobs:
               uses: actions/download-artifact@v4
               with:
                   artifact-ids: ${{ needs.prepare.outputs.input_artifact_id }}
-                  path: ${{ runner.temp }}/release-inputs
+                  path: ${{ github.workspace }}/.release-work/release-inputs
 
             - name: Download Windows artifact
               uses: actions/download-artifact@v4
               with:
                   artifact-ids: ${{ needs.windows.outputs.artifact_id }}
-                  path: ${{ runner.temp }}/windows-artifacts
+                  path: ${{ github.workspace }}/.release-work/windows-artifacts
 
             - name: Download Flatpak artifact
               uses: actions/download-artifact@v4
               with:
                   artifact-ids: ${{ needs.flatpak.outputs.artifact_id }}
-                  path: ${{ runner.temp }}/flatpak-artifacts
+                  path: ${{ github.workspace }}/.release-work/flatpak-artifacts
 
             - name: Verify and extract immutable source archive
               run: |
                   cd "$RELEASE_INPUTS"
                   sha256sum --check "MDLogger-$RELEASE_VERSION-source.tar.gz.sha256"
-                  mkdir -p "$RUNNER_TEMP/release-source"
-                  tar -xzf "MDLogger-$RELEASE_VERSION-source.tar.gz" -C "$RUNNER_TEMP/release-source"
+                  mkdir -p "$(dirname "$RELEASE_SOURCE")"
+                  tar -xzf "MDLogger-$RELEASE_VERSION-source.tar.gz" -C "$(dirname "$RELEASE_SOURCE")"
 
             - name: Install source-locked development dependencies
               working-directory: ${{ env.RELEASE_SOURCE }}
@@ -383,7 +384,7 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: release-assets-${{ github.run_id }}
-                  path: ${{ runner.temp }}/release-assets
+                  path: ${{ env.RELEASE_ASSETS }}
                   if-no-files-found: error
                   include-hidden-files: false
                   retention-days: 30
@@ -406,14 +407,14 @@ jobs:
             RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
             RELEASE_COMMIT_SHA: ${{ needs.prepare.outputs.commit_sha }}
             TAG_OBJECT_SHA: ${{ needs.prepare.outputs.tag_object_sha }}
-            RELEASE_ASSETS: ${{ runner.temp }}/release-assets
+            RELEASE_ASSETS: ${{ github.workspace }}/.release-work/release-assets
 
         steps:
             - name: Download verified release assets
               uses: actions/download-artifact@v4
               with:
                   artifact-ids: ${{ needs.assemble-release.outputs.release_asset_artifact_id }}
-                  path: ${{ runner.temp }}/release-assets
+                  path: ${{ github.workspace }}/.release-work/release-assets
 
             - name: Verify remote tag and create empty draft
               run: |
