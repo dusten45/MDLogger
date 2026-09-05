@@ -26,7 +26,6 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 30
         env:
-            QT_QPA_PLATFORM: offscreen
             MDLOGGER_DATA_DIR: /tmp
         outputs:
             tag: ${{ steps.release-context.outputs.tag }}
@@ -52,10 +51,10 @@ jobs:
             - name: Install locked development dependencies
               run: uv sync --locked --group dev
 
-            - name: Install Linux Qt runtime dependency
+            - name: Install Linux Qt test dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install --yes libegl1
+                  sudo apt-get install --yes libegl1 xvfb
 
             - name: Validate annotated tag and release version
               env:
@@ -74,7 +73,7 @@ jobs:
                   uv run ruff check .
                   uv run ruff format --check .
                   uv run ty check
-                  uv run pytest
+                  xvfb-run --auto-servernum uv run pytest
 
             - name: Create immutable source archive
               run: |

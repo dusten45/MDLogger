@@ -92,6 +92,27 @@ def test_metadata_fixture_reads_exact_name_version_license_and_files(tmp_path):
     LICENSES.validate_metadata_record(_fixture_policy(), record)
 
 
+def test_metadata_fixture_accepts_windows_specific_legal_file(monkeypatch):
+    policy = _fixture_policy()
+    policy["metadata_license_files_by_platform"] = {
+        "windows": [
+            "fixture_package-1.2.3.dist-info/licenses/LicenseRef-Commercial.txt"
+        ]
+    }
+    record = LICENSES.DistributionMetadata(
+        name="fixture-package",
+        version="1.2.3",
+        license_source="License-Expression",
+        license_value="MIT",
+        legal_files=(
+            "fixture_package-1.2.3.dist-info/licenses/LicenseRef-Commercial.txt",
+        ),
+    )
+    monkeypatch.setattr(LICENSES, "host_platform", lambda: "windows")
+
+    LICENSES.validate_metadata_record(policy, record)
+
+
 @pytest.mark.parametrize("license_value", [None, "", "UNKNOWN"])
 def test_metadata_fixture_rejects_missing_or_unknown_license(tmp_path, license_value):
     dist_info = _fixture_dist_info(

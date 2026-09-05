@@ -227,7 +227,14 @@ def validate_metadata_record(
             f"{record.license_source}={record.license_value!r}"
         )
 
-    expected_files = tuple(package["metadata_license_files"])
+    platform_files = package.get("metadata_license_files_by_platform", {})
+    if not isinstance(platform_files, Mapping):
+        raise ComplianceError(
+            f"Platform metadata legal files must be a mapping for {expected_name}"
+        )
+    expected_files = tuple(
+        platform_files.get(host_platform(), package["metadata_license_files"])
+    )
     if record.legal_files != expected_files:
         raise ComplianceError(
             f"Metadata legal-file drift for {expected_name}: expected "
@@ -296,6 +303,19 @@ def validate_policy(
             package.get("metadata_license_files", []),
             f"metadata legal files for {name}",
         )
+        platform_metadata_files = package.get("metadata_license_files_by_platform", {})
+        if not isinstance(platform_metadata_files, Mapping):
+            raise ComplianceError(
+                f"Platform metadata legal files must be a mapping for {name}"
+            )
+        for platform, files in platform_metadata_files.items():
+            if platform not in package.get("platforms", []):
+                raise ComplianceError(
+                    f"Unexpected metadata legal-file platform for {name}: {platform}"
+                )
+            _validate_unique_sorted(
+                files, f"metadata legal files for {name} on {platform}"
+            )
 
     for component in policy.get("components", []):
         name = str(component.get("name", ""))
