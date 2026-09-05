@@ -49,6 +49,11 @@ jobs:
             - name: Install locked development dependencies
               run: uv sync --locked --group dev
 
+            - name: Install Linux Qt runtime dependency
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install --yes libegl1
+
             - name: Validate annotated tag and release version
               env:
                   RELEASE_TAG: ${{ inputs.tag }}

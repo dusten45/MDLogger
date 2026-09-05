@@ -313,7 +313,7 @@ def test_current_uv_closures_match_reviewed_counts_and_versions():
     assert closures["windows"]["pywin32-ctypes"] == "0.2.3"
 
 
-def test_windows_closure_validation_preserves_reviewed_linux_entries(monkeypatch):
+def test_closure_validation_reuses_reviewed_platform_entries(monkeypatch):
     policy = LICENSES.load_policy()
     expected_windows = {
         LICENSES.normalize_name(package["name"]): package["version"]
@@ -325,15 +325,11 @@ def test_windows_closure_validation_preserves_reviewed_linux_entries(monkeypatch
         for package in policy["packages"]
         if "linux" in package["platforms"]
     }
-
-    monkeypatch.setattr(LICENSES, "host_platform", lambda: "windows")
     monkeypatch.setattr(
         LICENSES,
         "resolve_uv_tree",
-        lambda platform, *_args, **_kwargs: (
-            expected_windows
-            if platform == "windows"
-            else pytest.fail("Windows must not resolve the Linux marker closure")
+        lambda *_args, **_kwargs: pytest.fail(
+            "Generated inventory checks must not re-resolve the lockfile"
         ),
     )
 

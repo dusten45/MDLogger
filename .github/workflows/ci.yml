@@ -26,6 +26,11 @@ jobs:
             - name: Install dependencies
               run: uv sync --group dev
 
+            - name: Install Linux Qt runtime dependency
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install --yes libegl1
+
             - name: Verify desktop license artifacts
               run: uv run python scripts/generate_desktop_licenses.py --check
 

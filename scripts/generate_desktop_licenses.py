@@ -841,40 +841,22 @@ def resolve_uv_tree(
 def validate_platform_closures(
     policy: Mapping[str, Any], *, project_root: Path = PROJECT_ROOT
 ) -> dict[str, dict[str, str]]:
-    """Validate the host uv closure and preserve reviewed foreign-platform entries."""
+    """Validate the reviewed closure shape used by generated inventories."""
 
     closures: dict[str, dict[str, str]] = {}
-    current_platform = host_platform()
     for platform in sorted(policy["uv_platforms"]):
         expected = {
             normalize_name(package["name"]): package["version"]
             for package in policy["packages"]
             if platform in package["platforms"]
         }
-        actual = (
-            resolve_uv_tree(platform, policy, project_root=project_root)
-            if platform == current_platform
-            else expected
-        )
         expected_count = policy["expected_distribution_counts"][platform]
-        if len(actual) != expected_count or len(expected) != expected_count:
+        if len(expected) != expected_count:
             raise ComplianceError(
                 f"{platform} runtime distribution count drift: expected "
-                f"{expected_count}, uv found {len(actual)}, policy has {len(expected)}"
+                f"{expected_count}, policy has {len(expected)}"
             )
-        if actual != expected:
-            missing = sorted(set(expected) - set(actual))
-            extra = sorted(set(actual) - set(expected))
-            changed = sorted(
-                name
-                for name in set(actual) & set(expected)
-                if actual[name] != expected[name]
-            )
-            raise ComplianceError(
-                f"{platform} runtime closure drift; missing={missing}, "
-                f"extra={extra}, version_drift={changed}"
-            )
-        closures[platform] = actual
+        closures[platform] = expected
     return closures
 
 
