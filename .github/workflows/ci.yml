@@ -12,6 +12,9 @@ jobs:
         name: Lint, type-check, tests, secret scan
         runs-on: ubuntu-latest
         timeout-minutes: 20
+        env:
+            QT_QPA_PLATFORM: offscreen
+            MDLOGGER_DATA_DIR: ${{ runner.temp }}
 
         steps:
             - name: Check out repository
@@ -148,6 +151,12 @@ jobs:
         steps:
             - name: Check out repository
               uses: actions/checkout@v4
+
+            - name: Confirm runner checkout and license verifier source
+              shell: pwsh
+              run: |
+                  git rev-parse HEAD
+                  Select-String -Path scripts/generate_desktop_licenses.py -Pattern "Validate the reviewed closure shape|uv found" -Context 1,1
 
             - name: Set up uv
               uses: astral-sh/setup-uv@v4

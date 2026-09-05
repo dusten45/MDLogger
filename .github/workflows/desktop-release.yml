@@ -25,6 +25,9 @@ jobs:
         name: Validate release source
         runs-on: ubuntu-latest
         timeout-minutes: 30
+        env:
+            QT_QPA_PLATFORM: offscreen
+            MDLOGGER_DATA_DIR: ${{ runner.temp }}
         outputs:
             tag: ${{ steps.release-context.outputs.tag }}
             version: ${{ steps.release-context.outputs.version }}
