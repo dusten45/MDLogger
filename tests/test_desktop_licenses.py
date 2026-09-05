@@ -313,6 +313,36 @@ def test_current_uv_closures_match_reviewed_counts_and_versions():
     assert closures["windows"]["pywin32-ctypes"] == "0.2.3"
 
 
+def test_windows_closure_validation_preserves_reviewed_linux_entries(monkeypatch):
+    policy = LICENSES.load_policy()
+    expected_windows = {
+        LICENSES.normalize_name(package["name"]): package["version"]
+        for package in policy["packages"]
+        if "windows" in package["platforms"]
+    }
+    expected_linux = {
+        LICENSES.normalize_name(package["name"]): package["version"]
+        for package in policy["packages"]
+        if "linux" in package["platforms"]
+    }
+
+    monkeypatch.setattr(LICENSES, "host_platform", lambda: "windows")
+    monkeypatch.setattr(
+        LICENSES,
+        "resolve_uv_tree",
+        lambda platform, *_args, **_kwargs: (
+            expected_windows
+            if platform == "windows"
+            else pytest.fail("Windows must not resolve the Linux marker closure")
+        ),
+    )
+
+    assert LICENSES.validate_platform_closures(policy) == {
+        "linux": expected_linux,
+        "windows": expected_windows,
+    }
+
+
 def test_lock_version_drift_is_rejected():
     policy = LICENSES.load_policy()
     versions = LICENSES.load_lock_versions()

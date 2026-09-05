@@ -51,7 +51,7 @@ jobs:
             - name: Install Linux QtWebEngine runtime dependency
               run: |
                   sudo apt-get update
-                  sudo apt-get install --yes libegl1
+                  sudo apt-get install --yes libegl1 libpulse0
 
             - name: Validate annotated tag and release version
               env:
@@ -257,7 +257,7 @@ jobs:
             - name: Install Flatpak builder and required SDK
               run: |
                   sudo apt-get update
-                  sudo apt-get install --yes flatpak flatpak-builder libegl1
+                  sudo apt-get install --yes flatpak flatpak-builder libegl1 libpulse0
                   flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
                   flatpak install --user --noninteractive --assumeyes flathub \
                     org.freedesktop.Sdk//25.08 \

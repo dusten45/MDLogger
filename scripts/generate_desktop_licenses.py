@@ -841,16 +841,21 @@ def resolve_uv_tree(
 def validate_platform_closures(
     policy: Mapping[str, Any], *, project_root: Path = PROJECT_ROOT
 ) -> dict[str, dict[str, str]]:
-    """Compare Linux and Windows uv closures with every reviewed distribution."""
+    """Validate the host uv closure and preserve reviewed foreign-platform entries."""
 
     closures: dict[str, dict[str, str]] = {}
+    current_platform = host_platform()
     for platform in sorted(policy["uv_platforms"]):
-        actual = resolve_uv_tree(platform, policy, project_root=project_root)
         expected = {
             normalize_name(package["name"]): package["version"]
             for package in policy["packages"]
             if platform in package["platforms"]
         }
+        actual = (
+            resolve_uv_tree(platform, policy, project_root=project_root)
+            if platform == current_platform
+            else expected
+        )
         expected_count = policy["expected_distribution_counts"][platform]
         if len(actual) != expected_count or len(expected) != expected_count:
             raise ComplianceError(

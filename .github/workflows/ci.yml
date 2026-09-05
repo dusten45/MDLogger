@@ -28,7 +28,7 @@ jobs:
             - name: Install Linux QtWebEngine runtime dependency
               run: |
                   sudo apt-get update
-                  sudo apt-get install --yes libegl1
+                  sudo apt-get install --yes libegl1 libpulse0
 
             - name: Regenerate desktop license artifacts
               run: uv run python scripts/generate_desktop_licenses.py
