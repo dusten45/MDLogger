@@ -14,7 +14,7 @@ jobs:
         timeout-minutes: 20
         env:
             QT_QPA_PLATFORM: offscreen
-            MDLOGGER_DATA_DIR: ${{ runner.temp }}
+            MDLOGGER_DATA_DIR: /tmp
 
         steps:
             - name: Check out repository

@@ -27,7 +27,7 @@ jobs:
         timeout-minutes: 30
         env:
             QT_QPA_PLATFORM: offscreen
-            MDLOGGER_DATA_DIR: ${{ runner.temp }}
+            MDLOGGER_DATA_DIR: /tmp
         outputs:
             tag: ${{ steps.release-context.outputs.tag }}
             version: ${{ steps.release-context.outputs.version }}
