@@ -228,6 +228,20 @@ def test_cryptography_wheel_sbom_evidence_is_exact_and_limited():
     LICENSES.validate_cryptography_wheel_sbom_evidence(policy)
 
 
+def test_windows_policy_validation_skips_linux_wheel_evidence(monkeypatch):
+    policy = LICENSES.load_policy()
+    monkeypatch.setattr(LICENSES, "host_platform", lambda: "windows")
+    monkeypatch.setattr(
+        LICENSES,
+        "validate_cryptography_wheel_sbom_evidence",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Windows policy validation must not load Linux wheel evidence"
+        ),
+    )
+
+    LICENSES.validate_policy(policy)
+
+
 def test_qt_runtime_attributions_preserve_chromium_and_ffmpeg_evidence():
     policy = LICENSES.load_policy()
     runtime = policy["qt_runtime_attributions"]

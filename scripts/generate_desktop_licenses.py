@@ -320,7 +320,8 @@ def validate_policy(
     validate_qt_source_attributions(policy, project_root=project_root)
     validate_flatpak_linux_native_payload(policy)
     validate_qt_runtime_attributions(policy, project_root=project_root)
-    validate_cryptography_wheel_sbom_evidence(policy, project_root=project_root)
+    if host_platform() == "linux":
+        validate_cryptography_wheel_sbom_evidence(policy, project_root=project_root)
 
 
 def _validate_unique_sorted(values: Sequence[str], description: str) -> None:
