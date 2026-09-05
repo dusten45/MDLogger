@@ -43,15 +43,11 @@ jobs:
             - name: Set up uv
               uses: astral-sh/setup-uv@v4
               with:
+                  version: "0.11.28"
                   python-version: "3.13"
 
             - name: Install locked development dependencies
               run: uv sync --locked --group dev
-
-            - name: Install Linux QtWebEngine runtime dependency
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install --yes libegl1 libpulse0
 
             - name: Validate annotated tag and release version
               env:
@@ -123,6 +119,7 @@ jobs:
             - name: Set up uv
               uses: astral-sh/setup-uv@v4
               with:
+                  version: "0.11.28"
                   python-version: "3.13"
 
             - name: Download immutable build inputs
@@ -237,6 +234,7 @@ jobs:
             - name: Set up uv
               uses: astral-sh/setup-uv@v4
               with:
+                  version: "0.11.28"
                   python-version: "3.13"
 
             - name: Download immutable build inputs
@@ -257,7 +255,7 @@ jobs:
             - name: Install Flatpak builder and required SDK
               run: |
                   sudo apt-get update
-                  sudo apt-get install --yes flatpak flatpak-builder libegl1 libpulse0
+                  sudo apt-get install --yes flatpak flatpak-builder
                   flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
                   flatpak install --user --noninteractive --assumeyes flathub \
                     org.freedesktop.Sdk//25.08 \
@@ -329,6 +327,7 @@ jobs:
             - name: Set up uv
               uses: astral-sh/setup-uv@v4
               with:
+                  version: "0.11.28"
                   python-version: "3.13"
 
             - name: Download immutable build inputs

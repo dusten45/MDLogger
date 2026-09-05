@@ -1119,7 +1119,10 @@ def _required_c_string(value: object, label: str) -> str:
 
 
 def render_qt_third_party_runtime_inventory(
-    policy: Mapping[str, Any], *, project_root: Path = PROJECT_ROOT
+    policy: Mapping[str, Any],
+    *,
+    project_root: Path = PROJECT_ROOT,
+    inspect_runtime: bool = True,
 ) -> str:
     """Render binary evidence for QtWebEngine/Chromium and FFmpeg on Linux."""
 
@@ -1129,7 +1132,7 @@ def render_qt_third_party_runtime_inventory(
         / "inventory"
         / "qt-third-party-runtime-linux-flatpak.json"
     )
-    if not sys.platform.startswith("linux"):
+    if not inspect_runtime or not sys.platform.startswith("linux"):
         if not tracked.is_file():
             raise ComplianceError(
                 "Linux Qt third-party runtime inventory must be generated on Linux"
@@ -1481,6 +1484,7 @@ def build_outputs(
     requirements: str,
     *,
     project_root: Path = PROJECT_ROOT,
+    inspect_qt_runtime: bool = True,
 ) -> dict[Path, str]:
     """Build every generated file without writing it."""
 
@@ -1551,7 +1555,11 @@ def build_outputs(
             / "licenses"
             / "inventory"
             / "qt-third-party-runtime-linux-flatpak.json"
-        ): render_qt_third_party_runtime_inventory(policy, project_root=project_root),
+        ): render_qt_third_party_runtime_inventory(
+            policy,
+            project_root=project_root,
+            inspect_runtime=inspect_qt_runtime,
+        ),
         markdown_path: markdown,
         text_path: text,
     }
@@ -1591,7 +1599,12 @@ def generate(*, check: bool) -> None:
     validate_installed_metadata(policy)
     requirements = export_runtime_requirements()
     write_or_check_outputs(
-        build_outputs(policy, closures, requirements),
+        build_outputs(
+            policy,
+            closures,
+            requirements,
+            inspect_qt_runtime=not check,
+        ),
         check=check,
     )
 

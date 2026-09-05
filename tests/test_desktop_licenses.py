@@ -647,6 +647,22 @@ def test_windows_ci_does_not_treat_linux_runtime_evidence_as_payload_evidence():
     assert "Installed Windows inventory missing" in windows_job
 
 
+def test_generator_check_mode_reuses_tracked_qt_runtime_inventory(monkeypatch):
+    policy = LICENSES.load_policy()
+    tracked = (
+        PROJECT_ROOT
+        / "licenses"
+        / "inventory"
+        / "qt-third-party-runtime-linux-flatpak.json"
+    )
+    monkeypatch.setattr(LICENSES.sys, "platform", "linux")
+
+    assert LICENSES.render_qt_third_party_runtime_inventory(
+        policy,
+        inspect_runtime=False,
+    ) == tracked.read_text(encoding="utf-8")
+
+
 def test_generator_check_mode_is_deterministic():
     result = subprocess.run(
         [
