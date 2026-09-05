@@ -54,7 +54,7 @@ jobs:
             - name: Install Linux Qt test dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install --yes libegl1 xvfb
+                  sudo apt-get install --yes libegl1 libxcb-cursor0 libxkbcommon-x11-0 xvfb
 
             - name: Validate annotated tag and release version
               env:

@@ -1016,6 +1016,11 @@
                 "value": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only"
             },
             "metadata_license_files": [],
+            "metadata_license_files_by_platform": {
+                "windows": [
+                    "pyside6_essentials-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt"
+                ]
+            },
             "name": "PySide6-Essentials",
             "platforms": ["linux", "windows"],
             "purpose": "Qt Core/Gui/Widgets/Svg and other essential Qt binaries.",
@@ -1147,6 +1152,11 @@
                 "value": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only"
             },
             "metadata_license_files": [],
+            "metadata_license_files_by_platform": {
+                "windows": [
+                    "shiboken6-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt"
+                ]
+            },
             "name": "shiboken6",
             "platforms": ["linux", "windows"],
             "purpose": "Python/C++ binding runtime required by PySide6.",

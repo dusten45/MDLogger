@@ -178,6 +178,23 @@ def test_default_policy_records_numpy_native_known_limitation():
     LICENSES.validate_policy(policy)
 
 
+def test_default_policy_records_windows_qt_commercial_metadata_files():
+    policy = LICENSES.load_policy()
+    expected_files = {
+        "PySide6": "pyside6-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt",
+        "PySide6-Addons": "pyside6_addons-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt",
+        "PySide6-Essentials": "pyside6_essentials-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt",
+        "shiboken6": "shiboken6-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt",
+    }
+    packages = {package["name"]: package for package in policy["packages"]}
+
+    assert {
+        name: packages[name]["metadata_license_files_by_platform"]["windows"]
+        for name in expected_files
+    } == {name: [path] for name, path in expected_files.items()}
+    LICENSES.validate_policy(policy)
+
+
 def test_qt_license_corpus_preserves_all_unique_source_texts():
     policy = LICENSES.load_policy()
     manifest = json.loads(
