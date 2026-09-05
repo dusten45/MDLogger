@@ -29,7 +29,9 @@ def iter_deploy_files(path: Path):
 def write_checksum(path: Path) -> Path:
     """단일 파일 옆에 표준 sha256sum 형식의 ``<이름>.sha256`` 파일을 쓴다."""
     output = path.with_suffix(path.suffix + ".sha256")
-    output.write_text(f"{sha256_file(path)}  {path.name}\n", encoding="ascii")
+    output.write_text(
+        f"{sha256_file(path)}  {path.name}\n", encoding="ascii", newline="\n"
+    )
     return output
 
 
@@ -45,7 +47,7 @@ def write_checksum_tree(directory: Path) -> Path:
     for path in iter_deploy_files(root):
         rel = path.relative_to(root)
         lines.append(f"{sha256_file(path)}  {rel.as_posix()}")
-    output.write_text("\n".join(lines) + "\n", encoding="ascii")
+    output.write_text("\n".join(lines) + "\n", encoding="ascii", newline="\n")
     return output
 
 
