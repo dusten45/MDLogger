@@ -1,4 +1,8 @@
 # Preserve externally supplied license and notice files byte-for-byte.
 licenses/desktop/** -text whitespace=-trailing-space,cr-at-eol
+
+# The desktop policy hashes these source documents as LF bytes on every platform.
+licenses/sources/desktop-license-provenance.md text eol=lf
+licenses/sources/desktop-source-offer.md text eol=lf
 web/public/licenses/** -text whitespace=-trailing-space,cr-at-eol
 web/public/third-party-notices.txt -text whitespace=-trailing-space,cr-at-eol
