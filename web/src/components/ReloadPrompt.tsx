@@ -1,11 +1,31 @@
+import { useRef } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import "./ReloadPrompt.css";
 
-export function ReloadPrompt() {
+const RELOAD_FALLBACK_TIMEOUT_MS = 1000;
+
+function defaultReloadPage() {
+    window.location.reload();
+}
+
+export interface ReloadPromptProps {
+    reloadPage?: () => void;
+}
+
+export function ReloadPrompt({
+    reloadPage = defaultReloadPage,
+}: ReloadPromptProps = {}) {
+    const registrationRef = useRef<ServiceWorkerRegistration | undefined>(
+        undefined,
+    );
+    const reloadedRef = useRef(false);
     const {
         needRefresh: [needRefresh, setNeedRefresh],
         updateServiceWorker,
     } = useRegisterSW({
+        onRegisteredSW(_swUrl, registration) {
+            registrationRef.current = registration;
+        },
         onRegisterError(error) {
             console.error("Service Worker registration error", error);
         },
@@ -13,6 +33,50 @@ export function ReloadPrompt() {
 
     function handleClose() {
         setNeedRefresh(false);
+    }
+
+    async function handleRefresh() {
+        const triggerReload = () => {
+            if (reloadedRef.current) {
+                return;
+            }
+            reloadedRef.current = true;
+            reloadPage();
+        };
+
+        const registration =
+            registrationRef.current ??
+            (await navigator.serviceWorker?.getRegistration?.());
+        const waitingWorker = registration?.waiting;
+
+        if (waitingWorker) {
+            waitingWorker.addEventListener("statechange", () => {
+                if (
+                    waitingWorker.state === "activated" ||
+                    waitingWorker.state === "redundant"
+                ) {
+                    triggerReload();
+                }
+            });
+            navigator.serviceWorker?.addEventListener(
+                "controllerchange",
+                triggerReload,
+                { once: true },
+            );
+            window.setTimeout(triggerReload, RELOAD_FALLBACK_TIMEOUT_MS);
+            waitingWorker.postMessage({ type: "SKIP_WAITING" });
+            await updateServiceWorker(true);
+            return;
+        }
+
+        await updateServiceWorker(true);
+        if (
+            registration !== undefined ||
+            "serviceWorker" in navigator ||
+            reloadPage !== defaultReloadPage
+        ) {
+            triggerReload();
+        }
     }
 
     if (!needRefresh) {
@@ -34,7 +98,7 @@ export function ReloadPrompt() {
                 <button
                     type="button"
                     className="reload-prompt__btn reload-prompt__btn--primary"
-                    onClick={() => updateServiceWorker(true)}
+                    onClick={() => void handleRefresh()}
                 >
                     새로고침
                 </button>

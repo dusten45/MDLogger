@@ -50,7 +50,7 @@ describe("ReloadPrompt", () => {
         ).toBeInTheDocument();
     });
 
-    it("새로고침 버튼 클릭 시 updateServiceWorker(true)를 호출한다", () => {
+    it("새로고침 버튼 클릭 시 updateServiceWorker(true)를 호출한다", async () => {
         mockedUseRegisterSW.mockReturnValue({
             offlineReady: [false, setOfflineReady],
             needRefresh: [true, setNeedRefresh],
@@ -62,7 +62,110 @@ describe("ReloadPrompt", () => {
         const refreshButton = screen.getByRole("button", { name: "새로고침" });
         fireEvent.click(refreshButton);
 
-        expect(updateServiceWorker).toHaveBeenCalledWith(true);
+        await vi.waitFor(() => {
+            expect(updateServiceWorker).toHaveBeenCalledWith(true);
+        });
+    });
+
+    it("대기 중인 서비스 워커가 활성화되면 페이지를 새로고침한다", async () => {
+        const reloadPage = vi.fn();
+        let stateChangeHandler: (() => void) | undefined;
+        const waitingWorker = {
+            state: "installed" as ServiceWorkerState,
+            postMessage: vi.fn(),
+            addEventListener: vi.fn((event: string, cb: () => void) => {
+                if (event === "statechange") {
+                    stateChangeHandler = cb;
+                }
+            }),
+        };
+        const registration = {
+            waiting: waitingWorker,
+        } as unknown as ServiceWorkerRegistration;
+
+        mockedUseRegisterSW.mockImplementation((options) => {
+            options?.onRegisteredSW?.("/sw.js", registration);
+            return {
+                offlineReady: [false, setOfflineReady],
+                needRefresh: [true, setNeedRefresh],
+                updateServiceWorker,
+            };
+        });
+
+        render(<ReloadPrompt reloadPage={reloadPage} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "새로고침" }));
+
+        await vi.waitFor(() => {
+            expect(waitingWorker.postMessage).toHaveBeenCalledWith({
+                type: "SKIP_WAITING",
+            });
+            expect(updateServiceWorker).toHaveBeenCalledWith(true);
+        });
+        expect(reloadPage).not.toHaveBeenCalled();
+
+        waitingWorker.state = "activated";
+        stateChangeHandler?.();
+
+        expect(reloadPage).toHaveBeenCalledTimes(1);
+    });
+
+    it("대기 중인 서비스 워커 이벤트가 없어도 폴백 타이머로 새로고침한다", async () => {
+        vi.useFakeTimers();
+        try {
+            const reloadPage = vi.fn();
+            const waitingWorker = {
+                state: "installed" as ServiceWorkerState,
+                postMessage: vi.fn(),
+                addEventListener: vi.fn(),
+            };
+            const registration = {
+                waiting: waitingWorker,
+            } as unknown as ServiceWorkerRegistration;
+
+            mockedUseRegisterSW.mockImplementation((options) => {
+                options?.onRegisteredSW?.("/sw.js", registration);
+                return {
+                    offlineReady: [false, setOfflineReady],
+                    needRefresh: [true, setNeedRefresh],
+                    updateServiceWorker,
+                };
+            });
+
+            render(<ReloadPrompt reloadPage={reloadPage} />);
+
+            fireEvent.click(screen.getByRole("button", { name: "새로고침" }));
+            await vi.advanceTimersByTimeAsync(1000);
+
+            expect(reloadPage).toHaveBeenCalledTimes(1);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("이미 활성화된 서비스 워커(waiting이 null) 상태에서는 즉시 새로고침한다", async () => {
+        const reloadPage = vi.fn();
+        const registration = {
+            waiting: null,
+        } as unknown as ServiceWorkerRegistration;
+
+        mockedUseRegisterSW.mockImplementation((options) => {
+            options?.onRegisteredSW?.("/sw.js", registration);
+            return {
+                offlineReady: [false, setOfflineReady],
+                needRefresh: [true, setNeedRefresh],
+                updateServiceWorker,
+            };
+        });
+
+        render(<ReloadPrompt reloadPage={reloadPage} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "새로고침" }));
+
+        await vi.waitFor(() => {
+            expect(updateServiceWorker).toHaveBeenCalledWith(true);
+            expect(reloadPage).toHaveBeenCalledTimes(1);
+        });
     });
 
     it("닫기 버튼 클릭 시 setNeedRefresh(false)를 호출한다", () => {
