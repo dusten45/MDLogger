@@ -77,6 +77,16 @@ _PRIVATE_DIR_MODE = 0o700
 _PRIVATE_FILE_MODE = 0o600
 
 
+def project_license_path() -> Path | None:
+    """현재 배포 형식에서 사용자가 열 수 있는 프로젝트 라이선스(GPL-3.0) 파일을 찾는다."""
+
+    candidates = [
+        BASE_DIR / "LICENSE",
+        Path("/app/share/licenses/mdlogger/LICENSE"),
+    ]
+    return next((path for path in candidates if path.is_file()), None)
+
+
 def third_party_notices_path() -> Path | None:
     """현재 배포 형식에서 사용자가 열 수 있는 제3자 고지 파일을 찾는다."""
 

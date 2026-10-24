@@ -482,19 +482,76 @@ def test_auth_window_legal_links_and_notice_visibility(qapp: QApplication):
     qapp.processEvents()
 
     assert not window._legal_notice.isVisible()
+    assert not window._signup_consents_widget.isVisible()
     assert window._privacy_btn.text() == "개인정보 처리방침"
     assert window._terms_btn.text() == "이용약관"
 
     window.show_signup()
     qapp.processEvents()
     assert window._legal_notice.isVisible()
+    assert window._signup_consents_widget.isVisible()
     assert "만 14세 이상" in window._legal_notice.text()
     assert "서비스 이용약관 및 개인정보 처리방침" in window._legal_notice.text()
 
     window.show_login()
     qapp.processEvents()
     assert not window._legal_notice.isVisible()
+    assert not window._signup_consents_widget.isVisible()
     window.close()
+
+
+def test_signup_requires_explicit_age_terms_and_privacy_consents(qapp: QApplication):
+    window = AuthWindow()
+    signed_up: list[tuple[str, str]] = []
+    window.sign_up_requested.connect(
+        lambda email, password: signed_up.append((email, password))
+    )
+    window.show()
+    window.show_signup()
+    qapp.processEvents()
+
+    window._email.setText("duelist@example.com")
+    window._password.setText("password123")
+    window._password_confirm.setText("password123")
+    window._submit.click()
+
+    assert signed_up == []
+    assert window._consent_error.isVisible()
+    assert "모두 동의해 주세요" in window._consent_error.text()
+
+    window._age_consent.setChecked(True)
+    window._terms_consent.setChecked(True)
+    window._privacy_consent.setChecked(True)
+    window._submit.click()
+
+    assert signed_up == [("duelist@example.com", "password123")]
+    assert not window._consent_error.isVisible()
+    window.close()
+
+
+def test_guest_notice_dialog_differentiates_registered_and_guest_copy(
+    qapp: QApplication,
+):
+    guest_dialog = GuestNoticeDialog(registered=False)
+    guest_text = " ".join(label.text() for label in guest_dialog.findChildren(QLabel))
+    assert "게스트 기록은 이 PC에 계속 보관됩니다." in guest_text
+    assert "installation_id" in guest_text
+    assert "timezone_offset_minutes" in guest_text
+    assert "소급하여 수정·삭제되지 않습니다" in guest_text
+    guest_dialog.close()
+
+    registered_dialog = GuestNoticeDialog(registered=True)
+    registered_text = " ".join(
+        label.text() for label in registered_dialog.findChildren(QLabel)
+    )
+    assert "1. 계정 개인 기록 동기화:" in registered_text
+    assert (
+        "자유 입력 메모(note)가 회원 본인의 클라우드 계정에 동기화됩니다."
+        in registered_text
+    )
+    assert "2. 듀얼 환경 분석 데이터 전송(별도):" in registered_text
+    assert "환경 분석에서 제외(전송하지 않음): 자유 입력 메모" in registered_text
+    registered_dialog.close()
 
 
 def test_guest_notice_dialog_has_privacy_link(qapp: QApplication):

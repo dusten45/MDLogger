@@ -85,6 +85,49 @@ publisher or release build evidence later supplies matching revisions and source
 hashes, record them with the release and publish the verified source archives
 beside the binary.
 
+## Windows NumPy 2.4.6, CPython 3.13, PyInstaller runtime hooks, Qt Windows 3rdparty, and Inno Setup 6
+
+- **Windows NumPy 2.4.6 native runtime**: The locked Windows wheel
+  (`numpy-2.4.6-cp313-cp313-win_amd64.whl`) ships `numpy.libs/libscipy_openblas*.dll`,
+  which embeds OpenBLAS (`BSD-3-Clause`), LAPACK (`BSD-3-Clause-Open-MPI`), and
+  statically linked GCC `libgfortran` runtime code (`GPL-3.0-or-later WITH
+  GCC-exception-3.1`). Its platform-specific wheel notice is preserved verbatim
+  at `licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt`. As on Linux,
+  the Windows NumPy wheel does not record the exact OpenBLAS or GCC source
+  commit used by the wheel publisher; this known limitation is disclosed in both
+  the inventory and notice artifacts.
+- **Windows CPython 3.13 runtime and bundled native libraries**: The Windows
+  PyInstaller onedir bundle distributes the CPython 3.13 runtime (`python313.dll`,
+  `python3.dll`, standard library modules, Windows extension `.pyd`/`.dll` files,
+  and Microsoft Visual C++ Distributable Code `vcruntime140.dll`,
+  `vcruntime140_1.dll`, and `msvcp140*.dll`) together with CPython's
+  incorporated third-party C libraries (OpenSSL 3.5.9, libffi 3.4.4, xz/liblzma
+  5.2.5, Expat, bzip2, libmpdec, zlib, SQLite, mimalloc, and SipHash24). Their
+  notices and full license texts—matching CPython's `PCbuild/regen.targets`
+  Windows license inputs (`LICENSE`, `PC/crtlicense.txt`, `bzip2/LICENSE`,
+  `libffi/LICENSE`, `openssl/LICENSE.txt`, and `xz/COPYING`)—are retained under
+  `licenses/desktop/cpython-3.13/`.
+- **PyInstaller 6.21.0 bootloader and runtime hooks & pyinstaller-hooks-contrib 2026.6**:
+  In addition to the compiled C bootloader and `PyInstaller/loader` modules
+  (`GPL-2.0-or-later WITH Bootloader-exception`), PyInstaller embeds its
+  runtime hooks (`PyInstaller/hooks/rthooks/pyi_rth_*.py` and `_pyi_rth_utils`)
+  and `pyinstaller-hooks-contrib`'s `pyi_rth_pyqtgraph_multiprocess.py` runtime
+  hook under `Apache-2.0`. Their full license texts are retained under
+  `licenses/desktop/pyinstaller-6.21.0/licenses/COPYING.txt` and
+  `licenses/desktop/pyinstaller-hooks-contrib-2026.6/licenses/LICENSE`.
+- **Windows Qt 6.11.1 platform-specific third-party code**: Windows Qt GUI/RHI
+  builds include `D3D12MemoryAllocator` (`MIT`, retained under
+  `licenses/desktop/qt-6.11.1/windows-3rdparty/D3D12MemoryAllocator/LICENSE.txt`)
+  and `Wintab` headers (`LicenseRef-Lcs-Telegraphics`, retained under
+  `licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Lcs-Telegraphics.txt`). The
+  optional software OpenGL rasterizer `opengl32sw.dll` (Mesa 3D / LLVM) and the
+  unused Qt PDF imageformat plugin / Chromium PDFium library (`qpdf.dll` and
+  `Qt6Pdf.dll`) are explicitly excluded from the Windows PyInstaller bundle in
+  `MDLogger.spec` and rejected by `scripts/release/release_validation.py`.
+- **Inno Setup 6 installer and uninstaller stub**: The Windows Setup executable
+  embeds Inno Setup's loader and uninstaller (`SetupLdr.e32` / `unins000.exe`),
+  licensed under the Inno Setup License (`licenses/desktop/innosetup-6/LICENSE.txt`).
+
 ## Verification procedure
 
 At every release, open both Qt/PySide official archive URLs and both
@@ -132,20 +175,37 @@ the publisher's build configuration. Adjacent FFmpeg originals and Chromium
 scanner credits are retained separately because the module-level corpus alone
 does not cover all full-wheel attribution evidence.
 
-## Release source delivery
+## Release source delivery (GPL-3.0 Section 6(d))
 
-Do not rely only on upstream URLs remaining available. When publishing a
-Windows installer, Flatpak bundle, or web static deployment, publish every
-verified source archive listed above with equivalent access from the same
-release/download location. Also create the MDLogger source archive from the
+When publishing a Windows installer, Flatpak bundle, or web static deployment,
+create the MDLogger source archive (`MDLogger-<version>-source.tar.gz`) from the
 exact release commit, record that commit and the archive SHA256 in the release
-notes, and include the packaging files used for the binary or static assets.
-The NumPy native-runtime caveat above is a known limitation: preserve its
-notices and state that the exact OpenBLAS and GCC source revisions are not
-recorded. If matching revisions become available, record them and publish the
-verified source archives too.
-Keep those source downloads available for as long as the corresponding binary
-is offered and for any longer period required by the selected licenses.
+notes, and publish that archive alongside the binary assets on the GitHub
+Release.
+
+For the unmodified third-party libraries listed above (Qt 6.11.1, PySide
+6.11.1, FFmpeg 7.1.3, cryptography 50.0.0, OpenSSL 4.0.1, and NumPy 2.4.6),
+MDLogger provides Corresponding Source access in accordance with **GPL-3.0
+Section 6(d)** ("the Corresponding Source may be on a different server operated
+by you or a third party that supports equivalent copying facilities, provided
+you maintain clear directions next to the object code saying where to find the
+Corresponding Source"):
+
+- Clear directions to this document (`licenses/sources/desktop-source-offer.md`)
+  are maintained both inside every distributed desktop package and in the
+  GitHub Release notes next to the binary download links.
+- The exact official upstream source URLs, file sizes, and SHA-256 digests are
+  documented above so any recipient can download and verify the exact upstream
+  source archives at no charge.
+- In accordance with GPL-3.0 Section 6(d), if any upstream server ceases to
+  provide one of the required archives while the corresponding binary remains
+  distributed, the distributor remains obligated to mirror and provide that
+  verified source archive with equivalent access for as long as required by the
+  selected licenses.
+- The NumPy native-runtime caveat above is a known limitation: preserve its
+  notices and state that the exact OpenBLAS and GCC source revisions are not
+  recorded by the wheel publisher. If matching revisions become available,
+  record them here as well.
 
 The Qt source archive contains the QtWebEngine and vendored Chromium source used
 by the 6.11.1 release. The project has not rebuilt the PySide publisher wheel

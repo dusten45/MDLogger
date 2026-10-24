@@ -2,6 +2,106 @@
   "blocking_issues": [],
   "components": [
     {
+      "copyright": "Copyright (c) 2001-2026 Python Software Foundation; Copyright (c) 1998-2026 The OpenSSL Project Authors; Copyright (c) 1996-2022 Anthony Green, Red Hat, Inc and others; Microsoft Corporation; third-party authors listed in Doc-license.rst and LICENSE.txt",
+      "license_files": [
+        {
+          "path": "licenses/desktop/cpython-3.13/bzip2-LICENSE.txt",
+          "sha256": "c6dbbf828498be844a89eaa3b84adbab3199e342eb5cb2ed2f0d4ba7ec0f38a3"
+        },
+        {
+          "path": "licenses/desktop/cpython-3.13/crtlicense.txt",
+          "sha256": "3c71b3ae243121f6f227374cd1ef7c59ed07b1969b330d0e947f91a3a1b3fd73"
+        },
+        {
+          "path": "licenses/desktop/cpython-3.13/Doc-license.rst",
+          "sha256": "62f2c9c2c75d511170eb464ad5f83b78cc1f37eb2eb49c2846c9aa6c4557ee99"
+        },
+        {
+          "path": "licenses/desktop/cpython-3.13/libffi-LICENSE.txt",
+          "sha256": "2c9c2acb9743e6b007b91350475308aee44691d96aa20eacef8e199988c8c388"
+        },
+        {
+          "path": "licenses/desktop/cpython-3.13/LICENSE.txt",
+          "sha256": "78b12c3a81360b357002334f0e70ea0e92eebf7a9b358805c03c48484945f3bb"
+        },
+        {
+          "path": "licenses/desktop/cpython-3.13/openssl-LICENSE.txt",
+          "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
+        },
+        {
+          "path": "licenses/desktop/cpython-3.13/xz-COPYING.txt",
+          "sha256": "bcb02973ef6e87ea73d331b3a80df7748407f17efdb784b61b47e0e610d3bb5c"
+        },
+        {
+          "path": "licenses/desktop/qt-6.11.1/LICENSES/blessing.txt",
+          "sha256": "592db1199aab67aafe4515db9808b420db122083807c5329b2f061951e79acbe"
+        }
+      ],
+      "name": "CPython runtime and standard library",
+      "platforms": [
+        "windows"
+      ],
+      "purpose": "Python 3.13 interpreter DLLs, standard library, Microsoft Visual C++ Distributable Code (vcruntime140*.dll, msvcp140*.dll), and bundled native C libraries (OpenSSL 3.5.9, libffi 3.4.4, xz/liblzma 5.2.5, Expat, bzip2, libmpdec, zlib, SQLite, mimalloc, SipHash24) packaged into the Windows PyInstaller onedir bundle.",
+      "review_notes": "Matches CPython PCbuild/regen.targets Windows license inputs (LICENSE, PC/crtlicense.txt, bzip2/LICENSE, libffi/LICENSE, openssl/LICENSE.txt) plus xz/COPYING for _lzma.pyd and SQLite blessing.",
+      "selected_license_expression": "PSF-2.0 AND 0BSD AND Apache-2.0 AND MIT AND BSD-2-Clause AND BSD-3-Clause AND Zlib AND bzip2-1.0.6 AND blessing AND CC0-1.0 AND LicenseRef-Microsoft-Distributable-Code",
+      "source_repository": "https://github.com/python/cpython",
+      "version": "3.13"
+    },
+    {
+      "copyright": "Copyright (C) 2009 Free Software Foundation, Inc.",
+      "license_files": [
+        {
+          "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt",
+          "sha256": "a804dff0ead9fadc5293456410bcbfc32bf024be9c4513459663fb7b442d2341"
+        }
+      ],
+      "name": "GNU libgfortran runtime from NumPy Windows wheel",
+      "platforms": [
+        "windows"
+      ],
+      "purpose": "GCC runtime library statically linked into numpy.libs/libscipy_openblas64_*.dll in the locked Windows wheel.",
+      "review_notes": "Known limitation: The exact GCC revision is not disclosed by the Windows wheel; the retained NumPy LICENSE-windows.txt identifies the statically linked runtime and GCC Runtime Library Exception 3.1 notices.",
+      "selected_license_expression": "GPL-3.0-or-later WITH GCC-exception-3.1",
+      "source_repository": "https://gcc.gnu.org/git/?p=gcc.git;a=tree;f=libgfortran",
+      "version": "2.4.6 wheel bundle"
+    },
+    {
+      "copyright": "Copyright (C) 1997-2026 Jordan Russell. All rights reserved. Portions Copyright (C) 2000-2026 Martijn Laan. All rights reserved.",
+      "license_files": [
+        {
+          "path": "licenses/desktop/innosetup-6/LICENSE.txt",
+          "sha256": "3df23505b7ec00dc007a1e1e9ba32ee3895e7ce90043bcd1ac1b9b47155921a7"
+        }
+      ],
+      "name": "Inno Setup runtime loader and uninstaller",
+      "platforms": [
+        "windows"
+      ],
+      "purpose": "Installer stub and uninstaller (unins000.exe) embedded in MDLogger-Setup.exe by Inno Setup 6.",
+      "review_notes": "Reviewed permissive BSD-style Inno Setup license covering the setup loader and uninstaller.",
+      "selected_license_expression": "LicenseRef-Inno-Setup",
+      "source_repository": "https://github.com/jrsoftware/issrc",
+      "version": "6"
+    },
+    {
+      "copyright": "Copyright (c) 2011-2014 The OpenBLAS Project; LAPACK contributors listed in NumPy LICENSE-windows.txt",
+      "license_files": [
+        {
+          "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt",
+          "sha256": "a804dff0ead9fadc5293456410bcbfc32bf024be9c4513459663fb7b442d2341"
+        }
+      ],
+      "name": "NumPy Windows OpenBLAS and LAPACK",
+      "platforms": [
+        "windows"
+      ],
+      "purpose": "Shared numerical library bundled in numpy.libs/libscipy_openblas64_*.dll in the locked Windows wheel.",
+      "review_notes": "Known limitation: The exact OpenBLAS revision is not disclosed by the Windows wheel; the retained NumPy LICENSE-windows.txt identifies the bundled binary and notices.",
+      "selected_license_expression": "BSD-3-Clause AND BSD-3-Clause-Open-MPI",
+      "source_repository": "https://github.com/OpenMathLib/OpenBLAS/",
+      "version": "2.4.6 wheel bundle"
+    },
+    {
       "copyright": "Copyright (c) 2010-2023 PyInstaller Development Team; prior authors listed in COPYING.txt",
       "homepage": "https://pyinstaller.org/",
       "license_files": [
@@ -15,11 +115,67 @@
       "platforms": [
         "windows"
       ],
-      "purpose": "Compiled bootloader embedded in the Windows executable by PyInstaller.",
-      "review_notes": "Manually inventoried because the bootloader is a distributed build component, not a runtime dependency edge in uv tree.",
-      "selected_license_expression": "GPL-2.0-or-later WITH Bootloader-exception",
+      "purpose": "Compiled bootloader, Python loader modules, and PyInstaller runtime hooks (pyi_rth_*.py, _pyi_rth_utils) embedded in the Windows executable by PyInstaller.",
+      "review_notes": "Manually inventoried because the bootloader (GPL-2.0-or-later WITH Bootloader-exception) and embedded runtime hooks (Apache-2.0) are distributed build components, not runtime dependency edges in uv tree.",
+      "selected_license_expression": "GPL-2.0-or-later WITH Bootloader-exception AND Apache-2.0",
       "source_repository": "https://github.com/pyinstaller/pyinstaller",
       "version": "6.21.0"
+    },
+    {
+      "copyright": "Copyright (c) 2020-2026 PyInstaller Development Team",
+      "homepage": "https://github.com/pyinstaller/pyinstaller-hooks-contrib",
+      "license_files": [
+        {
+          "path": "licenses/desktop/pyinstaller-hooks-contrib-2026.6/licenses/LICENSE",
+          "sha256": "91d0baaff00773038e72c0a1fc9d5d2d38706b7a2b9c04f34296608f931b9cd0"
+        }
+      ],
+      "local_modifications": "None",
+      "name": "pyinstaller-hooks-contrib runtime hooks",
+      "platforms": [
+        "windows"
+      ],
+      "purpose": "Community runtime hook (pyi_rth_pyqtgraph_multiprocess.py) embedded in the Windows executable by PyInstaller.",
+      "review_notes": "Runtime hooks in _pyinstaller_hooks_contrib/rthooks/ are licensed under Apache-2.0 per upstream LICENSE.",
+      "selected_license_expression": "Apache-2.0",
+      "source_repository": "https://github.com/pyinstaller/pyinstaller-hooks-contrib",
+      "version": "2026.6"
+    },
+    {
+      "copyright": "Copyright (c) 2019-2022 Advanced Micro Devices, Inc. All rights reserved.",
+      "license_files": [
+        {
+          "path": "licenses/desktop/qt-6.11.1/windows-3rdparty/D3D12MemoryAllocator/LICENSE.txt",
+          "sha256": "1b3941c52b26d42c510afbdf205a8b96a6d64f5a7b8ebff0287979fd91dfd52f"
+        }
+      ],
+      "name": "Qt Windows D3D12 Memory Allocator",
+      "platforms": [
+        "windows"
+      ],
+      "purpose": "Direct3D 12 memory allocation library bundled in QtGui on Windows.",
+      "review_notes": "Windows-specific Qt 6.11.1 qtbase third-party component; opengl32sw.dll (Mesa/LLVM) and qpdf.dll/Qt6Pdf.dll are explicitly excluded in MDLogger.spec.",
+      "selected_license_expression": "MIT",
+      "source_repository": "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator",
+      "version": "6.11.1"
+    },
+    {
+      "copyright": "Copyright (c) 1991-1998 by LCS/Telegraphics.",
+      "license_files": [
+        {
+          "path": "licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Lcs-Telegraphics.txt",
+          "sha256": "c10225ebbd5191bfdd761b0d7752c785f2453ab665d6c454473fb12d254668aa"
+        }
+      ],
+      "name": "Qt Windows Wintab API",
+      "platforms": [
+        "windows"
+      ],
+      "purpose": "Wintab tablet interface headers used by the Qt Windows QPA plugin.",
+      "review_notes": "Windows-specific Qt 6.11.1 qtbase third-party component.",
+      "selected_license_expression": "LicenseRef-Lcs-Telegraphics",
+      "source_repository": "https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz",
+      "version": "6.11.1"
     }
   ],
   "distribution_count": 15,
@@ -193,6 +349,10 @@
       "dependency": "direct",
       "homepage": "https://numpy.org/",
       "license_files": [
+        {
+          "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt",
+          "sha256": "a804dff0ead9fadc5293456410bcbfc32bf024be9c4513459663fb7b442d2341"
+        },
         {
           "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt",
           "sha256": "4860083caa0de2ac3292ca98bd074bd8f45d8b32624e37b1e70a240bff61e488"

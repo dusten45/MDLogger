@@ -26,6 +26,9 @@ export function LoginPage() {
     const [mode, setMode] = useState<Mode>("login");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [ageConsent, setAgeConsent] = useState(false);
+    const [termsConsent, setTermsConsent] = useState(false);
+    const [privacyConsent, setPrivacyConsent] = useState(false);
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -76,6 +79,13 @@ export function LoginPage() {
         }
 
         if (mode === "signup") {
+            if (!ageConsent || !termsConsent || !privacyConsent) {
+                setError(
+                    "필수 약관 및 만 14세 이상 확인에 모두 동의해 주세요.",
+                );
+                setBusy(false);
+                return;
+            }
             const { error: signupError, needsConfirmation } = await signUp(
                 email,
                 password,
@@ -155,6 +165,9 @@ export function LoginPage() {
                             aria-pressed={mode === "signup"}
                             onClick={() => {
                                 setMode("signup");
+                                setAgeConsent(false);
+                                setTermsConsent(false);
+                                setPrivacyConsent(false);
                                 setError(null);
                                 setMessage(null);
                             }}
@@ -224,6 +237,61 @@ export function LoginPage() {
                                     }
                                 />
                             </label>
+                            {mode === "signup" ? (
+                                <div
+                                    className="auth-consents"
+                                    role="group"
+                                    aria-label="회원가입 필수 동의"
+                                >
+                                    <label className="auth-consent-item">
+                                        <input
+                                            type="checkbox"
+                                            checked={ageConsent}
+                                            onChange={(event) =>
+                                                setAgeConsent(
+                                                    event.target.checked,
+                                                )
+                                            }
+                                        />
+                                        <span>[필수] 만 14세 이상입니다</span>
+                                    </label>
+                                    <label className="auth-consent-item">
+                                        <input
+                                            type="checkbox"
+                                            checked={termsConsent}
+                                            onChange={(event) =>
+                                                setTermsConsent(
+                                                    event.target.checked,
+                                                )
+                                            }
+                                        />
+                                        <span>
+                                            [필수]{" "}
+                                            <Link to="/terms">이용약관</Link>에
+                                            동의합니다
+                                        </span>
+                                    </label>
+                                    <label className="auth-consent-item">
+                                        <input
+                                            type="checkbox"
+                                            checked={privacyConsent}
+                                            onChange={(event) =>
+                                                setPrivacyConsent(
+                                                    event.target.checked,
+                                                )
+                                            }
+                                        />
+                                        <span>
+                                            [필수]{" "}
+                                            <Link to="/privacy">
+                                                개인정보 처리방침
+                                            </Link>{" "}
+                                            (개인정보 수집·이용 및 국외 이전)에
+                                            동의합니다
+                                        </span>
+                                    </label>
+                                </div>
+                            ) : null}
                             <button type="submit" disabled={busy}>
                                 {busy
                                     ? "처리 중..."
@@ -234,10 +302,8 @@ export function LoginPage() {
                             {mode === "signup" ? (
                                 <p className="auth-legal-notice">
                                     본 서비스는 만 14세 이상만 이용 가능하며,
-                                    계정을 생성하면{" "}
-                                    <Link to="/terms">이용약관</Link> 및{" "}
-                                    <Link to="/privacy">개인정보 처리방침</Link>
-                                    에 동의하게 됩니다.
+                                    회원가입 시 서비스 이용약관 및 개인정보
+                                    처리방침에 동의해야 합니다.
                                 </p>
                             ) : null}
                             {mode === "login" ? (

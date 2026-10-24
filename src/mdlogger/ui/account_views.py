@@ -189,6 +189,32 @@ class AuthWindow(QWidget):
         self._show_password.toggled.connect(self._set_password_visible)
         layout.addWidget(self._show_password)
 
+        self._signup_consents_widget = QWidget()
+        consents_layout = QVBoxLayout(self._signup_consents_widget)
+        consents_layout.setContentsMargins(0, METRICS.space_1, 0, 0)
+        consents_layout.setSpacing(METRICS.space_1)
+
+        self._age_consent = QCheckBox("[필수] 만 14세 이상입니다")
+        self._age_consent.setObjectName("authAgeConsent")
+        consents_layout.addWidget(self._age_consent)
+
+        self._terms_consent = QCheckBox("[필수] 서비스 이용약관에 동의합니다")
+        self._terms_consent.setObjectName("authTermsConsent")
+        consents_layout.addWidget(self._terms_consent)
+
+        self._privacy_consent = QCheckBox(
+            "[필수] 개인정보 수집·이용 및 국외 이전에 동의합니다"
+        )
+        self._privacy_consent.setObjectName("authPrivacyConsent")
+        consents_layout.addWidget(self._privacy_consent)
+
+        self._consent_error = self._error_label()
+        self._consent_error.setObjectName("authConsentError")
+        consents_layout.addWidget(self._consent_error)
+
+        self._signup_consents_widget.hide()
+        layout.addWidget(self._signup_consents_widget)
+
         self._status = QLabel()
         self._status.setObjectName("authStatus")
         self._status.setWordWrap(True)
@@ -222,7 +248,7 @@ class AuthWindow(QWidget):
         layout.addWidget(self._guest)
 
         self._legal_notice = QLabel(
-            "본 서비스는 만 14세 이상만 이용 가능하며, 계정을 생성하면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다."
+            "본 서비스는 만 14세 이상만 이용 가능하며, 회원가입 시 서비스 이용약관 및 개인정보 처리방침에 동의해야 합니다."
         )
         self._legal_notice.setProperty("tone", "muted")
         self._legal_notice.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -264,7 +290,10 @@ class AuthWindow(QWidget):
         QWidget.setTabOrder(self._email, self._password)
         QWidget.setTabOrder(self._password, self._password_confirm)
         QWidget.setTabOrder(self._password_confirm, self._show_password)
-        QWidget.setTabOrder(self._show_password, self._submit)
+        QWidget.setTabOrder(self._show_password, self._age_consent)
+        QWidget.setTabOrder(self._age_consent, self._terms_consent)
+        QWidget.setTabOrder(self._terms_consent, self._privacy_consent)
+        QWidget.setTabOrder(self._privacy_consent, self._submit)
         QWidget.setTabOrder(self._submit, self._reset)
         QWidget.setTabOrder(self._reset, self._toggle_mode)
         QWidget.setTabOrder(self._toggle_mode, self._guest)
@@ -338,6 +367,9 @@ class AuthWindow(QWidget):
         self._submit.setText("계정 만들기")
         self._toggle_mode.setText("이미 계정이 있습니다")
         self._reset.hide()
+        self._age_consent.setChecked(False)
+        self._terms_consent.setChecked(False)
+        self._privacy_consent.setChecked(False)
         self._set_confirmation_visible(True)
         self._legal_notice.show()
         self.clear_errors()
@@ -369,6 +401,9 @@ class AuthWindow(QWidget):
             self._email,
             self._password,
             self._password_confirm,
+            self._age_consent,
+            self._terms_consent,
+            self._privacy_consent,
             self._submit,
         ):
             widget.setEnabled(available)
@@ -386,6 +421,9 @@ class AuthWindow(QWidget):
             self._password,
             self._password_confirm,
             self._show_password,
+            self._age_consent,
+            self._terms_consent,
+            self._privacy_consent,
             self._submit,
             self._reset,
             self._toggle_mode,
@@ -408,6 +446,8 @@ class AuthWindow(QWidget):
             label.clear()
             label.hide()
             set_style_property(field, "invalid", False)
+        self._consent_error.clear()
+        self._consent_error.hide()
 
     def show_auth_error(self, message: str, *, field: str | None = None) -> None:
         if field == "email":
@@ -433,6 +473,8 @@ class AuthWindow(QWidget):
         self._confirm_label.setVisible(visible)
         self._password_confirm.setVisible(visible)
         self._confirm_error.setVisible(visible and bool(self._confirm_error.text()))
+        self._signup_consents_widget.setVisible(visible)
+        self._consent_error.setVisible(visible and bool(self._consent_error.text()))
 
     def _set_password_visible(self, visible: bool) -> None:
         mode = QLineEdit.EchoMode.Normal if visible else QLineEdit.EchoMode.Password
@@ -462,6 +504,16 @@ class AuthWindow(QWidget):
                 self._confirm_error,
                 "비밀번호가 서로 다릅니다.",
             )
+            valid = False
+        if self._mode is AuthMode.SIGNUP and not (
+            self._age_consent.isChecked()
+            and self._terms_consent.isChecked()
+            and self._privacy_consent.isChecked()
+        ):
+            self._consent_error.setText(
+                "필수 약관 및 만 14세 이상 확인에 모두 동의해 주세요."
+            )
+            self._consent_error.show()
             valid = False
         return valid
 
@@ -519,19 +571,38 @@ class GuestNoticeDialog(QDialog):
             )
         )
 
-        profile_intro = (
-            "계정 기록은 이 PC에 먼저 저장되고 서버의 개인 기록과 동기화됩니다. "
-            if registered
-            else "게스트 기록은 이 PC에 계속 보관됩니다. "
-        )
+        if registered:
+            body_text = (
+                "계정 기록은 이 PC에 먼저 저장되고 서버의 개인 기록과 동기화됩니다.\n\n"
+                "1. 계정 개인 기록 동기화: 승패, 선·후공, 덱 분류, 턴 수, 종료 방식, "
+                "플레이 문맥과 점수, 기록 시각, 자유 입력 메모(note)가 회원 본인의 "
+                "클라우드 계정에 동기화됩니다.\n\n"
+                "2. 듀얼 환경 분석 데이터 전송(별도): 네트워크에 연결되면 전체 듀얼 환경 "
+                "통계 분석을 위해 승패, 선·후공, 덱 분류, 턴 수, 종료 방식, 플레이 문맥과 "
+                "점수, 기록 시각·시간대 오프셋(timezone_offset_minutes), 장치 식별자"
+                "(installation_id), 경기 고유 식별자(sync_id), 앱·payload 버전이 별도로 "
+                "전송됩니다.\n\n"
+                "환경 분석에서 제외(전송하지 않음): 자유 입력 메모, 이메일, 표시 이름, "
+                "비밀번호·인증 토큰, 로컬 파일 경로와 OS 사용자명\n\n"
+                "로컬 기록 수정·삭제 및 계정 탈퇴 시 회원 계정의 동기화 본은 반영·삭제되나, "
+                "이미 전송된 비식별 듀얼 환경 분석 통계 사본은 소급 수정·삭제되지 않습니다. "
+                "오프라인에서도 기록할 수 있으며 전송은 연결이 복구된 뒤 진행됩니다."
+            )
+        else:
+            body_text = (
+                "게스트 기록은 이 PC에 계속 보관됩니다. 네트워크에 연결되면 "
+                "듀얼 환경 분석을 위해 아래 게임 정보가 자동으로 전송됩니다.\n\n"
+                "전송: 승패, 선·후공, 덱 분류, 턴 수, 종료 방식, 플레이 문맥과 점수, "
+                "기록 시각·시간대 오프셋(timezone_offset_minutes), 장치 식별자"
+                "(installation_id), 경기 고유 식별자(sync_id), 앱·payload 버전\n\n"
+                "전송하지 않음: 자유 입력 메모, 이메일, 표시 이름, 비밀번호·인증 토큰, "
+                "로컬 파일 경로와 OS 사용자명\n\n"
+                "이 PC에서 로컬 기록을 수정·삭제하더라도 이미 서버로 전송된 비식별 듀얼 "
+                "환경 통계 사본은 소급하여 수정·삭제되지 않습니다. 오프라인에서도 기록할 수 "
+                "있으며 전송은 연결이 복구된 뒤 진행됩니다."
+            )
         body = _wrapped_label(
-            profile_intro + "네트워크에 연결되면 "
-            "듀얼 환경 분석을 위해 아래 게임 정보가 자동으로 전송됩니다.\n\n"
-            "전송: 승패, 선·후공, 덱 분류, 턴 수, 종료 방식, 플레이 문맥과 점수, "
-            "기록 시각, 앱·payload 버전\n\n"
-            "전송하지 않음: 자유 입력 메모, 이메일, 표시 이름, 비밀번호·인증 토큰, "
-            "로컬 파일 경로와 OS 사용자명\n\n"
-            "오프라인에서도 기록할 수 있으며 전송은 연결이 복구된 뒤 진행됩니다.",
+            body_text,
             scaled(self.CONTENT_WIDTH),
         )
         body.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)

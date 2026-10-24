@@ -419,6 +419,15 @@ class SettingsWindow(QDialog):
         set_style_property(unofficial_notice, "tone", "muted")
         layout.addWidget(unofficial_notice)
 
+        gpl_notice = QLabel(
+            "MDLogger는 GPL-3.0-or-later 라이선스로 배포되는 오픈소스 소프트웨어입니다."
+        )
+        gpl_notice.setObjectName("settingsGplNotice")
+        gpl_notice.setAccessibleName("오픈소스 라이선스 안내")
+        gpl_notice.setWordWrap(True)
+        set_style_property(gpl_notice, "tone", "muted")
+        layout.addWidget(gpl_notice)
+
         legal_buttons = QHBoxLayout()
         legal_buttons.setSpacing(METRICS.space_2)
         privacy_btn = QPushButton("개인정보 처리방침")
@@ -450,7 +459,7 @@ class SettingsWindow(QDialog):
             QMessageBox.warning(
                 self,
                 "오픈소스 라이선스",
-                "제3자 라이선스 고지 파일을 찾을 수 없습니다. 앱을 다시 설치해 주세요.",
+                "오픈소스 라이선스 고지 파일을 찾을 수 없습니다. 앱을 다시 설치해 주세요.",
             )
             return
 
@@ -458,7 +467,7 @@ class SettingsWindow(QDialog):
             QMessageBox.warning(
                 self,
                 "오픈소스 라이선스",
-                "제3자 라이선스 고지 파일을 기본 문서 뷰어로 열 수 없습니다.",
+                "오픈소스 라이선스 고지 파일을 기본 문서 뷰어로 열 수 없습니다.",
             )
 
     # ----- 내비게이션 -----

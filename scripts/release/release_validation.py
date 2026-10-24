@@ -11,13 +11,28 @@ WINDOWS_REQUIRED_FILES = (
     "MDLogger.exe",
     "LICENSE",
     "THIRD_PARTY_NOTICES.txt",
-    "licenses/inventory/desktop-windows.json",
-    "licenses/sources/desktop-source-offer.md",
+    "licenses/desktop/qt-6.11.1/LICENSES/GPL-3.0-only.txt",
 )
-WINDOWS_FORBIDDEN_FILES = ("PAL-relaxed.hex", "PAL-relaxed_bright.hex")
+WINDOWS_FORBIDDEN_FILES = (
+    "PAL-relaxed.hex",
+    "PAL-relaxed_bright.hex",
+    "opengl32sw.dll",
+    "qpdf.dll",
+    "Qt6Pdf.dll",
+    "_tkinter.pyd",
+    "tcl86t.dll",
+    "tk86t.dll",
+)
 WINDOWS_FORBIDDEN_PATHS = (
-    "licenses/inventory/desktop-linux.json",
-    "licenses/inventory/qt-third-party-runtime-linux-flatpak.json",
+    "licenses/inventory",
+    "licenses/sources",
+    "licenses/desktop/cffi-2.1.1",
+    "licenses/desktop/cryptography-50.0.0",
+    "licenses/desktop/jeepney-0.9.0",
+    "licenses/desktop/pycparser-3.0",
+    "licenses/desktop/secretstorage-3.5.0",
+    "licenses/desktop/qt-6.11.1/qtwebengine",
+    "licenses/desktop/qt-6.11.1/qtmultimedia",
 )
 
 
@@ -75,14 +90,15 @@ def verify_windows_payload(root: Path) -> None:
             + ", ".join(unexpected)
         )
 
+    forbidden_lower = {name.lower() for name in WINDOWS_FORBIDDEN_FILES}
     palettes = sorted(
         str(path)
         for path in root.rglob("*")
-        if path.is_file() and path.name in WINDOWS_FORBIDDEN_FILES
+        if path.is_file() and path.name.lower() in forbidden_lower
     )
     if palettes:
         raise ReleaseValidationError(
-            "Windows payload contains excluded pyqtgraph palettes: "
+            "Windows payload contains excluded pyqtgraph palettes or forbidden binaries: "
             + ", ".join(palettes)
         )
 

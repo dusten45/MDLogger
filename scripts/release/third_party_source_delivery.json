@@ -38,10 +38,11 @@
     }
   ],
   "delivery": {
-    "automation_status": "pending_manual_attachment",
-    "delivery_location": "same_github_release",
+    "automation_status": "upstream_urls_documented_in_source_offer",
+    "delivery_location": "upstream_official_servers_with_release_directions",
+    "gpl_section": "GPL-3.0 Section 6(d)",
     "manual_reviewer": "repository_owner",
-    "review_method": "AI-assisted comparison summary followed by repository-owner approval",
+    "review_method": "Verify recorded upstream URLs and SHA-256 digests in licenses/sources/desktop-source-offer.md",
     "workflow_downloads_or_attaches_archives": false
   },
   "schema_version": 1

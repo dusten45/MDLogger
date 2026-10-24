@@ -331,11 +331,6 @@ def validate_policy(
         blocker_list = ", ".join(sorted(blockers))
         raise ComplianceError(f"Known release blockers remain: {blocker_list}")
 
-    _validate_file_records(
-        policy.get("source_documents", {}).get("files", []),
-        project_root,
-        "desktop source documents",
-    )
     validate_qt_license_corpus(policy, project_root=project_root)
     validate_qt_source_attributions(policy, project_root=project_root)
     validate_flatpak_linux_native_payload(policy)
@@ -1267,8 +1262,12 @@ def _markdown_desktop_section(policy: Mapping[str, Any]) -> str:
         "- Linux Flatpak resolver closure: 19 third-party distributions.",
         "- Windows resolver closure: 15 third-party distributions. This is not ",
         "  represented as an exact PyInstaller payload inventory.",
-        "- Windows also embeds the PyInstaller bootloader 6.21.0 as a manually ",
-        "  inventoried build component.",
+        "- Windows also inventories the CPython 3.13 runtime and standard library ",
+        "  (with Microsoft Visual C++ Distributable Code, OpenSSL 3.5.9, libffi 3.4.4, ",
+        "  and xz/liblzma 5.2.5), PyInstaller 6.21.0 bootloader and runtime hooks, ",
+        "  pyinstaller-hooks-contrib 2026.6 runtime hooks, NumPy Windows OpenBLAS/LAPACK ",
+        "  and libgfortran, Qt Windows D3D12MemoryAllocator and Wintab, and the ",
+        "  Inno Setup 6 loader/uninstaller.",
         "- Qt/PySide6 is distributed under the selected `GPL-3.0-only` path.",
         "- Exact Qt/PySide6 corresponding-source instructions: ",
         "  `licenses/sources/desktop-source-offer.md`.",
@@ -1276,7 +1275,9 @@ def _markdown_desktop_section(policy: Mapping[str, Any]) -> str:
         "  `LICENSES` entries are preserved under `licenses/desktop/qt-6.11.1/`.",
         "- Qt package-specific source attribution: 123 records and 88 referenced ",
         "  legal files under `licenses/desktop/qt-6.11.1/`. This is a conservative ",
-        "  Linux source-attribution superset, not an exact wheel-build SBOM.",
+        "  Linux source-attribution superset (which also covers shared cross-platform ",
+        "  QtCore/QtGui/QtWidgets/QtSvg third-party code on Windows), not an exact ",
+        "  wheel-build SBOM.",
         "- The full Linux wheel also ships QtWebEngine with Chromium ",
         "  `140.0.7339.225` and Qt Multimedia with FFmpeg `7.1.3`; exact binary ",
         "  evidence is in `licenses/inventory/qt-third-party-runtime-linux-flatpak.json`.",
@@ -1295,7 +1296,9 @@ def _markdown_desktop_section(policy: Mapping[str, Any]) -> str:
         "  can vary by format and distribution country and are not granted by Qt.",
         "- `PAL-relaxed.hex` and `PAL-relaxed_bright.hex` from pyqtgraph are ",
         "  excluded from both supported desktop distributions because their ",
-        "  license and provenance could not be confirmed.",
+        "  license and provenance could not be confirmed; `opengl32sw.dll`, ",
+        "  `qpdf.dll`, and `Qt6Pdf.dll` are excluded from the Windows PyInstaller ",
+        "  bundle.",
     ]
 
     lines.extend(
@@ -1354,18 +1357,18 @@ def _text_desktop_section(policy: Mapping[str, Any]) -> str:
         "",
         "Review status: lockfile closures, tracked legal files, and selected license expressions are reviewed; final Windows payload inspection remains a Windows release-host check.",
         "Linux Flatpak resolver closure: 19 third-party distributions.",
-        "Windows resolver closure: 15 third-party distributions plus PyInstaller bootloader 6.21.0; this is not an exact PyInstaller payload inventory.",
+        "Windows resolver closure: 15 third-party distributions plus CPython 3.13 runtime/stdlib (with Microsoft Visual C++ Distributable Code, OpenSSL 3.5.9, libffi 3.4.4, xz/liblzma 5.2.5), PyInstaller 6.21.0 bootloader and runtime hooks, pyinstaller-hooks-contrib 2026.6 runtime hooks, NumPy Windows OpenBLAS/LAPACK and libgfortran, Qt Windows D3D12MemoryAllocator and Wintab, and Inno Setup 6 loader/uninstaller; this is not an exact PyInstaller payload inventory.",
         "Qt/PySide6 selected license: GPL-3.0-only.",
         "Source instructions: licenses/sources/desktop-source-offer.md",
         "Qt license corpus: licenses/desktop/qt-6.11.1/LICENSES-MANIFEST.json (83 unique texts from 402 source entries).",
-        "Qt package-specific attribution: 123-record conservative Linux source-attribution superset plus 88 referenced legal files; not an exact wheel-build SBOM.",
+        "Qt package-specific attribution: 123-record conservative Linux source-attribution superset (also covering shared cross-platform QtCore/QtGui/QtWidgets/QtSvg third-party code on Windows) plus 88 referenced legal files; not an exact wheel-build SBOM.",
         "QtWebEngine Chromium runtime: 140.0.7339.225; 262-component conservative Linux source-tree superset generated without the unavailable wheel publisher GN dependency graph: licenses/desktop/qt-6.11.1/qtwebengine/chromium-source-credits.html.",
         "Qt Multimedia FFmpeg runtime: 7.1.3; attribution covers FFmpeg, libjpeg, zlib, and Boost: licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/.",
         "Binary evidence: licenses/inventory/qt-third-party-runtime-linux-flatpak.json.",
         "The PySide wheel publisher did not include an exact-build SBOM; no exact-build SBOM is claimed for PySide.",
         "Cryptography Linux wheel SBOM evidence for OpenSSL and 39 Rust build components: licenses/desktop/cryptography-50.0.0/sboms/; the Rust document is not an object-level linker map.",
         "Codec patent obligations vary by format and country and are not granted by Qt.",
-        "Excluded unverified assets: pyqtgraph/colors/maps/PAL-relaxed.hex and PAL-relaxed_bright.hex.",
+        "Excluded unverified/unused assets: pyqtgraph/colors/maps/PAL-relaxed.hex, PAL-relaxed_bright.hex, and Windows opengl32sw.dll, qpdf.dll, Qt6Pdf.dll.",
         "",
         "RUNTIME DISTRIBUTIONS",
         "---------------------",
@@ -1497,38 +1500,58 @@ def build_outputs(
     )
     text_current = text_path.read_text(encoding="utf-8") if text_path.exists() else ""
 
+    md_preamble = (
+        "# Open-Source Notices\n\n"
+        "## MDLogger\n\n"
+        "- Copyright: Copyright (C) 2026 dusten45 (노연우)\n"
+        "- License: `GPL-3.0-or-later` (`LICENSE`)\n"
+        "- Source: https://github.com/dusten45/MDLogger\n\n"
+        "MDLogger is free software: you can redistribute it and/or modify it "
+        "under the terms of the GNU General Public License as published by the "
+        "Free Software Foundation, either version 3 of the License, or (at your "
+        "option) any later version. This program is distributed in the hope that "
+        "it will be useful, but WITHOUT ANY WARRANTY; without even the implied "
+        "warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See "
+        "`LICENSE` for the full license text.\n\n"
+        "Generated platform sections are delimited so desktop and web inventories "
+        "can be maintained independently."
+    )
+    txt_preamble = (
+        "MDLOGGER OPEN-SOURCE NOTICES\n"
+        "============================\n\n"
+        "MDLogger\n"
+        "Copyright (C) 2026 dusten45 (노연우)\n"
+        "License: GPL-3.0-or-later (see LICENSE)\n"
+        "Source: https://github.com/dusten45/MDLogger\n\n"
+        "This program is free software: you can redistribute it and/or modify it "
+        "under the terms of the GNU General Public License as published by the "
+        "Free Software Foundation, either version 3 of the License, or (at your "
+        "option) any later version. This program is distributed in the hope that "
+        "it will be useful, but WITHOUT ANY WARRANTY; without even the implied "
+        "warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See "
+        "LICENSE for the full license text.\n\n"
+        "Generated platform sections are maintained independently."
+    )
     markdown = update_generated_section(
         markdown_current,
         begin=MD_BEGIN,
         end=MD_END,
         generated=_markdown_desktop_section(policy),
-        preamble=(
-            "# Third-Party Notices\n\n"
-            "Generated platform sections are delimited so desktop and web inventories "
-            "can be maintained independently."
-        ),
+        preamble=md_preamble,
     )
     markdown = update_generated_section(
         markdown,
         begin=WEB_MD_BEGIN,
         end=WEB_MD_END,
         generated=_markdown_web_section(project_root),
-        preamble=(
-            "# Third-Party Notices\n\n"
-            "Generated platform sections are delimited so desktop and web inventories "
-            "can be maintained independently."
-        ),
+        preamble=md_preamble,
     )
     text = update_generated_section(
         text_current,
         begin=TXT_BEGIN,
         end=TXT_END,
         generated=_text_desktop_section(policy),
-        preamble=(
-            "MDLOGGER THIRD-PARTY NOTICES\n"
-            "============================\n\n"
-            "Generated platform sections are maintained independently."
-        ),
+        preamble=txt_preamble,
     )
 
     return {

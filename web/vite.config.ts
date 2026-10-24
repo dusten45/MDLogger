@@ -58,6 +58,7 @@ export default defineConfig({
                 clientsClaim: true,
                 globPatterns: [
                     "**/*.{js,css,html,ico,png,svg,woff2}",
+                    "LICENSE.txt",
                     "third-party-notices.txt",
                     "licenses/**/*",
                 ],
@@ -71,6 +72,7 @@ export default defineConfig({
                 navigateFallback: "/index.html",
                 navigateFallbackDenylist: [
                     /^\/auth\/callback/,
+                    /^\/LICENSE\.txt$/,
                     /^\/third-party-notices\.txt$/,
                     /^\/licenses(?:\/|$)/,
                 ],

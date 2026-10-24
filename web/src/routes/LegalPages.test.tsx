@@ -27,10 +27,16 @@ describe("LegalPages", () => {
             expect(screen.getByText(/제9조 \(개인정보의 안전성 확보 조치\)/)).toBeInTheDocument();
             expect(screen.getByText(/제10조 \(개인정보 자동 수집 장치의 설치·운영 및 거부에 관한 사항\)/)).toBeInTheDocument();
             expect(screen.getByText(/제11조 \(개인정보 보호책임자 및 고충처리 연락처\)/)).toBeInTheDocument();
-            expect(screen.getByText(/제12조 \(개인정보 처리방침의 변경\)/)).toBeInTheDocument();
+            expect(screen.getByText(/제12조 \(정보주체의 권익침해에 대한 구제방법\)/)).toBeInTheDocument();
+            expect(screen.getByText(/제13조 \(개인정보 처리방침의 변경\)/)).toBeInTheDocument();
 
-            // 만 14세 미만 조항 확인
+            // 만 14세 미만 조항 및 권익침해 구제기관 확인
             expect(screen.getByText(/만 14세 미만 아동의 개인정보를 수집하지 않으며/)).toBeInTheDocument();
+            expect(screen.getByText(/1833-6972/)).toBeInTheDocument();
+            expect(screen.getByText(/privacy\.kisa\.or\.kr/)).toBeInTheDocument();
+            expect(screen.getByText(/듀얼 환경 분석 데이터 수집 시 \(게스트 및 회원 공통\)/)).toBeInTheDocument();
+            expect(screen.getByText(/timezone_offset_minutes/)).toBeInTheDocument();
+            expect(screen.getByText(/소급하여 수정되거나 삭제되지 않습니다/)).toBeInTheDocument();
 
             // 외부 위탁 및 국외 이전 수탁자 명시 확인
             expect(screen.getAllByText(/Supabase, Inc\./).length).toBeGreaterThan(0);
@@ -60,14 +66,17 @@ describe("LegalPages", () => {
             expect(screen.getByText(/제3조 \(약관의 효력 및 변경\)/)).toBeInTheDocument();
             expect(screen.getByText(/제4조 \(이용계약의 체결 및 계정 관리\)/)).toBeInTheDocument();
             expect(screen.getByText(/제5조 \(서비스의 제공 및 변경\)/)).toBeInTheDocument();
-            expect(screen.getByText(/제6조 \(이용자의 의무 및 금지행위\)/)).toBeInTheDocument();
+            expect(screen.getByText(/제6조 \(이용자의 의무 및 오픈소스 권리 보장\)/)).toBeInTheDocument();
             expect(screen.getByText(/제7조 \(계약 해지 및 회원 탈퇴\)/)).toBeInTheDocument();
             expect(screen.getByText(/제8조 \(면책 조항\)/)).toBeInTheDocument();
             expect(screen.getByText(/제9조 \(준거법 및 재판관할\)/)).toBeInTheDocument();
             expect(screen.getByText(/부칙/)).toBeInTheDocument();
 
-            // 만 14세 미만 가입 제한 조항 확인
+            // 만 14세 미만 가입 제한 조항, 오픈소스(GPL-3.0) 권리 보장 및 비식별 통계 사본 조항 확인
             expect(screen.getByText(/본 서비스는 만 14세 이상의 이용자를 대상으로 제공되며/)).toBeInTheDocument();
+            expect(screen.getByText(/비식별 듀얼 환경 분석 데이터를 서버로 전송하는 자/)).toBeInTheDocument();
+            expect(screen.getByText(/GPL-3\.0-or-later/)).toBeInTheDocument();
+            expect(screen.getByText(/소급하여 수정·삭제되지 않습니다/)).toBeInTheDocument();
 
             // 개인정보 처리방침 링크 확인
             expect(

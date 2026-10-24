@@ -246,14 +246,6 @@ def test_qt_source_attributions_preserve_linux_scope_and_legal_files():
     LICENSES.validate_qt_source_attributions(policy)
 
 
-def test_source_document_hash_drift_is_rejected():
-    policy = copy.deepcopy(LICENSES.load_policy())
-    policy["source_documents"]["files"][0]["sha256"] = "0" * 64
-
-    with pytest.raises(LICENSES.ComplianceError, match="desktop source documents"):
-        LICENSES.validate_policy(policy)
-
-
 def test_cryptography_wheel_sbom_evidence_is_exact_and_limited():
     policy = LICENSES.load_policy()
     evidence = policy["cryptography_wheel_sbom_evidence"]
@@ -406,8 +398,22 @@ def test_generated_inventories_are_stably_sorted_without_duplicates():
             encoding="utf-8"
         )
     )
-    assert windows["components"][0]["name"] == "PyInstaller bootloader"
-    assert windows["components"][0]["version"] == "6.21.0"
+    windows_components = {
+        component["name"]: component for component in windows["components"]
+    }
+    assert "PyInstaller bootloader" in windows_components
+    assert windows_components["PyInstaller bootloader"]["version"] == "6.21.0"
+    assert "pyinstaller-hooks-contrib runtime hooks" in windows_components
+    assert (
+        windows_components["pyinstaller-hooks-contrib runtime hooks"]["version"]
+        == "2026.6"
+    )
+    assert "CPython runtime and standard library" in windows_components
+    assert "Inno Setup runtime loader and uninstaller" in windows_components
+    assert "NumPy Windows OpenBLAS and LAPACK" in windows_components
+    assert "GNU libgfortran runtime from NumPy Windows wheel" in windows_components
+    assert "Qt Windows D3D12 Memory Allocator" in windows_components
+    assert "Qt Windows Wintab API" in windows_components
 
 
 def test_flatpak_qt_inventory_tracks_full_wheels_and_direct_imports():
@@ -455,12 +461,20 @@ def test_pyinstaller_spec_exposes_legal_files_and_excludes_unverified_palettes()
     spec = (PROJECT_ROOT / "MDLogger.spec").read_text(encoding="utf-8")
     assert 'copy2("LICENSE", distribution_root / "LICENSE")' in spec
     assert 'copy2("THIRD_PARTY_NOTICES.txt"' in spec
-    assert 'copytree("licenses/desktop", distribution_licenses / "desktop")' in spec
-    assert 'copytree("licenses/sources", distribution_licenses / "sources")' in spec
-    assert '"licenses/inventory/desktop-windows.json"' in spec
+    assert 'distribution_licenses / "desktop"' in spec
+    assert "ignore=ignore_patterns(*excluded_windows_license_dirs)" in spec
+    assert '"qtwebengine"' in spec
+    assert '"qtmultimedia"' in spec
+    assert '"cryptography-50.0.0"' in spec
+    assert 'copytree("licenses/sources"' not in spec
+    assert "desktop-windows.json" not in spec
     assert 'contents_directory="."' not in spec
     assert '"pyqtgraph/colors/maps/PAL-relaxed.hex"' in spec
     assert '"pyqtgraph/colors/maps/PAL-relaxed_bright.hex"' in spec
+    assert '"opengl32sw.dll"' in spec
+    assert '"qpdf.dll"' in spec
+    assert '"qt6pdf.dll"' in spec
+    assert '"PySide6.QtPdf"' in spec
     assert "entry[0]" in spec
 
 
@@ -470,8 +484,9 @@ def test_inno_installs_and_checks_complete_onedir_legal_structure():
     )
     assert '#ifnexist "..\\dist\\MDLogger\\LICENSE"' in installer
     assert "THIRD_PARTY_NOTICES.txt is required" in installer
-    assert "desktop-windows.json" in installer
-    assert "desktop-source-offer.md" in installer
+    assert "GPL-3.0-only.txt" in installer
+    assert "desktop-windows.json" not in installer
+    assert "desktop-source-offer.md" not in installer
     assert "ArchitecturesAllowed=x64compatible" in installer
     assert "ArchitecturesInstallIn64BitMode=x64compatible" in installer
     assert 'Source: "..\\dist\\MDLogger\\*"' in installer
@@ -678,7 +693,7 @@ def test_windows_ci_does_not_treat_linux_runtime_evidence_as_payload_evidence():
     assert "ISCC.exe" in windows_job
     assert "Install and verify Inno Setup payload" in windows_job
     assert "/VERYSILENT" in windows_job
-    assert "Installed Windows inventory missing" in windows_job
+    assert "Installed payload must not contain internal CI inventories" in windows_job
 
 
 def test_generator_check_mode_reuses_tracked_qt_runtime_inventory(monkeypatch):

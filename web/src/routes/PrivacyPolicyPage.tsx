@@ -67,9 +67,9 @@ export function PrivacyPolicyPage() {
                             </ul>
                         </li>
                         <li>
-                            <strong>게스트 듀얼 관찰 데이터: 통계 목적 달성 시까지</strong>
+                            <strong>듀얼 환경 관찰 데이터(게스트 및 회원 공통): 통계 목적 달성 시까지</strong>
                             <ul>
-                                <li>특정 개인을 식별할 수 없는 가명/익명 통계 데이터 형태로 관리됩니다.</li>
+                                <li>특정 개인을 식별할 수 없는 가명/익명 통계 데이터(<code>guest_game_observations</code>) 형태로 분리 관리됩니다.</li>
                             </ul>
                         </li>
                     </ol>
@@ -86,24 +86,31 @@ export function PrivacyPolicyPage() {
                         <li><strong>법적 근거:</strong> 「개인정보 보호법」 제15조 제1항 제4호 (계약 체결 및 이행)</li>
                     </ul>
 
-                    <h3>2. 경기 기록 동기화 이용 시 (공통)</h3>
+                    <h3>2. 경기 기록 동기화 이용 시 (회원 계정)</h3>
                     <ul>
-                        <li><strong>수집항목:</strong> 플레이 일시, 경기 결과(승/패), 선·후공, 사용 덱 및 상대 덱 분류, 진행 턴 수, 경기 종료 사유, 플레이 모드/문맥 ID, 랭크/레이팅/이벤트 점수 변동 기록, 개인 입력 메모, 장치 식별자(installation_id), 장치 표시 이름, 클라이언트 버전</li>
-                        <li><strong>수집 목적:</strong> 기기간 경기 기록 동기화 및 전적 통계 제공</li>
+                        <li><strong>수집항목:</strong> 플레이 일시, 경기 결과(승/패), 선·후공, 사용 덱 및 상대 덱 분류, 진행 턴 수, 경기 종료 사유, 플레이 모드/문맥 ID, 랭크/레이팅/이벤트 점수 변동 기록, 개인 입력 메모(note), 장치 식별자(installation_id), 장치 표시 이름, 클라이언트 버전</li>
+                        <li><strong>수집 목적:</strong> 기기간 개인 경기 기록 동기화 및 전적 통계 제공</li>
                         <li><strong>법적 근거:</strong> 「개인정보 보호법」 제15조 제1항 제4호 (계약 체결 및 이행)</li>
                     </ul>
 
-                    <h3>3. 클라이언트별 자동 생성·수집 정보</h3>
+                    <h3>3. 듀얼 환경 분석 데이터 수집 시 (게스트 및 회원 공통)</h3>
+                    <ul>
+                        <li><strong>수집항목:</strong> 장치 고유 가명 식별자(installation_id), 경기 고유 식별자(sync_id), 플레이 일시(played_at_local) 및 시간대 오프셋(timezone_offset_minutes), 경기 결과(승/패), 선·후공, 사용 덱 및 상대 덱 분류, 진행 턴 수, 경기 종료 사유, 플레이 모드/문맥 ID, 랭크/레이팅/이벤트 점수 변동 기록, 클라이언트·payload 버전 (개인 자유 입력 메모, 이메일, 표시 이름은 제외)</li>
+                        <li><strong>수집 목적:</strong> 전체 듀얼 메타 및 환경 통계 분석</li>
+                        <li><strong>법적 근거:</strong> 「개인정보 보호법」 제15조 제1항 제4호 (서비스 제공 계약의 이행)</li>
+                    </ul>
+
+                    <h3>4. 클라이언트별 자동 생성·수집 정보</h3>
                     <ul>
                         <li><strong>웹/PWA 이용 시:</strong> 접속 IP 주소, User-Agent, 브라우저 정보, 세션 스토리지 정보 (Cloudflare 인프라 및 브라우저 런타임)</li>
                         <li><strong>Windows/Linux 데스크톱 앱 이용 시:</strong> 장치 고유 가명 식별자(installation_id, UUID), 앱 버전, 플랫폼 종류(Windows/Linux)</li>
                         <li><strong>덱 카탈로그 동기화 시 (데스크톱 앱):</strong> 최신 덱 목록 기준정보 조회를 위한 GitHub Gist 요청 시 전송되는 네트워크 정보(IP 주소, User-Agent: mdlogger-decks-sync)</li>
                     </ul>
 
-                    <h3>4. 로컬 전용 처리 데이터 (서버 미전송)</h3>
+                    <h3>5. 로컬 전용 처리 데이터 (서버 미전송)</h3>
                     <p>다음 정보는 사용자 기기 내부(로컬)에서만 저장 및 처리되며 운영자 서버로 전송되지 않습니다.</p>
                     <ul>
-                        <li><strong>게스트 모드 개인 메모:</strong> 게스트 모드에서 작성된 메모(note)는 로컬 데이터베이스에만 저장되며 외부 분석 서버로 전송되지 않습니다.</li>
+                        <li><strong>게스트 모드 개인 메모:</strong> 게스트 모드에서 작성된 메모(note)는 로컬 데이터베이스에만 저장되며 외부 분석 서버로 전송되지 않습니다. (회원 계정 이용 시에도 개인 메모는 회원 본인의 동기화 기록에만 저장되며 듀얼 환경 분석 데이터에는 포함되지 않습니다.)</li>
                         <li><strong>기기 전용 환경설정:</strong> UI 배율(ui_scale), 저사양 모드(low_spec_mode), 애니메이션 감소(reduce_motion), 글자 크기(font_scale)는 로컬 기기 맞춤 설정으로 서버에 동기화되지 않습니다.</li>
                         <li><strong>로컬 파일 경로 및 OS 사용자명:</strong> 오류 보고 SDK나 텔레메트리가 탑재되어 있지 않으며, 기기 내 파일 경로나 OS 사용자명은 외부로 일체 전송되지 않습니다.</li>
                     </ul>
@@ -147,39 +154,42 @@ export function PrivacyPolicyPage() {
 
                 <section className="legal-section">
                     <h2>제6조 (개인정보의 국외 이전)</h2>
-                    <p>서비스는 클라우드 인프라 및 서비스 제공을 위해 다음과 같이 개인정보를 국외로 처리위탁 및 보관하고 있습니다. 본 국외 이전은 서비스 제공 및 계약 이행을 위해 필수적인 항목입니다(「개인정보 보호법」 제28조의8 제1항 제3호).</p>
+                    <p>서비스는 클라우드 인프라 및 서비스 제공을 위해 「개인정보 보호법」 제28조의8 제1항 제3호(계약의 체결 및 이행을 위한 개인정보 처리위탁·보관) 및 제1항 제1호(회원가입 시 정보주체의 별도 국외 이전 동의)에 따라 다음과 같이 개인정보를 국외로 처리위탁 및 보관하고 있습니다.</p>
                     
                     <h3>1. Supabase, Inc.</h3>
                     <ul>
-                        <li><strong>이전되는 개인정보 항목:</strong> 계정 이메일, 암호화된 비밀번호, 인증 토큰, 경기 기록 데이터, 장치 식별 정보, 취향 설정</li>
+                        <li><strong>법적 근거:</strong> 「개인정보 보호법」 제28조의8 제1항 제3호 (계약의 체결 및 이행을 위한 처리위탁·보관) 및 제1항 제1호 (정보주체의 동의)</li>
+                        <li><strong>이전되는 개인정보 항목:</strong> 계정 이메일, 암호화된 비밀번호, 인증 토큰, 경기 기록 데이터, 장치 식별 정보(<code>installation_id</code>), 취향 설정, 듀얼 환경 관찰 데이터(<code>guest_game_observations</code>)</li>
                         <li><strong>이전 국가:</strong> 대한민국 (서울 리전 Primary DB) 및 미국 등 Supabase 글로벌 인프라 소재국</li>
-                        <li><strong>이전 시기 및 방법:</strong> 회원가입, 로그인, 경기 동기화 시 인터넷망을 통한 암호화(HTTPS/TLS) 전송</li>
+                        <li><strong>이전 시기 및 방법:</strong> 회원가입, 로그인, 경기 동기화 및 듀얼 환경 통계 전송 시 인터넷망을 통한 암호화(HTTPS/TLS) 전송</li>
                         <li><strong>이전받는 자:</strong> Supabase, Inc. (privacy@supabase.com)</li>
                         <li><strong>이전받는 자의 이용목적:</strong> 클라우드 데이터베이스 운영, 사용자 인증 및 세션 관리, Edge Functions 처리</li>
-                        <li><strong>보유 및 이용기간:</strong> 회원 탈퇴 시 또는 서비스 종료 시까지</li>
-                        <li><strong>이전 거부 방법 및 효과:</strong> 정보주체는 서비스 회원가입을 진행하지 않거나 회원 탈퇴를 요청함으로써 국외 이전을 거부할 수 있습니다. 단, 거부 시 온라인 계정 생성 및 기기간 동기화 서비스 이용이 제한됩니다.</li>
+                        <li><strong>보유 및 이용기간:</strong> 회원 정보는 회원 탈퇴 시 또는 위탁계약 종료 시까지, 비식별 듀얼 환경 관찰 데이터는 통계 목적 달성 시까지</li>
+                        <li><strong>이전 거부 방법, 절차 및 거부의 효과:</strong> 회원은 회원가입을 진행하지 않거나 서비스 내 [설정] → [계정 및 데이터] → [계정 삭제] 기능 또는 개인정보 보호책임자(이메일)를 통해 국외 이전을 거부하고 계정을 삭제할 수 있으며, 데스크톱 게스트 이용자는 네트워크 연결 없이 오프라인으로 앱을 실행하거나 환경변수 설정을 통해 원격 전송을 중단할 수 있습니다. 단, 국외 이전을 거부할 경우 온라인 계정 생성, 다중 기기 동기화 및 온라인 통계 기능이 제한됩니다.</li>
                     </ul>
 
                     <h3>2. Cloudflare, Inc.</h3>
                     <ul>
+                        <li><strong>법적 근거:</strong> 「개인정보 보호법」 제28조의8 제1항 제3호 (웹 서비스 제공을 위한 처리위탁·보관)</li>
                         <li><strong>이전되는 개인정보 항목:</strong> 웹사이트 접속 시의 네트워크 정보 (IP 주소, User-Agent, 접속 일시)</li>
                         <li><strong>이전 국가:</strong> 미국 및 Cloudflare 글로벌 네트워크 거점국</li>
-                        <li><strong>이전 시기 및 방법:</strong> 웹사이트 접속 및 API 호출 시 네트워크 라우팅을 통한 전송</li>
+                        <li><strong>이전 시기 및 방법:</strong> 웹사이트 접속 및 API 호출 시 네트워크 라우팅을 통한 암호화(HTTPS/TLS) 전송</li>
                         <li><strong>이전받는 자:</strong> Cloudflare, Inc. (privacyquestions@cloudflare.com)</li>
                         <li><strong>이전받는 자의 이용목적:</strong> 웹 정적 에셋 호스팅, 트래픽 분산 및 네트워크 보안</li>
                         <li><strong>보유 및 이용기간:</strong> 보안 로그 정책에 따라 최대 30일 이내 자동 파기</li>
-                        <li><strong>이전 거부 방법 및 효과:</strong> 웹사이트 이용을 중단함으로써 거부할 수 있으며, 거부 시 웹 클라이언트 이용이 불가능합니다.</li>
+                        <li><strong>이전 거부 방법, 절차 및 거부의 효과:</strong> 웹사이트 접속을 중단하거나 로컬 전용 데스크톱 클라이언트를 오프라인으로 이용함으로써 거부할 수 있으며, 거부 시 웹 클라이언트 이용이 불가능합니다.</li>
                     </ul>
 
                     <h3>3. GitHub, Inc. (Microsoft Corporation)</h3>
                     <ul>
+                        <li><strong>법적 근거:</strong> 「개인정보 보호법」 제28조의8 제1항 제3호 (최신 덱 카탈로그 제공을 위한 네트워크 전송)</li>
                         <li><strong>이전되는 개인정보 항목:</strong> 데스크톱 앱의 최신 덱 카탈로그 조회 시 요청 네트워크 정보 (IP 주소, User-Agent)</li>
                         <li><strong>이전 국가:</strong> 미국</li>
                         <li><strong>이전 시기 및 방법:</strong> 데스크톱 앱 실행 시 최신 덱 목록(GitHub Gist) 동기화 요청</li>
                         <li><strong>이전받는 자:</strong> GitHub, Inc. (privacy@github.com)</li>
                         <li><strong>이전받는 자의 이용목적:</strong> 최신 덱 카탈로그 기준정보 제공</li>
                         <li><strong>보유 및 이용기간:</strong> GitHub 로깅 정책에 따름</li>
-                        <li><strong>이전 거부 방법 및 효과:</strong> 네트워크 연결 없이 오프라인 모드로 앱을 사용하거나 환경변수(<code>MDLOGGER_DECKS_URL</code>)를 빈 값으로 설정(<code>MDLOGGER_DECKS_URL=</code>)하여 동기화를 비활성화할 수 있습니다.</li>
+                        <li><strong>이전 거부 방법, 절차 및 거부의 효과:</strong> 네트워크 연결 없이 오프라인 모드로 앱을 사용하거나 환경변수(<code>MDLOGGER_DECKS_URL</code>)를 빈 값으로 설정(<code>MDLOGGER_DECKS_URL=</code>)하여 동기화를 비활성화할 수 있으며, 거부 시에도 앱 내 기본 내장 덱 목록으로 정상 이용이 가능합니다.</li>
                     </ul>
                 </section>
 
@@ -190,6 +200,7 @@ export function PrivacyPolicyPage() {
                     <ul>
                         <li><strong>계정 삭제 시:</strong> Supabase Auth 사용자가 영구 삭제되며, 연계된 개인 경기 기록(<code>games</code>), 프로필(<code>profiles</code>), 등록 장치(<code>devices</code>), 동기화 커서(<code>game_change_cursors</code>), 설정(<code>user_settings</code>)이 외래키 연쇄 삭제(FK Cascade)를 통해 데이터베이스에서 완전히 즉시 파기됩니다.</li>
                         <li><strong>로컬 데이터 삭제 시:</strong> 데스크톱 앱의 &apos;앱 초기화&apos; 기능을 통해 기기 내 저장된 로컬 SQLite 데이터베이스, 설정 파일, 캐시 및 저장된 인증 토큰을 모두 영구 삭제할 수 있습니다.</li>
+                        <li><strong>듀얼 환경 분석 통계 사본에 관한 안내:</strong> 로컬 경기 기록을 수정·삭제하거나 회원을 탈퇴하더라도, 이미 전송되어 특정 개인을 식별할 수 없는 비식별·가명 통계 형태로 분리 보관된 듀얼 환경 관찰 데이터(<code>guest_game_observations</code>) 사본은 소급하여 수정되거나 삭제되지 않습니다.</li>
                     </ul>
                     <p>③ 전자적 파일 형태의 정보는 기록을 재생할 수 없는 기술적 방법을 사용하여 영구 삭제합니다.</p>
                 </section>
@@ -267,7 +278,18 @@ export function PrivacyPolicyPage() {
                 </section>
 
                 <section className="legal-section">
-                    <h2>제12조 (개인정보 처리방침의 변경)</h2>
+                    <h2>제12조 (정보주체의 권익침해에 대한 구제방법)</h2>
+                    <p>정보주체는 개인정보침해로 인한 구제를 받기 위하여 개인정보분쟁조정위원회, 한국인터넷진흥원 개인정보침해신고센터 등에 분쟁해결이나 상담 등을 신청할 수 있습니다. 이 밖에 기타 개인정보침해의 신고, 상담에 대하여는 아래의 기관에 문의하시기 바랍니다.</p>
+                    <ul>
+                        <li><strong>개인정보분쟁조정위원회:</strong> (국번없이) 1833-6972 (https://www.kopico.go.kr)</li>
+                        <li><strong>개인정보침해신고센터 (한국인터넷진흥원):</strong> (국번없이) 118 (https://privacy.kisa.or.kr)</li>
+                        <li><strong>대검찰청 사이버범죄수사단:</strong> (국번없이) 1301 (https://www.spo.go.kr)</li>
+                        <li><strong>경찰청 사이버수사국:</strong> (국번없이) 182 (https://ecrm.cyber.go.kr)</li>
+                    </ul>
+                </section>
+
+                <section className="legal-section">
+                    <h2>제13조 (개인정보 처리방침의 변경)</h2>
                     <p>① 이 개인정보 처리방침은 <strong>2026년 8월 22일</strong>부터 적용됩니다.</p>
                     <p>② 이전의 개인정보 처리방침 이력은 버전 관리 시스템 및 서비스 공지를 통해 언제든지 열람할 수 있도록 제공됩니다.</p>
                 </section>

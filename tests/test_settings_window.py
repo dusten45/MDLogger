@@ -560,8 +560,10 @@ def test_last_used_mode_option_does_not_duplicate_after_reopen(qapp, tmp_path) -
 def test_settings_window_has_legal_policy_links(qapp) -> None:
     win = _window(MemorySettingsStore())
     notice = win.findChild(QLabel, "settingsUnofficialNotice")
+    gpl_notice = win.findChild(QLabel, "settingsGplNotice")
     privacy_btn = win.findChild(QPushButton, "settingsPrivacyLink")
     terms_btn = win.findChild(QPushButton, "settingsTermsLink")
+    program_license_btn = win.findChild(QPushButton, "settingsProgramLicense")
     licenses_btn = win.findChild(QPushButton, "settingsOpenSourceLicenses")
 
     assert notice is not None
@@ -571,10 +573,15 @@ def test_settings_window_has_legal_policy_links(qapp) -> None:
         "Yu-Gi-Oh! MASTER DUEL 및 관련 명칭, 표장, 게임 자산에 관한 권리는 "
         "각 권리자에게 있습니다."
     )
+    assert gpl_notice is not None
+    assert gpl_notice.text() == (
+        "MDLogger는 GPL-3.0-or-later 라이선스로 배포되는 오픈소스 소프트웨어입니다."
+    )
     assert privacy_btn is not None
     assert privacy_btn.text() == "개인정보 처리방침"
     assert terms_btn is not None
     assert terms_btn.text() == "서비스 이용약관"
+    assert program_license_btn is None
     assert licenses_btn is not None
     assert licenses_btn.text() == "오픈소스 라이선스"
     win.close()

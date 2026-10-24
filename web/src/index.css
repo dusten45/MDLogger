@@ -147,6 +147,33 @@ input {
     padding: var(--space-4);
 }
 
+.auth-consents {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: var(--space-1) 0;
+}
+
+.auth-consent-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--font-small);
+    color: var(--text-secondary);
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+.auth-consent-item input[type="checkbox"] {
+    margin-top: 2px;
+    min-height: auto;
+}
+
+.auth-consent-item a {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
 .auth-legal-notice {
     margin: var(--space-2) 0 0;
     font-size: var(--font-caption);

@@ -2,6 +2,7 @@
 licenses/desktop/** -text whitespace=-trailing-space,cr-at-eol
 
 # The desktop policy hashes these source documents as LF bytes on every platform.
+uv.lock text eol=lf
 licenses/sources/desktop-license-provenance.md text eol=lf
 licenses/sources/desktop-source-offer.md text eol=lf
 web/public/licenses/** -text whitespace=-trailing-space,cr-at-eol

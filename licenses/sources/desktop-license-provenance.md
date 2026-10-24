@@ -85,10 +85,39 @@ both outputs had SHA256
 `dcff1f0db5c1c9a52d633a50504d68483bb916a9e6356ef7e8641f579aa96816`.
 Exact file hashes are pinned in `scripts/desktop_license_policy.json`.
 
-PyInstaller bootloader 6.21.0 is manually inventoried even though PyInstaller is
-a development dependency: its compiled bootloader is embedded in the Windows
-executable. `licenses/desktop/pyinstaller-6.21.0/licenses/COPYING.txt` includes
-the GPL-2.0-or-later terms and the Bootloader Exception.
+PyInstaller bootloader 6.21.0 and `pyinstaller-hooks-contrib 2026.6` runtime
+hooks are manually inventoried even though both are development dependencies:
+PyInstaller embeds its compiled bootloader (`GPL-2.0-or-later WITH
+Bootloader-exception`), its `PyInstaller/hooks/rthooks/pyi_rth_*.py` and
+`_pyi_rth_utils` modules (`Apache-2.0`), and `pyinstaller-hooks-contrib`'s
+`pyi_rth_pyqtgraph_multiprocess.py` hook (`Apache-2.0`) directly into the
+Windows executable. `licenses/desktop/pyinstaller-6.21.0/licenses/COPYING.txt`
+and `licenses/desktop/pyinstaller-hooks-contrib-2026.6/licenses/LICENSE` preserve
+those license terms in full.
+
+For the Windows PyInstaller onedir and Inno Setup distribution, the policy also
+explicitly inventories:
+
+- `CPython runtime and standard library 3.13`:
+  `licenses/desktop/cpython-3.13/LICENSE.txt`,
+  `licenses/desktop/cpython-3.13/Doc-license.rst`,
+  `licenses/desktop/cpython-3.13/crtlicense.txt`,
+  `licenses/desktop/cpython-3.13/bzip2-LICENSE.txt`,
+  `licenses/desktop/cpython-3.13/libffi-LICENSE.txt`,
+  `licenses/desktop/cpython-3.13/openssl-LICENSE.txt`,
+  `licenses/desktop/cpython-3.13/xz-COPYING.txt`, and
+  `licenses/desktop/qt-6.11.1/LICENSES/blessing.txt`, covering PSF-2.0, 0BSD,
+  Microsoft Distributable Code terms (`vcruntime140*.dll`, `msvcp140*.dll`),
+  and the native libraries bundled with the Windows Python runtime (OpenSSL
+  3.5.9 Apache-2.0, libffi 3.4.4 MIT, xz/liblzma 5.2.5 0BSD/Public Domain, Expat
+  MIT, bzip2, libmpdec BSD-2-Clause, zlib, SQLite blessing, mimalloc MIT,
+  SipHash24 CC0-1.0).
+- `Inno Setup runtime loader and uninstaller 6`:
+  `licenses/desktop/innosetup-6/LICENSE.txt` (`LicenseRef-Inno-Setup`).
+- `Qt Windows D3D12 Memory Allocator 6.11.1` (`MIT`,
+  `licenses/desktop/qt-6.11.1/windows-3rdparty/D3D12MemoryAllocator/LICENSE.txt`)
+  and `Qt Windows Wintab API 6.11.1` (`LicenseRef-Lcs-Telegraphics`,
+  `licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Lcs-Telegraphics.txt`).
 
 ## Composite package review
 
@@ -103,20 +132,24 @@ the GPL-2.0-or-later terms and the Bootloader Exception.
 - `et_xmlfile 2.0.0`: the metadata says MIT, but `LICENCE.python` discloses
   Python standard-library-derived code. MIT and the Python Software Foundation
   license are both retained.
-- `NumPy 2.4.6`: all 20 legal files reported by the wheel are retained,
+- `NumPy 2.4.6`: all 20 legal files reported by the Linux wheel plus the
+  Windows wheel's `LICENSE-windows.txt` are retained,
   including libdivide, pythoncapi-compat, Highway, Dragon4, x86-simd-sort,
   SVML, pocketfft, LAPACK, masked arrays, and random-generator components. The
   actual Linux wheel also ships `numpy.libs/libscipy_openblas*.so`,
   `libgfortran*.so`, and `libquadmath*.so`; its retained `LICENSE.txt` preserves
   the OpenBLAS, LAPACK, GCC Runtime Library Exception/GPL-3.0-or-later, and
-  libquadmath LGPL-2.1-or-later notices. These are listed as Linux distributed
-  components in the policy rather than being hidden by NumPy's package-level
+  libquadmath LGPL-2.1-or-later notices. The locked Windows wheel ships
+  `numpy.libs/libscipy_openblas*.dll` with OpenBLAS, LAPACK, and statically
+  linked GCC `libgfortran` runtime code; its retained `LICENSE-windows.txt`
+  preserves those notices. Both Linux and Windows native runtime components are
+  listed in the policy rather than being hidden by NumPy's package-level
   metadata expression.
 - `pyqtgraph 0.14.0`: the package MIT license, CC-BY-4.0 CET license,
   ColorCET/Peter Kovesi attribution, CC0 legal code, turbo Apache-2.0 marker and
   full Apache text are retained.
 
-## Excluded pyqtgraph palette data
+## Excluded pyqtgraph palette data and Windows opengl32sw.dll / QtPdf binaries
 
 Both PyInstaller's pyqtgraph hook and the Flatpak's full wheel would normally
 include all of `pyqtgraph/colors/maps`. The files `PAL-relaxed.hex` and
@@ -125,7 +158,16 @@ and the upstream tag does not provide enough evidence to determine their
 license. MDLogger does not use either palette, so the developer decided to
 exclude them from both supported desktop distributions.
 
+On Windows, the PySide6 wheels also include `opengl32sw.dll` (a prebuilt Mesa
+3D / LLVM software OpenGL rasterizer) and the Qt PDF imageformat plugin
+(`qpdf.dll`, which links `Qt6Pdf.dll` / Chromium PDFium). MDLogger does not
+render PDF documents or require software OpenGL fallback, so `MDLogger.spec`
+excludes `PySide6.QtPdf*` and filters `opengl32sw.dll`, `qpdf.dll`, and
+`Qt6Pdf.dll` from the collected binaries, and
+`scripts/release/release_validation.py` forbids them in the packaged Windows
+distribution.
+
 `MDLogger.spec` filters both destination paths from PyInstaller's collected data.
 The Flatpak manifest removes both files after installing the locked wheel and
 immediately asserts that they are absent. Packaging tests and release checks
-must continue to enforce both exclusions.
+must continue to enforce these exclusions.

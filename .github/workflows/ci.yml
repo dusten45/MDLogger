@@ -133,13 +133,14 @@ jobs:
             - name: Verify security and license documents are bundled
               run: |
                   test -f dist/_headers
+                  test -f dist/LICENSE.txt
                   test -f dist/third-party-notices.txt
                   test -d dist/licenses
 
             - name: Verify production bundle license closure
               run: npm run check:license-bundle
 
-            - name: Scan web bundle for server secrets
+            - name: Scan web bundle for secrets
               run: npm run check:secrets
 
     windows-package:
@@ -184,16 +185,17 @@ jobs:
               run: |
                   if (-not (Test-Path dist/MDLogger/LICENSE)) { throw "LICENSE missing" }
                   if (-not (Test-Path dist/MDLogger/THIRD_PARTY_NOTICES.txt)) { throw "third-party notice missing" }
-                  if (-not (Test-Path dist/MDLogger/licenses/inventory/desktop-windows.json)) { throw "Windows resolver inventory missing" }
-                  if (Test-Path dist/MDLogger/licenses/inventory/desktop-linux.json) { throw "Linux resolver inventory must not be bundled on Windows" }
-                  if (Test-Path dist/MDLogger/licenses/inventory/qt-third-party-runtime-linux-flatpak.json) { throw "Linux Qt runtime evidence must not be treated as Windows payload evidence" }
-                  if (-not (Test-Path dist/MDLogger/licenses/sources/desktop-source-offer.md)) { throw "source instructions missing" }
+                  if (-not (Test-Path dist/MDLogger/licenses/desktop/qt-6.11.1/LICENSES/GPL-3.0-only.txt)) { throw "desktop licenses missing" }
+                  if (Test-Path dist/MDLogger/licenses/inventory) { throw "Internal CI license inventories must not be bundled in user installations" }
+                  if (Test-Path dist/MDLogger/licenses/sources) { throw "Maintainer source docs must not be bundled in user installations" }
+                  if (Test-Path dist/MDLogger/licenses/desktop/qt-6.11.1/qtwebengine) { throw "Linux Qt runtime evidence must not be treated as Windows payload evidence" }
+                  if (Test-Path dist/MDLogger/licenses/desktop/qt-6.11.1/qtmultimedia) { throw "Linux Qt multimedia licenses must not be bundled on Windows" }
                   if (-not (Test-Path build/MDLogger/Analysis-00.toc)) { throw "PyInstaller Analysis TOC missing" }
                   if (-not (Test-Path build/MDLogger/COLLECT-00.toc)) { throw "PyInstaller COLLECT TOC missing" }
                   $analysis = Get-Content build/MDLogger/Analysis-00.toc -Raw
                   if ($analysis -notmatch "PySide6") { throw "PyInstaller Analysis TOC does not contain PySide6 evidence" }
-                  $palettes = Get-ChildItem dist/MDLogger -Recurse -File | Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex") }
-                  if ($palettes) { throw "unverified pyqtgraph palettes were bundled" }
+                  $palettes = Get-ChildItem dist/MDLogger -Recurse -File | Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex", "opengl32sw.dll", "qpdf.dll", "Qt6Pdf.dll") }
+                  if ($palettes) { throw "unverified pyqtgraph palettes or forbidden binaries were bundled" }
 
             - name: Install Inno Setup
               shell: pwsh
@@ -214,9 +216,9 @@ jobs:
                   if (-not (Test-Path "$installRoot/LICENSE")) { throw "Installed LICENSE missing" }
                   if (-not (Test-Path "$installRoot/THIRD_PARTY_NOTICES.txt")) { throw "Installed third-party notice missing" }
                   if (-not (Test-Path "$installRoot/licenses/desktop")) { throw "Installed desktop licenses missing" }
-                  if (-not (Test-Path "$installRoot/licenses/inventory/desktop-windows.json")) { throw "Installed Windows inventory missing" }
-                  $palettes = Get-ChildItem $installRoot -Recurse -File | Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex") }
-                  if ($palettes) { throw "Unverified pyqtgraph palettes were installed" }
+                  if (Test-Path "$installRoot/licenses/inventory") { throw "Installed payload must not contain internal CI inventories" }
+                  $palettes = Get-ChildItem $installRoot -Recurse -File | Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex", "opengl32sw.dll", "qpdf.dll", "Qt6Pdf.dll") }
+                  if ($palettes) { throw "Unverified pyqtgraph palettes or forbidden binaries were installed" }
                   Remove-Item -LiteralPath $installRoot -Recurse -Force
 
             - name: Scan Windows onedir for secrets

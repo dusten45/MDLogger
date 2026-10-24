@@ -1,4 +1,12 @@
-# Third-Party Notices
+# Open-Source Notices
+
+## MDLogger
+
+- Copyright: Copyright (C) 2026 dusten45 (노연우)
+- License: `GPL-3.0-or-later` (`LICENSE`)
+- Source: https://github.com/dusten45/MDLogger
+
+MDLogger is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See `LICENSE` for the full license text.
 
 Generated platform sections are delimited so desktop and web inventories can be maintained independently.
 
@@ -15,8 +23,12 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Linux Flatpak resolver closure: 19 third-party distributions.
 - Windows resolver closure: 15 third-party distributions. This is not
   represented as an exact PyInstaller payload inventory.
-- Windows also embeds the PyInstaller bootloader 6.21.0 as a manually
-  inventoried build component.
+- Windows also inventories the CPython 3.13 runtime and standard library
+  (with Microsoft Visual C++ Distributable Code, OpenSSL 3.5.9, libffi 3.4.4,
+  and xz/liblzma 5.2.5), PyInstaller 6.21.0 bootloader and runtime hooks,
+  pyinstaller-hooks-contrib 2026.6 runtime hooks, NumPy Windows OpenBLAS/LAPACK
+  and libgfortran, Qt Windows D3D12MemoryAllocator and Wintab, and the
+  Inno Setup 6 loader/uninstaller.
 - Qt/PySide6 is distributed under the selected `GPL-3.0-only` path.
 - Exact Qt/PySide6 corresponding-source instructions:
   `licenses/sources/desktop-source-offer.md`.
@@ -24,7 +36,9 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
   `LICENSES` entries are preserved under `licenses/desktop/qt-6.11.1/`.
 - Qt package-specific source attribution: 123 records and 88 referenced
   legal files under `licenses/desktop/qt-6.11.1/`. This is a conservative
-  Linux source-attribution superset, not an exact wheel-build SBOM.
+  Linux source-attribution superset (which also covers shared cross-platform
+  QtCore/QtGui/QtWidgets/QtSvg third-party code on Windows), not an exact
+  wheel-build SBOM.
 - The full Linux wheel also ships QtWebEngine with Chromium
   `140.0.7339.225` and Qt Multimedia with FFmpeg `7.1.3`; exact binary
   evidence is in `licenses/inventory/qt-third-party-runtime-linux-flatpak.json`.
@@ -43,7 +57,9 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
   can vary by format and distribution country and are not granted by Qt.
 - `PAL-relaxed.hex` and `PAL-relaxed_bright.hex` from pyqtgraph are
   excluded from both supported desktop distributions because their
-  license and provenance could not be confirmed.
+  license and provenance could not be confirmed; `opengl32sw.dll`,
+  `qpdf.dll`, and `Qt6Pdf.dll` are excluded from the Windows PyInstaller
+  bundle.
 
 ### Runtime distributions
 #### cffi 2.1.1
@@ -186,7 +202,7 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Homepage: https://numpy.org/
 - Source: https://github.com/numpy/numpy
 - Local modifications: None
-- Legal files: `licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/highway/LICENSE`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/multiarray/dragon4_LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/umath/svml/LICENSE`, `licenses/desktop/numpy-2.4.6/licenses/numpy/fft/pocketfft/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/linalg/lapack_lite/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/ma/LICENSE`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/distributions/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/mt19937/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/pcg64/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/philox/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/sfc64/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/splitmix64/LICENSE.md`, `licenses/desktop/numpy-2.4.6/numpy/_core/include/numpy/random/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/numpy/ma/LICENSE`, `licenses/desktop/numpy-2.4.6/numpy/random/LICENSE.md`
+- Legal files: `licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt`, `licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/highway/LICENSE`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/multiarray/dragon4_LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/umath/svml/LICENSE`, `licenses/desktop/numpy-2.4.6/licenses/numpy/fft/pocketfft/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/linalg/lapack_lite/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/ma/LICENSE`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/distributions/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/mt19937/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/pcg64/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/philox/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/sfc64/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/splitmix64/LICENSE.md`, `licenses/desktop/numpy-2.4.6/numpy/_core/include/numpy/random/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/numpy/ma/LICENSE`, `licenses/desktop/numpy-2.4.6/numpy/random/LICENSE.md`
 - Review note: All 20 legal files reported by the wheel are preserved, including bundled random generators, SIMD code, LAPACK, libdivide, and compatibility components.
 
 #### openpyxl 3.1.5
@@ -311,12 +327,22 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 #### PyInstaller bootloader 6.21.0
 
 - Platforms: Windows
-- Purpose: Compiled bootloader embedded in the Windows executable by PyInstaller.
-- License: `GPL-2.0-or-later WITH Bootloader-exception`
+- Purpose: Compiled bootloader, Python loader modules, and PyInstaller runtime hooks (pyi_rth_*.py, _pyi_rth_utils) embedded in the Windows executable by PyInstaller.
+- License: `GPL-2.0-or-later WITH Bootloader-exception AND Apache-2.0`
 - Copyright: Copyright (c) 2010-2023 PyInstaller Development Team; prior authors listed in COPYING.txt
 - Source: https://github.com/pyinstaller/pyinstaller
 - Legal files: `licenses/desktop/pyinstaller-6.21.0/licenses/COPYING.txt`
-- Review note: Manually inventoried because the bootloader is a distributed build component, not a runtime dependency edge in uv tree.
+- Review note: Manually inventoried because the bootloader (GPL-2.0-or-later WITH Bootloader-exception) and embedded runtime hooks (Apache-2.0) are distributed build components, not runtime dependency edges in uv tree.
+
+#### pyinstaller-hooks-contrib runtime hooks 2026.6
+
+- Platforms: Windows
+- Purpose: Community runtime hook (pyi_rth_pyqtgraph_multiprocess.py) embedded in the Windows executable by PyInstaller.
+- License: `Apache-2.0`
+- Copyright: Copyright (c) 2020-2026 PyInstaller Development Team
+- Source: https://github.com/pyinstaller/pyinstaller-hooks-contrib
+- Legal files: `licenses/desktop/pyinstaller-hooks-contrib-2026.6/licenses/LICENSE`
+- Review note: Runtime hooks in _pyinstaller_hooks_contrib/rthooks/ are licensed under Apache-2.0 per upstream LICENSE.
 
 #### NumPy Linux OpenBLAS and LAPACK 2.4.6 wheel bundle
 
@@ -357,6 +383,66 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Source: https://github.com/openssl/openssl
 - Legal files: `licenses/desktop/cryptography-50.0.0/licenses/LICENSE.APACHE`
 - Review note: Exact source URL, SHA256 and build flags are validated from the wheel SBOM.
+
+#### NumPy Windows OpenBLAS and LAPACK 2.4.6 wheel bundle
+
+- Platforms: Windows
+- Purpose: Shared numerical library bundled in numpy.libs/libscipy_openblas64_*.dll in the locked Windows wheel.
+- License: `BSD-3-Clause AND BSD-3-Clause-Open-MPI`
+- Copyright: Copyright (c) 2011-2014 The OpenBLAS Project; LAPACK contributors listed in NumPy LICENSE-windows.txt
+- Source: https://github.com/OpenMathLib/OpenBLAS/
+- Legal files: `licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt`
+- Review note: Known limitation: The exact OpenBLAS revision is not disclosed by the Windows wheel; the retained NumPy LICENSE-windows.txt identifies the bundled binary and notices.
+
+#### GNU libgfortran runtime from NumPy Windows wheel 2.4.6 wheel bundle
+
+- Platforms: Windows
+- Purpose: GCC runtime library statically linked into numpy.libs/libscipy_openblas64_*.dll in the locked Windows wheel.
+- License: `GPL-3.0-or-later WITH GCC-exception-3.1`
+- Copyright: Copyright (C) 2009 Free Software Foundation, Inc.
+- Source: https://gcc.gnu.org/git/?p=gcc.git;a=tree;f=libgfortran
+- Legal files: `licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt`
+- Review note: Known limitation: The exact GCC revision is not disclosed by the Windows wheel; the retained NumPy LICENSE-windows.txt identifies the statically linked runtime and GCC Runtime Library Exception 3.1 notices.
+
+#### CPython runtime and standard library 3.13
+
+- Platforms: Windows
+- Purpose: Python 3.13 interpreter DLLs, standard library, Microsoft Visual C++ Distributable Code (vcruntime140*.dll, msvcp140*.dll), and bundled native C libraries (OpenSSL 3.5.9, libffi 3.4.4, xz/liblzma 5.2.5, Expat, bzip2, libmpdec, zlib, SQLite, mimalloc, SipHash24) packaged into the Windows PyInstaller onedir bundle.
+- License: `PSF-2.0 AND 0BSD AND Apache-2.0 AND MIT AND BSD-2-Clause AND BSD-3-Clause AND Zlib AND bzip2-1.0.6 AND blessing AND CC0-1.0 AND LicenseRef-Microsoft-Distributable-Code`
+- Copyright: Copyright (c) 2001-2026 Python Software Foundation; Copyright (c) 1998-2026 The OpenSSL Project Authors; Copyright (c) 1996-2022 Anthony Green, Red Hat, Inc and others; Microsoft Corporation; third-party authors listed in Doc-license.rst and LICENSE.txt
+- Source: https://github.com/python/cpython
+- Legal files: `licenses/desktop/cpython-3.13/bzip2-LICENSE.txt`, `licenses/desktop/cpython-3.13/crtlicense.txt`, `licenses/desktop/cpython-3.13/Doc-license.rst`, `licenses/desktop/cpython-3.13/libffi-LICENSE.txt`, `licenses/desktop/cpython-3.13/LICENSE.txt`, `licenses/desktop/cpython-3.13/openssl-LICENSE.txt`, `licenses/desktop/cpython-3.13/xz-COPYING.txt`, `licenses/desktop/qt-6.11.1/LICENSES/blessing.txt`
+- Review note: Matches CPython PCbuild/regen.targets Windows license inputs (LICENSE, PC/crtlicense.txt, bzip2/LICENSE, libffi/LICENSE, openssl/LICENSE.txt) plus xz/COPYING for _lzma.pyd and SQLite blessing.
+
+#### Qt Windows D3D12 Memory Allocator 6.11.1
+
+- Platforms: Windows
+- Purpose: Direct3D 12 memory allocation library bundled in QtGui on Windows.
+- License: `MIT`
+- Copyright: Copyright (c) 2019-2022 Advanced Micro Devices, Inc. All rights reserved.
+- Source: https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
+- Legal files: `licenses/desktop/qt-6.11.1/windows-3rdparty/D3D12MemoryAllocator/LICENSE.txt`
+- Review note: Windows-specific Qt 6.11.1 qtbase third-party component; opengl32sw.dll (Mesa/LLVM) and qpdf.dll/Qt6Pdf.dll are explicitly excluded in MDLogger.spec.
+
+#### Qt Windows Wintab API 6.11.1
+
+- Platforms: Windows
+- Purpose: Wintab tablet interface headers used by the Qt Windows QPA plugin.
+- License: `LicenseRef-Lcs-Telegraphics`
+- Copyright: Copyright (c) 1991-1998 by LCS/Telegraphics.
+- Source: https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz
+- Legal files: `licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Lcs-Telegraphics.txt`
+- Review note: Windows-specific Qt 6.11.1 qtbase third-party component.
+
+#### Inno Setup runtime loader and uninstaller 6
+
+- Platforms: Windows
+- Purpose: Installer stub and uninstaller (unins000.exe) embedded in MDLogger-Setup.exe by Inno Setup 6.
+- License: `LicenseRef-Inno-Setup`
+- Copyright: Copyright (C) 1997-2026 Jordan Russell. All rights reserved. Portions Copyright (C) 2000-2026 Martijn Laan. All rights reserved.
+- Source: https://github.com/jrsoftware/issrc
+- Legal files: `licenses/desktop/innosetup-6/LICENSE.txt`
+- Review note: Reviewed permissive BSD-style Inno Setup license covering the setup loader and uninstaller.
 <!-- END GENERATED DESKTOP THIRD-PARTY NOTICES -->
 
 <!-- BEGIN GENERATED WEB THIRD-PARTY NOTICES -->

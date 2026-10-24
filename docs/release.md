@@ -40,31 +40,25 @@ git push origin v1.2.3
 
 ### Draft 검토와 공개
 
-자동 생성되는 release body에는 `변경 사항` 섹션과, 기존 source 제공 문서가 요구하는 `Source commit`·`Source archive SHA-256` 두 provenance 항목만 들어 있다. `변경 사항` 섹션에는 **직전 릴리스 대비 사용자에게 보이는 변경 사항만** 작성한다. 그 밖의 기술 정보, 플랫폼별 checksum, source 상태, 검증 결과와 체크리스트는 release manifest와 이 문서에만 유지한다. 소유자는 AI 에이전트가 준비한 tag 비교 요약을 참고할 수 있지만, 공개할 문구와 publish 결정은 소유자가 최종 승인한다.
+자동 생성되는 release body에는 `변경 사항` 섹션만 들어 있다. `변경 사항` 섹션에는 **직전 릴리스 대비 사용자에게 보이는 변경 사항만** 작성한다. 그 밖의 기술 정보, 플랫폼별 checksum, source 상태, 검증 결과와 체크리스트는 release manifest와 이 문서에만 유지한다. 소유자는 AI 에이전트가 준비한 tag 비교 요약을 참고할 수 있지만, 공개할 문구와 publish 결정은 소유자가 최종 승인한다.
 
-workflow가 draft에 업로드하는 최종 asset은 다음 7개다.
+workflow가 GitHub Release draft에 업로드하는 사용자 배포용 asset은 다음 4개다.
 
 ```text
 MDLoggerSetup-<version>.exe
 MDLoggerSetup-<version>.exe.sha256
 MDLogger-<version>.flatpak
 MDLogger-<version>.flatpak.sha256
-MDLogger-<version>-source.tar.gz
-MDLogger-<version>-source.tar.gz.sha256
-MDLogger-<version>-release-manifest.json
 ```
 
-`MDLogger-<version>-source.tar.gz`는 MDLogger 자체의 정확한 tag commit source다. Qt, PySide6, FFmpeg, cryptography, OpenSSL, NumPy의 third-party source archive는 workflow가 다운로드하거나 자동 첨부하지 않는다. manifest는 이 상태를 `pending_manual_attachment`로 기록한다. 이는 검증 완료 또는 source 제공 완료라는 뜻이 아니다.
+MDLogger 자체의 소스 아카이브는 GitHub Release가 자동으로 첨부하는 `Source code (zip)` 및 `Source code (tar.gz)`로 제공되며, CI 내부 검증용 `MDLogger-<version>-source.tar.gz`와 `MDLogger-<version>-release-manifest.json`은 GitHub Actions workflow artifact(`release-assets-<run_id>`)에 보관된다. 수정하지 않은 제3자 라이브러리(Qt, PySide6, FFmpeg, cryptography, OpenSSL, NumPy)의 원본 소스는 **GPL-3.0 제6조 d항**에 따라 각 공식 업스트림 서버(`download.qt.io`, `github.com`, `files.pythonhosted.org`)를 통해 제공되며, 저장소 내 `licenses/sources/desktop-source-offer.md`를 통해 정확한 다운로드 URL과 SHA-256 해시를 안내한다.
 
-publish 전에 repository owner는 `licenses/sources/desktop-source-offer.md`와 manifest의 archive 목록을 기준으로 각 source archive의 URL·SHA-256·기록된 크기를 다시 비교하고, 실제 GitHub Release draft의 같은 download 위치에 직접 첨부한다. AI 에이전트의 비교 요약은 보조 자료일 뿐이며, 최종 확인 책임은 repository owner에게 있다. NumPy native runtime의 exact OpenBLAS/GCC revision 한계는 기존 source offer 문서대로 유지하고, 확인되지 않은 URL을 exact corresponding-source snapshot이라고 표현하지 않는다.
-
-공개 전에는 다음도 직접 확인한다.
+공개 전에는 다음을 확인한다.
 
 - installer, Flatpak bundle, source archive의 `.sha256`이 manifest와 일치하는지
 - Windows와 Linux 환경에서 설치·실행·법률 문서 열기가 가능한지
 - Windows installer가 unsigned임과 SmartScreen 안내가 현재 정책에 맞는지
-- 모든 required third-party source archive가 실제 draft asset으로 첨부되었는지
-- `변경 사항` 섹션이 사용자용 변경 사항만 포함하고, 자동 생성된 두 provenance 항목이 유지되는지
+- `변경 사항` 섹션이 사용자용 변경 사항만 포함하는지
 
 모든 항목을 확인한 뒤에만 GitHub Release 화면에서 draft를 publish한다. draft 생성이나 asset upload가 실패하면 workflow는 자동으로 재시도하거나 asset을 교체하지 않는다. 소유자가 draft를 유지 또는 삭제하고 원인을 고친 뒤, **새 commit과 새 annotated tag**로 다시 시작한다.
 
@@ -253,8 +247,7 @@ uv run python -m mdlogger.checksum dist\MDLogger
 $required = @(
   "dist\MDLogger\LICENSE",
   "dist\MDLogger\THIRD_PARTY_NOTICES.txt",
-  "dist\MDLogger\licenses\inventory\desktop-windows.json",
-  "dist\MDLogger\licenses\sources\desktop-source-offer.md"
+  "dist\MDLogger\licenses\desktop\qt-6.11.1\LICENSES\GPL-3.0-only.txt"
 )
 $required | ForEach-Object { if (-not (Test-Path $_)) { throw "누락: $_" } }
 $palettes = Get-ChildItem dist\MDLogger -Recurse -File |
@@ -262,7 +255,7 @@ $palettes = Get-ChildItem dist\MDLogger -Recurse -File |
 if ($palettes) { throw "라이선스 미확인 palette가 포함되었습니다." }
 ```
 
-`build\MDLogger\Analysis-00.toc`, `build\MDLogger\COLLECT-00.toc`와 `dist\MDLogger`의 Qt DLL·plugin 목록도 확인한다. `desktop-windows.json`은 resolver closure일 뿐 exact PyInstaller payload inventory가 아니므로, Linux Flatpak runtime inventory나 Chromium source credits를 Windows payload 증거로 표시하지 않는다.
+`build\MDLogger\Analysis-00.toc`, `build\MDLogger\COLLECT-00.toc`와 `dist\MDLogger`의 Qt DLL·plugin 목록도 확인한다. Windows 배포 폴더에는 Linux 전용 런타임·고지(`qtwebengine`, `qtmultimedia`, `cryptography` 등)와 내부 CI 인벤토리(`licenses/inventory/`)를 포함하지 않는다.
 
 ### 설치 프로그램 생성 (Inno Setup)
 

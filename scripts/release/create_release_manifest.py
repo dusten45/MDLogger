@@ -239,13 +239,16 @@ def load_source_delivery(project_root: Path) -> dict[str, Any]:
         )
     if not isinstance(delivery, dict) or not isinstance(archives, list) or not archives:
         raise ReleaseManifestError("Third-party source delivery policy is incomplete")
-    if delivery.get("automation_status") != "pending_manual_attachment":
+    if delivery.get("automation_status") != "upstream_urls_documented_in_source_offer":
         raise ReleaseManifestError(
-            "Third-party source delivery must remain pending manual attachment"
+            "Third-party source delivery must document upstream URLs in the source offer"
         )
-    if delivery.get("delivery_location") != "same_github_release":
+    if (
+        delivery.get("delivery_location")
+        != "upstream_official_servers_with_release_directions"
+    ):
         raise ReleaseManifestError(
-            "Third-party source delivery location must be the same GitHub Release"
+            "Third-party source delivery location must be upstream official servers with release directions"
         )
     if delivery.get("manual_reviewer") != "repository_owner":
         raise ReleaseManifestError(

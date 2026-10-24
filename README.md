@@ -1,12 +1,12 @@
 # MDLogger
 
-Windows · macOS · Linux
+Windows · Linux
 
 An unofficial match logging and analytics tool for Yu-Gi-Oh! MASTER DUEL.
 
 ---
 
-v1.0.0 is the latest release.
+v2.0.0 is the latest release.
 
 Visit the website at [mdlogger-web.dalimi4511-615.workers.dev](https://mdlogger-web.dalimi4511-615.workers.dev/).
 

@@ -320,6 +320,10 @@
       "homepage": "https://numpy.org/",
       "license_files": [
         {
+          "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt",
+          "sha256": "a804dff0ead9fadc5293456410bcbfc32bf024be9c4513459663fb7b442d2341"
+        },
+        {
           "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt",
           "sha256": "4860083caa0de2ac3292ca98bd074bd8f45d8b32624e37b1e70a240bff61e488"
         },

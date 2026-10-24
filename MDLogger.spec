@@ -16,7 +16,7 @@ run.py 진입점 + 패키지 데이터를 번들한다. 데이터 파일은 ``co
 """
 
 from pathlib import Path
-from shutil import copy2, copytree, rmtree
+from shutil import copy2, copytree, ignore_patterns, rmtree
 
 from PyInstaller.utils.hooks import collect_data_files
 
@@ -31,6 +31,29 @@ excluded_pyqtgraph_data = {
     "pyqtgraph/colors/maps/PAL-relaxed_bright.hex",
 }
 
+# Windows PySide6 wheel에 포함될 수 있는 Mesa/LLVM 소프트웨어 OpenGL 렌더러
+# (opengl32sw.dll) 및 불필요한 Qt PDF 이미지 플러그인/런타임(qpdf.dll, qt6pdf.dll,
+# libqpdf.so, libqt6pdf.so.6)은 배포 번들에서 제외한다.
+excluded_binaries = {
+    "opengl32sw.dll",
+    "qpdf.dll",
+    "qt6pdf.dll",
+    "libqpdf.so",
+    "libqt6pdf.so.6",
+}
+
+# Linux 전용 런타임 패키지 및 Linux Flatpak 전용 QtWebEngine(Chromium)/QtMultimedia(FFmpeg)
+# 고지 파일은 Windows 배포 폴더에서 제외한다.
+excluded_windows_license_dirs = (
+    "cffi-2.1.1",
+    "cryptography-50.0.0",
+    "jeepney-0.9.0",
+    "pycparser-3.0",
+    "secretstorage-3.5.0",
+    "qtwebengine",
+    "qtmultimedia",
+)
+
 # 동적 import 문자열(`importlib.import_module`)이라 정적 분석 대상이 아니므로
 # publishable 설정 모듈을 명시적으로 포함한다. 없으면 PyInstaller가 무시한다.
 hiddenimports = ["mdlogger.remote._bundled_config"]
@@ -44,10 +67,27 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        "tkinter",
+        "_tkinter",
+        "setuptools",
+        "pkg_resources",
+        "PySide6.QtPdf",
+        "PySide6.QtPdfWidgets",
+        "PySide6.QtWebEngineCore",
+        "PySide6.QtWebEngineWidgets",
+        "PySide6.QtWebEngineQuick",
+        "PySide6.QtMultimedia",
+        "PySide6.QtMultimediaWidgets",
+    ],
     noarchive=False,
     optimize=0,
 )
+a.binaries = [
+    entry
+    for entry in a.binaries
+    if Path(entry[0].replace("\\", "/")).name.lower() not in excluded_binaries
+]
 a.datas = [
     entry
     for entry in a.datas
@@ -90,16 +130,15 @@ coll = COLLECT(
 )
 
 # 사용자가 즉시 찾을 수 있도록 프로젝트와 제3자 법률 문서를 onedir 최상위에 둔다.
+# 내부 CI 검증용 JSON(licenses/inventory/)과 유지보수 문서(licenses/sources/)는 제외한다.
 distribution_root = Path(DISTPATH) / "MDLogger"
 copy2("LICENSE", distribution_root / "LICENSE")
 copy2("THIRD_PARTY_NOTICES.txt", distribution_root / "THIRD_PARTY_NOTICES.txt")
 distribution_licenses = distribution_root / "licenses"
 if distribution_licenses.exists():
     rmtree(distribution_licenses)
-copytree("licenses/desktop", distribution_licenses / "desktop")
-copytree("licenses/sources", distribution_licenses / "sources")
-(distribution_licenses / "inventory").mkdir()
-copy2(
-    "licenses/inventory/desktop-windows.json",
-    distribution_licenses / "inventory" / "desktop-windows.json",
+copytree(
+    "licenses/desktop",
+    distribution_licenses / "desktop",
+    ignore=ignore_patterns(*excluded_windows_license_dirs),
 )

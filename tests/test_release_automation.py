@@ -302,7 +302,7 @@ def test_manifest_is_canonical_and_rejects_artifact_record_mismatch(tmp_path):
 
     assert manifest["assets"]["windows_installer"]["filename"] == installer.name
     assert manifest["third_party_source_delivery"]["delivery"]["automation_status"] == (
-        "pending_manual_attachment"
+        "upstream_urls_documented_in_source_offer"
     )
     first_output = tmp_path / "first-manifest.json"
     second_output = tmp_path / "second-manifest.json"
@@ -369,8 +369,14 @@ def test_manual_source_delivery_inventory_is_grounded_in_the_source_offer():
         PROJECT_ROOT / "licenses/sources/desktop-source-offer.md"
     ).read_text(encoding="utf-8")
 
-    assert policy["delivery"]["delivery_location"] == "same_github_release"
-    assert policy["delivery"]["automation_status"] == "pending_manual_attachment"
+    assert (
+        policy["delivery"]["delivery_location"]
+        == "upstream_official_servers_with_release_directions"
+    )
+    assert (
+        policy["delivery"]["automation_status"]
+        == "upstream_urls_documented_in_source_offer"
+    )
     assert policy["delivery"]["workflow_downloads_or_attaches_archives"] is False
     for archive in policy["archives"]:
         assert archive["filename"] in source_offer
@@ -399,6 +405,7 @@ def test_workflow_keeps_release_writes_and_notes_in_the_final_draft_job():
     workflow = (PROJECT_ROOT / ".github/workflows/desktop-release.yml").read_text(
         encoding="utf-8"
     )
+    publish_job = workflow.split("    publish-draft:", 1)[1]
 
     assert "workflow_dispatch:" in workflow
     assert "contents: read" in workflow
@@ -406,8 +413,11 @@ def test_workflow_keeps_release_writes_and_notes_in_the_final_draft_job():
     assert "if: ${{ inputs.create_draft }}" in workflow
     assert "needs.windows.outputs.artifact_id" in workflow
     assert "needs.flatpak.outputs.artifact_id" in workflow
-    assert "--draft" in workflow
+    assert "--draft" in publish_job
     assert "--generate-notes" not in workflow
-    assert "Source commit:" in workflow
-    assert "Source archive SHA-256:" in workflow
+    assert "## 변경 사항" in publish_job
+    assert "MDLoggerSetup-$RELEASE_VERSION.exe" in publish_job
+    assert "MDLogger-$RELEASE_VERSION.flatpak" in publish_job
+    assert "source.tar.gz" not in publish_job
+    assert "release-manifest.json" not in publish_job
     assert "web-deploy.yml" not in workflow

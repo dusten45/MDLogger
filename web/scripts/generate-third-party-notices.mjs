@@ -400,8 +400,17 @@ function repositoryDisplay(repository) {
 
 function renderNotices(packages, excludedBuildInputs) {
     const lines = [
-        "MDLogger Web Third-Party Notices",
+        "MDLogger Web Open-Source Notices",
         "================================",
+        "",
+        "MDLogger",
+        "Copyright (C) 2026 dusten45 (노연우)",
+        "License: GPL-3.0-or-later (see /LICENSE.txt)",
+        "Source: https://github.com/dusten45/MDLogger",
+        "",
+        "This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See /LICENSE.txt for the full license text.",
+        "",
+        "--------------------------------------------------------------------------------",
         "",
         "This file is generated deterministically from package-lock.json and installed package metadata/license files.",
         "It covers code present in the production browser bundle, PWA registration helper, generated service worker runtime, and Vite-generated runtime helper evidence.",

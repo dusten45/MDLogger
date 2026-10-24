@@ -13,9 +13,9 @@
 
 ; 버전은 src\mdlogger\_version.py 의 __version__ 과 일치해야 한다.
 ; 수동 동기화가 번거로우면 빌드 스크립트에서 아래 버전 정의를 주입한다:
-;   ISCC.exe /DMyAppVersion=1.0.0 scripts\installer_windows.iss
+;   ISCC.exe /DMyAppVersion=2.0.0 scripts\installer_windows.iss
 #ifndef MyAppVersion
-    #define MyAppVersion "1.0.0"
+    #define MyAppVersion "2.0.0"
 #endif
 #define MyAppName "MDLogger"
 #define MyAppExeName "MDLogger.exe"
@@ -30,11 +30,8 @@
 #ifnexist "..\dist\MDLogger\THIRD_PARTY_NOTICES.txt"
     #error "dist\MDLogger\THIRD_PARTY_NOTICES.txt is required"
 #endif
-#ifnexist "..\dist\MDLogger\licenses\inventory\desktop-windows.json"
-    #error "desktop Windows license inventory is required"
-#endif
-#ifnexist "..\dist\MDLogger\licenses\sources\desktop-source-offer.md"
-    #error "desktop corresponding-source information is required"
+#ifnexist "..\dist\MDLogger\licenses\desktop\qt-6.11.1\LICENSES\GPL-3.0-only.txt"
+    #error "dist\MDLogger\licenses\desktop is required"
 #endif
 
 [Setup]

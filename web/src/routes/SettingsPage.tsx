@@ -536,6 +536,13 @@ export function SettingsPage() {
                     서비스 정보 및 법률 정책
                 </h2>
                 <UnofficialNotice />
+                <p
+                    className="page-description"
+                    data-testid="settings-gpl-notice"
+                >
+                    MDLogger는 GPL-3.0-or-later 라이선스로 배포되는 오픈소스
+                    소프트웨어입니다.
+                </p>
                 <div className="settings-actions">
                     <Link to="/privacy" className="settings-link-button">
                         개인정보 처리방침
