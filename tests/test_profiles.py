@@ -239,12 +239,12 @@ def test_reset_retries_stale_staging_cleanup_before_reporting_success(
     original_rmtree = profiles_module.shutil.rmtree
     failed_once = False
 
-    def fail_first_staging_cleanup(path, *args, **kwargs):
+    def fail_first_staging_cleanup(path: Path) -> None:
         nonlocal failed_once
         if Path(path).name.startswith(".mdlogger-reset-") and not failed_once:
             failed_once = True
             raise OSError("격리 데이터 잠김")
-        return original_rmtree(path, *args, **kwargs)
+        original_rmtree(path)
 
     monkeypatch.setattr(profiles_module.shutil, "rmtree", fail_first_staging_cleanup)
     with pytest.raises(ProfileError, match="완전히 제거할 수 없습니다"):
