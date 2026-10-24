@@ -619,5 +619,5 @@ def test_settings_window_opens_local_third_party_notices(
 
     assert licenses_btn is not None
     licenses_btn.click()
-    assert opened_paths == [str(notice_path)]
+    assert [Path(path) for path in opened_paths] == [notice_path]
     win.close()
