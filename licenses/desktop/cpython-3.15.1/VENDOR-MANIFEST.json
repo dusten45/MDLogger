@@ -1,0 +1,71 @@
+{
+  "build": "20261021",
+  "full_archive": {
+    "sha256": "9553b8bf3b4b5da4148b504185b4069af1e4da5d10e65b64e17e7bbfa0d8ca1c",
+    "size": 52801137,
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.15.1%2B20261021-x86_64-pc-windows-msvc-pgo-full.tar.zst"
+  },
+  "license_files": [
+    {
+      "path": "licenses/desktop/cpython-3.15.1/Doc-license.rst",
+      "sha256": "456f5eb35022a9eb7bb15986cacaf70a4d5bf1537d0d917d6d18381e76aff163"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/LICENSE.txt",
+      "sha256": "e745807dbaab26bb1050dc9d12e655ca8d946c38d6cb59a593c2d9557830250c"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.bzip2.txt",
+      "sha256": "bd5628cc76fb0ebf9c657d1dd4d1a240a1a7b216c31663e7bbf1131c0b70a910"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.cpython.txt",
+      "sha256": "8fe98bf9822926d854f56ffd8d97877d8b942617aa44eb7ea77fd99e22f2537e"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.expat.txt",
+      "sha256": "8a9cfe4b5924f4b25881aa0c9f5e4561c5f31065d0c4a13cdcdbcf917edf39aa"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.libffi.txt",
+      "sha256": "9afb8970cd29fc1031fa647278e4bef613399e2e3468a1e3a397f4d158c6101c"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.liblzma.txt",
+      "sha256": "d87d218dd908b3243ec4cbc72af400e5b7437513ea9d9229291d0812b8464fec"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.mpdecimal.txt",
+      "sha256": "f094277cd46e1f6e4d87916cc4b51e22f613d45eb81f48231c3cb7caf8fc8a6a"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.openssl-3.txt",
+      "sha256": "ed72ce2b51ee58f117e5a021e2e04af158857f40269fbc03491f0b2a99dbcc96"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.sqlite.txt",
+      "sha256": "d8eb9aba7ef6b5ed06cb3ec19a7242316af2e5933c638eb67fb781c13884e01d"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.zlib-ng.txt",
+      "sha256": "608fa5505ed17a5353e71ce74abec88569c3dc69515ff9a6f286f53bce4393cd"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.zlib.txt",
+      "sha256": "365e36720db366054863235aea5d6f440142ab968834bfaf81fa9d187c99b9b8"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/licenses/LICENSE.zstd.txt",
+      "sha256": "d3baadc2e1dd7a7e0b483633e6b39743c16a16f28d696baff507fcd451f3d4ad"
+    },
+    {
+      "path": "licenses/desktop/cpython-3.15.1/PYTHON.json",
+      "sha256": "32ca9bb8e29f8cdcd49069854d96cd459308751b9bc658d6f2fb0371e0d4af4e"
+    }
+  ],
+  "sha256": "e7153a9f05921a72f7da1551d3bd374a88c4ffc0bbbea08776ddcb99b787d0f8",
+  "size": 24391528,
+  "url": "https://releases.astral.sh/github/python-build-standalone/releases/download/20261021/cpython-3.15.1%2B20261021-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+  "vendor": "astral-sh/python-build-standalone",
+  "version": "3.15.1"
+}

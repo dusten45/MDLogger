@@ -95,6 +95,10 @@ const FIXTURE_POLICY = [
 test("production package metadata와 license 원문만 결정론적으로 생성한다", () => {
     const root = createFixture();
     try {
+        writeFileSync(
+            path.join(root, "node_modules", "runtime-package", "THIRD-PARTY-LICENSE"),
+            VALID_LICENSE,
+        );
         const first = buildArtifacts({ root, policy: FIXTURE_POLICY });
         const second = buildArtifacts({ root, policy: FIXTURE_POLICY });
         assert.deepEqual([...first], [...second]);
@@ -105,6 +109,10 @@ test("production package metadata와 license 원문만 결정론적으로 생성
         assert.doesNotMatch(notices, /dev-package/);
         assert.equal(
             first.get("public/licenses/runtime-package/LICENSE"),
+            VALID_LICENSE,
+        );
+        assert.equal(
+            first.get("public/licenses/runtime-package/THIRD-PARTY-LICENSE"),
             VALID_LICENSE,
         );
     } finally {
@@ -251,9 +259,17 @@ test("Vite bundled dependency의 별도 라이선스 표현을 고지한다", ()
 
     assert.deepEqual(
         inventory.reviewPolicy.retainedBundledDependencyLicenseExpressions,
-        ["Apache-2.0", "BSD-2-Clause", "CC0-1.0", "ISC", "MIT"],
+        ["BSD-2-Clause", "CC0-1.0", "ISC", "MIT"],
     );
     assert.match(notices, /Vite's retained bundled-dependency notice/);
+    assert.equal(inventory.reviewPolicy.includeRolldownBundledThirdPartyNotices, true);
+    const rolldown = inventory.packages.find((entry) => entry.name === "rolldown");
+    assert.equal(rolldown.bundleEvidence, "rolldown-generated-helper");
+    assert.deepEqual(
+        rolldown.licenseFiles.map((entry) => entry.path),
+        ["licenses/rolldown/LICENSE", "licenses/rolldown/THIRD-PARTY-LICENSE"],
+    );
+    assert.match(notices, /Copyright \(c\) 2020 Evan Wallace/);
 });
 
 test("PWA가 라이선스 문서를 precache하고 SPA fallback에서 제외한다", () => {

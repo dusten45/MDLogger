@@ -64,12 +64,11 @@ REQUIRED_PLATFORM_TOOLS = {
 }
 REQUIRED_SOURCE_ARCHIVES = frozenset(
     {
-        "qt-everywhere-src-6.11.1.tar.xz",
-        "pyside-setup-everywhere-src-6.11.1.tar.xz",
-        "FFmpeg-n7.1.3.tar.gz",
-        "cryptography-50.0.0.tar.gz",
-        "openssl-4.0.1.tar.gz",
-        "numpy-2.4.6.tar.gz",
+        "qt-everywhere-src-6.12.0.tar.xz",
+        "pyside-setup-everywhere-src-6.12.0.tar.xz",
+        "cryptography-50.0.2.tar.gz",
+        "openssl-4.0.3.tar.gz",
+        "numpy-2.5.4.tar.gz",
     }
 )
 PACKAGING_INPUTS = (

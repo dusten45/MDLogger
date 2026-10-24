@@ -1,243 +1,160 @@
 # Desktop corresponding-source information
 
-This document records the exact upstream source archives corresponding to the
-Qt/PySide6 6.11.1 binaries distributed by MDLogger. MDLogger selects the
-**GPL-3.0-only** alternative for PySide6, PySide6-Essentials,
-PySide6-Addons, shiboken6, and the bundled Qt libraries.
+MDLogger selects the **GPL-3.0-only** alternative for PySide6-Essentials,
+shiboken6 and their bundled Qt 6.12.0 libraries. The libraries are unmodified.
+Python defaults to 3.15.1; the Linux Flatpak uses the Python 3.14 interpreter
+provided by the Freedesktop 26.08 runtime. The platform inventories distinguish
+these targets and must not be treated as interchangeable binary evidence.
 
-MDLogger has not modified Qt, PySide6, shiboken6, or their build system. The
-archives below are the upstream source releases matching the distributed
-6.11.1 wheels. For every published desktop or web release, the MDLogger source
-and packaging files must be archived from the exact release commit in
-<https://github.com/dusten45/MDLogger>, recorded with its commit identifier and
-SHA256, and published beside that release's binary or static assets.
+## Verified Qt and PySide source archives
 
-## Qt 6.11.1 source
+These archives were downloaded on 2026-10-24 and their SHA256 and sizes were
+checked against the official `.meta4` metadata. Hash verification is not a claim
+of detached-signature verification.
 
-- Archive: `qt-everywhere-src-6.11.1.tar.xz`
-- Official URL: <https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz>
-- Official MirrorBrain metadata: <https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz.mirrorlist>
-- IETF Metalink metadata: <https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz.meta4>
-- Size recorded by MirrorBrain: `1017723080` bytes
-- SHA256: `252acef8c5ae68074d91cadba2ee4a83465051bbb970dd26e8f0daa0f3904e03`
+| Archive | Size (bytes) | SHA256 |
+| --- | ---: | --- |
+| `qt-everywhere-src-6.12.0.tar.xz` | 443394020 | `98ff4f44bac6ec3e1e62ee2a4316ae0e3d15badb015d753cc0268a20db52f165` |
+| `pyside-setup-everywhere-src-6.12.0.tar.xz` | 18211772 | `099c1a597cf33c1b000e11cf68a0b82d216fb802bf81726efc720394f10c7751` |
 
-## Qt for Python / PySide 6.11.1 source
+- Qt source: <https://download.qt.io/official_releases/qt/6.12/6.12.0/single/qt-everywhere-src-6.12.0.tar.xz>
+- Qt metadata: <https://download.qt.io/official_releases/qt/6.12/6.12.0/single/qt-everywhere-src-6.12.0.tar.xz.meta4>
+- PySide source: <https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz>
+- PySide metadata: <https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/pyside-setup-everywhere-src-6.12.0.tar.xz.meta4>
 
-- Archive: `pyside-setup-everywhere-src-6.11.1.tar.xz`
-- Official URL: <https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.11.1-src/pyside-setup-everywhere-src-6.11.1.tar.xz>
-- Official MirrorBrain metadata: <https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.11.1-src/pyside-setup-everywhere-src-6.11.1.tar.xz.mirrorlist>
-- IETF Metalink metadata: <https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.11.1-src/pyside-setup-everywhere-src-6.11.1.tar.xz.meta4>
-- Size recorded by MirrorBrain: `17963432` bytes
-- SHA256: `6ffd9835bb0dd2c56f061d62f1616bb1707cfc0202b80e3165d6be087f3965e2`
+The matching PySide source originals are retained under
+`licenses/desktop/qt-for-python-6.12.0/`. The commercial license file shipped by
+the Windows wheel is preserved as metadata evidence, not as the project's
+selected license. The selected GPL text and the source's other license
+alternatives and COPYING files are retained separately.
 
-## FFmpeg 7.1.3 source
+The verified Qt archive contains 374 `LICENSES` members with 69 distinct texts.
+The byte hashes and originating archive members are recorded in
+`licenses/desktop/qt-6.12.0/LICENSES-MANIFEST.json`. The attribution document in
+the same directory contains 98 records and 61 referenced legal originals from
+qtbase, qtdeclarative, qtlanguageserver, qtlottie, qtquicktimeline,
+qtshadertools, qtsvg, qttools and qtwayland. This is a conservative source superset including cross-platform
+records, not the wheel publisher's exact-build SBOM. Tests/examples and unused
+Addons, WebEngine, Pdf and Multimedia source modules are outside that scope.
 
-Qt Multimedia's shipped FFmpeg shared libraries report version `7.1.3` and
-`LGPL version 2.1 or later`. The exact source URL comes from Qt 6.11.1's
-`qtmultimedia/src/3rdparty/ffmpeg/qt_attribution.json`.
+## Essentials-only distribution
 
-- Archive: `FFmpeg-n7.1.3.tar.gz`
-- Source URL: <https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n7.1.3.tar.gz>
-- SHA256: `e0b04c4b43d7e6d67cb6710334fb513adf13ac860532f30e1d0ac4c231f232fb`
-- Qt build configuration reported by the shipped binary:
-  `--disable-programs --disable-doc --disable-debug --enable-network
---disable-lzma --enable-pic --disable-vulkan --disable-v4l2-m2m
---disable-decoder=truemotion1 --enable-shared --disable-static
---enable-openssl --prefix=/usr/local/FFmpeg-n7.1.3`
+The umbrella `PySide6` dependency is not installed. Only
+`PySide6-Essentials==6.12.0` and `shiboken6==6.12.0` are installed. These provide
+QtCore, QtGui, QtWidgets and QtSvg used by the app, QtTest used by tests, and the
+Qt modules loaded by pyqtgraph without requiring Addons.
 
-The configuration does not report `--enable-gpl`, `--enable-nonfree`, or
-`--enable-version3`. Qt's exact attribution, including libjpeg, zlib, and Boost
-notices, is under `licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/`.
+QtWebEngine/Chromium, Qt Multimedia/FFmpeg and Qt Pdf runtimes are not shipped.
+The Essentials wheel nevertheless contains orphan Designer/Pdf plugins that
+depend on the absent optional runtimes. Flatpak explicitly removes
+`PySide6/Qt/plugins/designer/libqwebengineview.so`,
+`PySide6/Qt/plugins/imageformats/libqpdf.so` and
+`PySide6/Qt/qml/QtQuick/Pdf/`. The final-image verifier rejects their presence.
+Windows excludes the PDF bindings/plugin, orphan WebEngine Designer plugin,
+Chromium `icudtl.dat` resource and unused software OpenGL renderer in
+`MDLogger.spec`.
 
-## Linux cryptography 50.0.0 and OpenSSL 4.0.1 source
+Every remaining Essentials ELF binding, Qt library, plugin and tool is recorded
+in `licenses/inventory/qt-third-party-runtime-linux-flatpak.json`. The module
+inventory records the larger Essentials payload, not merely the four direct
+application imports. Windows must instead inspect its actual PyInstaller TOC.
+Neither inventory is an exact upstream build-generated SBOM.
 
-The Linux cryptography wheel carries `sbom.json`, which identifies a statically
-built (`no-shared`) OpenSSL 4.0.1 component. MDLogger retains byte-for-byte
-copies of that SBOM and its 39-component Rust CycloneDX build-provenance document
-under `licenses/desktop/cryptography-50.0.0/sboms/`. The Rust document is not an
-object-level linker map and does not claim that every build input is separately
-linked into the final extension.
+The Linux Essentials wheel also bundles **ICU 73.2**, verified directly using
+`u_getVersion_73`, rather than a version inferred from Qt's source configuration.
+Its exact release license, including dictionary and time-zone notices, is
+retained at `licenses/desktop/icu-73.2/LICENSE` (SHA256
+`f3005e195ff74d8812cc1f182a1c446fab678d70a10e3dada497585befee5416`).
+Source: <https://github.com/unicode-org/icu/tree/release-73-2>.
+The latest Qt wheel determines this native ABI dependency; it is not replaced
+independently with an incompatible ICU release. Its three shared libraries have
+separate wheel and final-image hashes, measured from the actual SDK build.
 
-- cryptography source archive: `cryptography-50.0.0.tar.gz`
-- Source URL: <https://files.pythonhosted.org/packages/de/41/6cbdcf9142d00fe82836fbb51e503e58088575cf7a0fe1dbff6695bf0840/cryptography-50.0.0.tar.gz>
-- SHA256: `eeac2acb5a20ed25e0ad6d1df9891a520b78b404266b6d11778f25d5d691a6c9`
-- OpenSSL source archive: `openssl-4.0.1.tar.gz`
-- Source URL: <https://github.com/openssl/openssl/releases/download/openssl-4.0.1/openssl-4.0.1.tar.gz>
-- SHA256: `2db3f3a0d6ea4b59e1f094ace2c8cd536dffb87cdc39084c5afa1e6f7f37dd09`
+## Linux cryptography and OpenSSL source
 
-## Linux NumPy 2.4.6 and native runtime source
+The Python 3.14 Linux `cryptography==50.0.2` wheel ships exact OpenSSL and Rust
+build-provenance SBOM files, retained under
+`licenses/desktop/cryptography-50.0.2/sboms/`. They identify OpenSSL 4.0.3 built
+with `no-shared` and 39 Rust build components. The Rust document is not an
+object-level linker map. Python 3.15 uses a different wheel, so its installed
+binary bytes must not be passed off as Flatpak evidence.
 
-The Linux NumPy wheel contains OpenBLAS/LAPACK, libgfortran, and libquadmath
-shared libraries. Their copyright notices and complete license texts are in the
-wheel's retained `licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt`.
+- cryptography source: <https://files.pythonhosted.org/packages/9d/af/182eb91b0df3fe75c4d9f26fe70684569566745f6ba7e5c9c73a862c5252/cryptography-50.0.2.tar.gz>
+- cryptography SHA256: `7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5`
+- OpenSSL source: <https://github.com/openssl/openssl/releases/download/openssl-4.0.3/openssl-4.0.3.tar.gz>
+- OpenSSL SHA256 from the wheel SBOM: `325b5c806167c13b40b1ffeadfe0248197c00eccc4cf123ec1e28d2d2fd216d9`
 
-- NumPy source archive: `numpy-2.4.6.tar.gz`
-- Source URL: <https://files.pythonhosted.org/packages/d0/ad/fed0499ce6a338d2a03ebae59cd15093910c8875328855781952abf6c2fe/numpy-2.4.6.tar.gz>
-- SHA256: `f3a3570c4a2a16746ac2c31a7c7c7b0c186b95ce902e33db6f28094ed7387dda`
+## NumPy native runtime source
+
+NumPy 2.5.4 Linux wheels contain OpenBLAS/LAPACK, libgfortran and libquadmath.
+The Windows wheel contains OpenBLAS/LAPACK and statically linked libgfortran.
+Their platform-specific original notices are retained in
+`licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt` and `LICENSE-windows.txt`.
+Other legal files declared by NumPy wheel metadata are also retained.
+
+- NumPy source: <https://files.pythonhosted.org/packages/95/b0/c7453d0b6e2073c3264468b106ee1563750cecc910965e67357e3698c83e/numpy-2.5.4.tar.gz>
+- NumPy SHA256: `9a94cf751c9ad8ebaa835bcd3d40dacf8534ad086b88c38029b65123c7999d2a`
 - OpenBLAS/LAPACK upstream: <https://github.com/OpenMathLib/OpenBLAS/>
 - GCC libgfortran/libquadmath upstream: <https://gcc.gnu.org/git/?p=gcc.git;a=tree>
 
-The NumPy wheel does not identify the exact OpenBLAS or GCC source revision used
-to build its bundled Linux native libraries. This is a known limitation. Do not
-describe the upstream URLs as corresponding-source snapshots; the retained NumPy
-license text identifies the distributed libraries and their notices. If the wheel
-publisher or release build evidence later supplies matching revisions and source
-hashes, record them with the release and publish the verified source archives
-beside the binary.
+Known limitation: the wheel notices do not identify the exact OpenBLAS or GCC
+source revisions used by the wheel publisher. Do not describe these upstream
+repository links as verified corresponding-source snapshots. If matching build
+revisions become available, retain their source hashes and publish them beside
+the binaries. This upgrade does not remove or disguise that limitation.
 
-## Windows NumPy 2.4.6, CPython 3.13, PyInstaller runtime hooks, Qt Windows 3rdparty, and Inno Setup 6
+## Windows runtime and build components
 
-- **Windows NumPy 2.4.6 native runtime**: The locked Windows wheel
-  (`numpy-2.4.6-cp313-cp313-win_amd64.whl`) ships `numpy.libs/libscipy_openblas*.dll`,
-  which embeds OpenBLAS (`BSD-3-Clause`), LAPACK (`BSD-3-Clause-Open-MPI`), and
-  statically linked GCC `libgfortran` runtime code (`GPL-3.0-or-later WITH
-  GCC-exception-3.1`). Its platform-specific wheel notice is preserved verbatim
-  at `licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt`. As on Linux,
-  the Windows NumPy wheel does not record the exact OpenBLAS or GCC source
-  commit used by the wheel publisher; this known limitation is disclosed in both
-  the inventory and notice artifacts.
-- **Windows CPython 3.13 runtime and bundled native libraries**: The Windows
-  PyInstaller onedir bundle distributes the CPython 3.13 runtime (`python313.dll`,
-  `python3.dll`, standard library modules, Windows extension `.pyd`/`.dll` files,
-  and Microsoft Visual C++ Distributable Code `vcruntime140.dll`,
-  `vcruntime140_1.dll`, and `msvcp140*.dll`) together with CPython's
-  incorporated third-party C libraries (OpenSSL 3.5.9, libffi 3.4.4, xz/liblzma
-  5.2.5, Expat, bzip2, libmpdec, zlib, SQLite, mimalloc, and SipHash24). Their
-  notices and full license texts—matching CPython's `PCbuild/regen.targets`
-  Windows license inputs (`LICENSE`, `PC/crtlicense.txt`, `bzip2/LICENSE`,
-  `libffi/LICENSE`, `openssl/LICENSE.txt`, and `xz/COPYING`)—are retained under
-  `licenses/desktop/cpython-3.13/`.
-- **PyInstaller 6.21.0 bootloader and runtime hooks & pyinstaller-hooks-contrib 2026.6**:
-  In addition to the compiled C bootloader and `PyInstaller/loader` modules
-  (`GPL-2.0-or-later WITH Bootloader-exception`), PyInstaller embeds its
-  runtime hooks (`PyInstaller/hooks/rthooks/pyi_rth_*.py` and `_pyi_rth_utils`)
-  and `pyinstaller-hooks-contrib`'s `pyi_rth_pyqtgraph_multiprocess.py` runtime
-  hook under `Apache-2.0`. Their full license texts are retained under
-  `licenses/desktop/pyinstaller-6.21.0/licenses/COPYING.txt` and
-  `licenses/desktop/pyinstaller-hooks-contrib-2026.6/licenses/LICENSE`.
-- **Windows Qt 6.11.1 platform-specific third-party code**: Windows Qt GUI/RHI
-  builds include `D3D12MemoryAllocator` (`MIT`, retained under
-  `licenses/desktop/qt-6.11.1/windows-3rdparty/D3D12MemoryAllocator/LICENSE.txt`)
-  and `Wintab` headers (`LicenseRef-Lcs-Telegraphics`, retained under
-  `licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Lcs-Telegraphics.txt`). The
-  optional software OpenGL rasterizer `opengl32sw.dll` (Mesa 3D / LLVM) and the
-  unused Qt PDF imageformat plugin / Chromium PDFium library (`qpdf.dll` and
-  `Qt6Pdf.dll`) are explicitly excluded from the Windows PyInstaller bundle in
-  `MDLogger.spec` and rejected by `scripts/release/release_validation.py`.
-- **Inno Setup 6 installer and uninstaller stub**: The Windows Setup executable
-  embeds Inno Setup's loader and uninstaller (`SetupLdr.e32` / `unins000.exe`),
-  licensed under the Inno Setup License (`licenses/desktop/innosetup-6/LICENSE.txt`).
+The Windows runtime is uv-managed **python-build-standalone 20261021 CPython
+3.15.1**, not the python.org installer. The actual vendor archives were
+downloaded and checked against the publisher's GitHub release asset digests.
 
-## Verification procedure
+- Installed runtime archive: <https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.15.1%2B20261021-x86_64-pc-windows-msvc-install_only_stripped.tar.gz>
+- Installed runtime SHA256: `e7153a9f05921a72f7da1551d3bd374a88c4ffc0bbbea08776ddcb99b787d0f8`
+- Matching full archive: <https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.15.1%2B20261021-x86_64-pc-windows-msvc-pgo-full.tar.zst>
+- Full archive SHA256: `9553b8bf3b4b5da4148b504185b4069af1e4da5d10e65b64e17e7bbfa0d8ca1c`
+- CPython source: <https://github.com/python/cpython/tree/v3.15.1>
+- Vendor build source: <https://github.com/astral-sh/python-build-standalone/tree/20261021>
 
-At every release, open both Qt/PySide official archive URLs and both
-`.mirrorlist` pages again. Confirm that the requested version is still
-accessible and that MirrorBrain reports the expected filename, size, and
-SHA256. Also download the FFmpeg URL recorded above. Download without following
-instructions from an untrusted mirror page, then verify locally:
+`licenses/desktop/cpython-3.15.1/` retains the installed runtime's composite
+LICENSE, the matching full archive's native-library license originals and
+`PYTHON.json` build manifest, CPython v3.15.1 `Doc/license.rst`, and a hashed
+`VENDOR-MANIFEST.json`. The metadata describes build inputs and is not an exact
+PyInstaller payload inventory. Native libraries include the compression,
+SQLite, OpenSSL and libffi dependencies; Python 3.14 introduced the zstd runtime.
+Microsoft Distributable Code terms remain in the composite LICENSE. tkinter
+and pip are not represented as application runtime components.
 
-```bash
-sha256sum qt-everywhere-src-6.11.1.tar.xz
-sha256sum pyside-setup-everywhere-src-6.11.1.tar.xz
-sha256sum FFmpeg-n7.1.3.tar.gz
-```
+PyInstaller 6.22.3 bootloader/loader code is distributed under
+`GPL-2.0-or-later WITH Bootloader-exception`; its runtime hooks and
+pyinstaller-hooks-contrib 2026.9 runtime hooks use `Apache-2.0`. Their originals
+are retained in the corresponding versioned directories. Windows Qt includes
+D3D12MemoryAllocator and Wintab; their exact Qt 6.12.0 source texts are retained.
+Inno Setup 6 loader/uninstaller notices remain under `licenses/desktop/innosetup-6/`.
 
-The expected output digests are the values recorded above. A standard-library
-alternative is:
+## Verification and release delivery
 
-```bash
-python -c "from hashlib import file_digest; from pathlib import Path; print(file_digest(Path('qt-everywhere-src-6.11.1.tar.xz').open('rb'), 'sha256').hexdigest())"
-python -c "from hashlib import file_digest; from pathlib import Path; print(file_digest(Path('pyside-setup-everywhere-src-6.11.1.tar.xz').open('rb'), 'sha256').hexdigest())"
-python -c "from hashlib import file_digest; from pathlib import Path; print(file_digest(Path('FFmpeg-n7.1.3.tar.gz').open('rb'), 'sha256').hexdigest())"
-```
+Recheck the official URLs, archive sizes and hashes for every release. For
+example, `sha256sum qt-everywhere-src-6.12.0.tar.xz` must match the digest above.
+Generate/check Linux native evidence using a Python 3.14 environment matching
+Flatpak, not the default Python 3.15 environment. Run
+`scripts/generate_desktop_licenses.py --check`, then verify both the wheel phase
+and the stripped final Flatpak image using
+`scripts/verify_flatpak_license_payload.py`. A final-image hash must come from
+the actual SDK build; it must never be copied from an older release or assumed
+equal to the raw wheel hash. Windows release hosts separately inspect their
+PyInstaller and installed Inno Setup payloads.
 
-As of 2026-08-28, the official 6.11.1 directory indexes and MirrorBrain pages
-list hashes, Metalink, torrent, and magnet metadata but do **not** list a
-separate detached `.asc` or `.sig` signature for either archive. Do not claim
-detached-signature verification for these files. Recheck this fact for every
-release because the official publication format can change.
+For each published Windows, Flatpak or web release, archive the MDLogger source
+and packaging files from the exact release commit in
+<https://github.com/dusten45/MDLogger>, record its commit and SHA256, and publish
+`MDLogger-<version>-source.tar.gz` beside the release assets.
 
-The license texts under `licenses/desktop/qt-for-python-6.11.1/` were extracted
-from the verified PySide source archive because the PySide6 wheels do not carry
-those originals. `LICENSES/GPL-3.0-only.txt` is the selected license text;
-LGPL/GPL alternatives and source-level COPYING notices are retained as upstream
-evidence rather than as a different MDLogger license choice.
-
-The verified Qt archive contains 402 module-level `LICENSES` entries. Their 83
-unique byte contents and a source-member/SHA256 manifest are distributed under
-`licenses/desktop/qt-6.11.1/`. The same archive supplied 123 package-specific
-attribution records for source modules represented in the complete Linux
-PySide6 wheels and 88 referenced legal files. They are distributed as
-`QT-THIRD-PARTY-ATTRIBUTIONS.json` and `third-party-source-files/` under that
-directory. This is a conservative Linux source-attribution superset, not the
-wheel publisher's exact-build SBOM, and may over-disclose records excluded by
-the publisher's build configuration. Adjacent FFmpeg originals and Chromium
-scanner credits are retained separately because the module-level corpus alone
-does not cover all full-wheel attribution evidence.
-
-## Release source delivery (GPL-3.0 Section 6(d))
-
-When publishing a Windows installer, Flatpak bundle, or web static deployment,
-create the MDLogger source archive (`MDLogger-<version>-source.tar.gz`) from the
-exact release commit, record that commit and the archive SHA256 in the release
-notes, and publish that archive alongside the binary assets on the GitHub
-Release.
-
-For the unmodified third-party libraries listed above (Qt 6.11.1, PySide
-6.11.1, FFmpeg 7.1.3, cryptography 50.0.0, OpenSSL 4.0.1, and NumPy 2.4.6),
-MDLogger provides Corresponding Source access in accordance with **GPL-3.0
-Section 6(d)** ("the Corresponding Source may be on a different server operated
-by you or a third party that supports equivalent copying facilities, provided
-you maintain clear directions next to the object code saying where to find the
-Corresponding Source"):
-
-- Clear directions to this document (`licenses/sources/desktop-source-offer.md`)
-  are maintained both inside every distributed desktop package and in the
-  GitHub Release notes next to the binary download links.
-- The exact official upstream source URLs, file sizes, and SHA-256 digests are
-  documented above so any recipient can download and verify the exact upstream
-  source archives at no charge.
-- In accordance with GPL-3.0 Section 6(d), if any upstream server ceases to
-  provide one of the required archives while the corresponding binary remains
-  distributed, the distributor remains obligated to mirror and provide that
-  verified source archive with equivalent access for as long as required by the
-  selected licenses.
-- The NumPy native-runtime caveat above is a known limitation: preserve its
-  notices and state that the exact OpenBLAS and GCC source revisions are not
-  recorded by the wheel publisher. If matching revisions become available,
-  record them here as well.
-
-The Qt source archive contains the QtWebEngine and vendored Chromium source used
-by the 6.11.1 release. The project has not rebuilt the PySide publisher wheel
-and does not claim to possess its exact build-generated SBOM; the binary
-inspection manifest records this limitation.
-
-## Full-wheel and GPL-only module disclosure
-
-The Linux Flatpak intentionally retains the full `PySide6` dependency. The
-`PySide6` metapackage installs both `PySide6-Essentials` and
-`PySide6-Addons`, and those wheels contain Qt binaries beyond the modules that
-MDLogger imports directly. MDLogger directly imports QtCore, QtGui, QtWidgets,
-and QtSvg, while the unpruned Addons wheel can also contain GPL-only
-open-source modules including Qt Graphs, Qt Charts, Qt Data Visualization, and
-Qt Quick 3D. Qt's 6.11 documentation identifies each of those modules as
-commercial-or-GPLv3. They are not represented as LGPL-only or omitted from the
-inventory.
-
-Relevant official module pages:
-
-- <https://doc.qt.io/qt-6/qtgraphs-index.html#licenses-and-attributions>
-- <https://doc.qt.io/qt-6/qtcharts-index.html#licenses-and-attributions>
-- <https://doc.qt.io/qt-6/qtdatavisualization-index.html#licenses-and-attributions>
-- <https://doc.qt.io/qt-6/qtquick3d-index.html#licenses-and-attributions>
-- Qt 6.11 third-party code index: <https://doc.qt.io/qt-6/licenses-used-in-qt.html>
-
-The selected GPL-3.0-only path applies to these Qt modules. The distributed
-`licenses/` tree includes the curated Qt source-attribution superset and its
-referenced originals, plus separate QtWebEngine/Chromium and FFmpeg evidence.
-Those 123/88, Chromium, and FFmpeg runtime findings are Linux evidence only;
-the Windows PyInstaller package must not represent them as a Windows payload
-inventory. A release audit must still compare the actual PyInstaller TOC and
-Flatpak installed files with the tracked inventories; source-derived evidence
-is not an exact publisher build manifest, and a source URL alone does not waive
-attribution or source-availability duties.
+For unmodified third-party libraries, the exact upstream directions above are
+maintained next to the object-code downloads and in distributed notices under
+**GPL-3.0 Section 6(d)**. Recipients must have equivalent, free access to the
+corresponding sources. If an upstream server stops providing a required archive
+while the corresponding binary is distributed, the distributor remains
+responsible for mirroring the verified sources for the required period. A
+source URL or a source-level attribution superset does not waive attribution or
+source-availability duties.

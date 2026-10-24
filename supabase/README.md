@@ -67,14 +67,17 @@ supabase functions serve guest-ingest   # Edge Function 로컬 실행(선택)
 데이터를 남기지 않는다. 모든 migration 변경은 hosted 적용 전에 이 절차를
 통과해야 한다.
 
-### Fedora rootless Podman + Supabase CLI 2.109.1
+### Fedora rootless Podman + Supabase CLI
 
-이 개발 환경은 Supabase CLI 2.109.1을 고정해 사용한다. 해당 CLI가 생성하는
+CLI 업데이트 대상은 최신 안정판 2.122.0이다. 아래 SELinux 우회는 이전
+2.109.1 환경에서 확인했으며, 새 CLI에서도 로컬 스택과 함수 실행을 별도로
+검증한다. 버전 업데이트가 SELinux 문제까지 해결했다고 가정하지 않는다.
+CLI가 생성하는
 Edge Runtime bootstrap은 `/tmp/supabase-functions-serve-main-*/index.ts`에서
 `/root/index.ts`로 `:ro` bind mount되는데, Fedora SELinux의 `user_tmp_t`는
 컨테이너에서 읽을 수 없어 `failed to create the graph: Permission denied`가
 발생한다. 사용자 worker의 함수 소스 bind도 기본 `user_home_t`에서는 읽을
-수 없다. CLI 업그레이드나 SELinux 전체 비활성화 대신 전용 임시 디렉터리와
+수 없다. SELinux 전체 비활성화 대신 전용 임시 디렉터리와
 `supabase/functions` 하위만 `container_file_t`로 제한한다.
 
 새 셸이 기본 Docker 소켓(`/var/run/docker.sock`)을 선택하면 먼저 rootless Podman

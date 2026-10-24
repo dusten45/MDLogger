@@ -11,7 +11,7 @@ WINDOWS_REQUIRED_FILES = (
     "MDLogger.exe",
     "LICENSE",
     "THIRD_PARTY_NOTICES.txt",
-    "licenses/desktop/qt-6.11.1/LICENSES/GPL-3.0-only.txt",
+    "licenses/desktop/qt-6.12.0/LICENSES/GPL-3.0-only.txt",
 )
 WINDOWS_FORBIDDEN_FILES = (
     "PAL-relaxed.hex",
@@ -19,6 +19,8 @@ WINDOWS_FORBIDDEN_FILES = (
     "opengl32sw.dll",
     "qpdf.dll",
     "Qt6Pdf.dll",
+    "qwebengineview.dll",
+    "icudtl.dat",
     "_tkinter.pyd",
     "tcl86t.dll",
     "tk86t.dll",
@@ -27,12 +29,13 @@ WINDOWS_FORBIDDEN_PATHS = (
     "licenses/inventory",
     "licenses/sources",
     "licenses/desktop/cffi-2.1.1",
-    "licenses/desktop/cryptography-50.0.0",
+    "licenses/desktop/cryptography-50.0.2",
+    "licenses/desktop/icu-73.2",
     "licenses/desktop/jeepney-0.9.0",
-    "licenses/desktop/pycparser-3.0",
+    "licenses/desktop/pycparser-3.12",
     "licenses/desktop/secretstorage-3.5.0",
-    "licenses/desktop/qt-6.11.1/qtwebengine",
-    "licenses/desktop/qt-6.11.1/qtmultimedia",
+    "licenses/desktop/qt-6.12.0/qtwebengine",
+    "licenses/desktop/qt-6.12.0/qtmultimedia",
 )
 
 

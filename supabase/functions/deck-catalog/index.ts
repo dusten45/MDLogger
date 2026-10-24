@@ -9,7 +9,7 @@
 // - 공백 제거·중복 제거·"기타" 포함을 보장한다.
 // - 호출은 로그인 access token을 요구한다(무분별한 proxy 사용 방지).
 
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.118.0";
 
 const TTL_MS = 5 * 60 * 1000;
 const MAX_DECKS = 500;

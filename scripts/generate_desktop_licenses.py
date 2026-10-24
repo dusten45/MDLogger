@@ -47,32 +47,10 @@ LEGAL_NAME_PARTS = (
 UV_TREE_PATTERN = re.compile(r"(?:├──|└──)\s+([A-Za-z0-9_.-]+)\s+v([^\s(]+)")
 NORMALIZE_PATTERN = re.compile(r"[-_.]+")
 REQUIREMENT_PATTERN = re.compile(r"^([A-Za-z0-9_.-]+)==([^\s;]+)")
-
-WEBENGINE_RUNTIME_FILES = (
-    "QtWebEngineCore.abi3.so",
-    "QtWebEngineQuick.abi3.so",
-    "QtWebEngineWidgets.abi3.so",
-    "Qt/lib/libQt6WebEngineCore.so.6",
-    "Qt/libexec/QtWebEngineProcess",
-    "Qt/resources/icudtl.dat",
-    "Qt/resources/qtwebengine_devtools_resources.pak",
-    "Qt/resources/qtwebengine_resources.pak",
-    "Qt/resources/qtwebengine_resources_100p.pak",
-    "Qt/resources/qtwebengine_resources_200p.pak",
-    "Qt/resources/v8_context_snapshot.bin",
-)
-FFMPEG_RUNTIME_FILES = (
-    "Qt/lib/libQt6FFmpegStub-crypto.so.3",
-    "Qt/lib/libQt6FFmpegStub-ssl.so.3",
-    "Qt/lib/libQt6FFmpegStub-va-drm.so.2",
-    "Qt/lib/libQt6FFmpegStub-va-x11.so.2",
-    "Qt/lib/libQt6FFmpegStub-va.so.2",
-    "Qt/lib/libavcodec.so.61.19.101",
-    "Qt/lib/libavformat.so.61.7.100",
-    "Qt/lib/libavutil.so.59.39.100",
-    "Qt/lib/libswresample.so.5.3.100",
-    "Qt/lib/libswscale.so.8.3.100",
-    "Qt/plugins/multimedia/libffmpegmediaplugin.so",
+EXCLUDED_QT_PATHS = (
+    "PySide6/Qt/plugins/designer/libqwebengineview.so",
+    "PySide6/Qt/plugins/imageformats/libqpdf.so",
+    "PySide6/Qt/qml/QtQuick/Pdf",
 )
 
 
@@ -393,7 +371,7 @@ def validate_qt_license_corpus(
     files = manifest.get("files", [])
     if len(files) != corpus.get("unique_license_file_count"):
         raise ComplianceError("Qt license corpus file count drift")
-    _validate_file_records(files, project_root, "Qt 6.11.1 license corpus")
+    _validate_file_records(files, project_root, "Qt license corpus")
 
     listed = {Path(str(record["path"])).resolve() for record in files}
     actual = {
@@ -409,10 +387,15 @@ def validate_flatpak_linux_native_payload(policy: Mapping[str, Any]) -> None:
     """Validate Linux wheel-native payload pins against the active Linux wheels."""
 
     records = policy.get("flatpak_linux_native_payload", [])
+    if not records:
+        raise ComplianceError("Missing Flatpak Linux native-payload policy")
     paths = [str(record.get("path", "")) for record in records]
     _validate_unique_sorted(paths, "Flatpak native-payload paths")
     expected_prefix = (
-        Path("venv") / "lib" / f"python{policy['python_version']}" / "site-packages"
+        Path("venv")
+        / "lib"
+        / f"python{policy['python_versions']['linux']}"
+        / "site-packages"
     )
     for record in records:
         path = Path(str(record.get("path", "")))
@@ -441,7 +424,10 @@ def validate_flatpak_linux_native_payload(policy: Mapping[str, Any]) -> None:
                     f"Invalid Flatpak native-payload {phase} hash: {path}"
                 )
 
-    if not sys.platform.startswith("linux"):
+    if not sys.platform.startswith("linux") or (
+        f"{sys.version_info.major}.{sys.version_info.minor}"
+        != policy["python_versions"]["linux"]
+    ):
         return
 
     site_packages = Path(sys.prefix) / expected_prefix.relative_to("venv")
@@ -466,7 +452,7 @@ def validate_flatpak_linux_native_payload(policy: Mapping[str, Any]) -> None:
 def validate_qt_runtime_attributions(
     policy: Mapping[str, Any], *, project_root: Path = PROJECT_ROOT
 ) -> None:
-    """Validate exact QtWebEngine and FFmpeg attribution evidence."""
+    """Validate the Essentials-only boundary without silently accepting Addons."""
 
     runtime = policy.get("qt_runtime_attributions", {})
     if runtime.get("exact_build_sbom_available") is not False:
@@ -474,109 +460,57 @@ def validate_qt_runtime_attributions(
             "Qt wheel publisher exact-build SBOM availability must be explicit"
         )
 
-    chromium = runtime.get("chromium", {})
-    _validate_file_records(
-        chromium.get("files", []), project_root, "QtWebEngine Chromium"
+    if runtime.get("distribution") != "PySide6-Essentials":
+        raise ComplianceError("Qt runtime distribution must be PySide6-Essentials")
+    packages = {normalize_name(item["name"]): item for item in policy["packages"]}
+    if packages["pyside6-essentials"]["version"] != runtime.get("version"):
+        raise ComplianceError("Qt runtime version drift")
+    excluded = {
+        normalize_name(name) for name in runtime.get("excluded_distributions", [])
+    }
+    if excluded != {"pyside6", "pyside6-addons", "pyside6-pdf", "pyside6-webengine"}:
+        raise ComplianceError("Qt excluded distribution policy drift")
+    if excluded & packages.keys():
+        raise ComplianceError("Excluded Qt distribution present in policy")
+    installed = {
+        normalize_name(dist.metadata["Name"])
+        for dist in importlib.metadata.distributions()
+    }
+    if excluded & installed:
+        raise ComplianceError("Excluded Qt distribution is installed")
+    distribution = importlib.metadata.distribution("PySide6-Essentials")
+    root = Path(str(distribution.locate_file("PySide6")))
+    forbidden = (
+        "webengine",
+        "multimedia",
+        "ffmpeg",
+        "libavcodec",
+        "libavformat",
+        "libavutil",
+        "libswresample",
+        "libswscale",
+        "qt6pdf",
+        "qtpdf",
     )
-    webengine_root = project_root / "licenses" / "desktop" / "qt-6.11.1" / "qtwebengine"
-    source_version_text = (webengine_root / "CHROMIUM_VERSION").read_text(
-        encoding="utf-8"
-    )
-    based_on = re.search(r"Based on Chromium version:\s+(\S+)", source_version_text)
-    patched_to = re.search(
-        r"Patched with security patches up to Chromium version:\s+(\S+)",
-        source_version_text,
-    )
-    if based_on is None or based_on.group(1) != chromium.get("source_based_on_version"):
-        raise ComplianceError("QtWebEngine Chromium source-base version drift")
-    if patched_to is None or patched_to.group(1) != chromium.get(
-        "security_patch_version"
-    ):
-        raise ComplianceError("QtWebEngine Chromium security-patch version drift")
-
-    chrome_version = dict(
-        line.split("=", 1)
-        for line in (webengine_root / "chrome-VERSION")
-        .read_text(encoding="utf-8")
-        .splitlines()
-        if "=" in line
-    )
-    runtime_version = ".".join(
-        chrome_version[key] for key in ("MAJOR", "MINOR", "BUILD", "PATCH")
-    )
-    if runtime_version != chromium.get("runtime_version"):
-        raise ComplianceError("QtWebEngine Chromium runtime version drift")
-
-    credits = (webengine_root / "chromium-source-credits.html").read_text(
-        encoding="utf-8"
-    )
-    if not credits.startswith("<!-- Generated by licenses.py; do not edit. -->"):
-        raise ComplianceError("QtWebEngine Chromium credits generator marker missing")
-    if credits.count('<div class="product">') != chromium.get(
-        "source_credits_component_count"
-    ):
-        raise ComplianceError("QtWebEngine Chromium source credits count drift")
-
-    ffmpeg = runtime.get("ffmpeg", {})
-    _require_non_unknown(
-        str(ffmpeg.get("selected_license_expression", "")),
-        "Qt Multimedia FFmpeg selected license",
-    )
-    _validate_file_records(
-        ffmpeg.get("files", []), project_root, "Qt Multimedia FFmpeg"
-    )
-    attribution_path = (
-        project_root
-        / "licenses"
-        / "desktop"
-        / "qt-6.11.1"
-        / "qtmultimedia"
-        / "ffmpeg"
-        / "qt_attribution.json"
-    )
-    attributions = json.loads(attribution_path.read_text(encoding="utf-8"))
-    by_id = {item["Id"]: item for item in attributions}
-    expected_ids = {"ffmpeg", "ffmpeg-boost", "ffmpeg-libjpeg", "ffmpeg-zlib"}
-    if set(by_id) != expected_ids:
-        raise ComplianceError("Qt Multimedia FFmpeg attribution component drift")
-    expected_components = {item["id"]: item for item in ffmpeg.get("components", [])}
-    if set(expected_components) != expected_ids:
-        raise ComplianceError("Qt Multimedia FFmpeg policy component drift")
-    for component_id in sorted(expected_ids):
-        actual = by_id[component_id]
-        expected = expected_components[component_id]
-        fields = {
-            "Name": "name",
-            "LicenseId": "license_id",
-            "Copyright": "copyright",
-            "DownloadLocation": "download_location",
-        }
-        for actual_key, expected_key in fields.items():
-            if actual.get(actual_key) != expected.get(expected_key):
-                raise ComplianceError(
-                    "Qt Multimedia FFmpeg attribution drift: "
-                    f"{component_id} {actual_key}"
-                )
-        if "version" in expected and actual.get("Version") != expected["version"]:
-            raise ComplianceError(
-                f"Qt Multimedia FFmpeg attribution drift: {component_id} Version"
+    for path in root.rglob("*"):
+        if any(
+            path.relative_to(root.parent).is_relative_to(excluded)
+            for excluded in EXCLUDED_QT_PATHS
+        ):
+            continue
+        if any(
+            path.relative_to(root).is_relative_to(excluded)
+            for excluded in (
+                "plugins/designer/qwebengineview.dll",
+                "plugins/imageformats/qpdf.dll",
+                "qml/QtQuick/Pdf",
             )
-
-    main = by_id["ffmpeg"]
-    if main.get("LicenseId") != ffmpeg.get("selected_license_expression"):
-        raise ComplianceError("Qt Multimedia FFmpeg main license drift")
-    if main.get("DownloadLocation") != ffmpeg.get("source_url"):
-        raise ComplianceError("Qt Multimedia FFmpeg attribution source URL drift")
-    aggregate = str(ffmpeg.get("aggregate_attribution_expression", ""))
-    _require_non_unknown(aggregate, "Qt Multimedia FFmpeg aggregate attribution")
-    for expression in ("IJG", "Zlib", "BSL-1.0"):
-        if expression not in aggregate:
-            raise ComplianceError(
-                f"Qt Multimedia FFmpeg aggregate attribution misses {expression}"
-            )
-    _require_non_unknown(
-        str(ffmpeg.get("source_sha256", "")), "Qt Multimedia FFmpeg source SHA256"
-    )
+        ):
+            continue
+        if path.is_file() and any(
+            part in path.relative_to(root).as_posix().lower() for part in forbidden
+        ):
+            raise ComplianceError(f"Excluded Qt runtime file is installed: {path.name}")
 
 
 def validate_qt_source_attributions(
@@ -694,12 +628,16 @@ def validate_cryptography_wheel_sbom_evidence(
             raise ComplianceError(
                 f"Installed cryptography wheel SBOM missing: {installed_path}"
             )
-        if sha256_file(installed) != record.get("sha256"):
+        target_python = (
+            f"{sys.version_info.major}.{sys.version_info.minor}"
+            == evidence["python_version"]
+        )
+        if target_python and sha256_file(installed) != record.get("sha256"):
             raise ComplianceError(
                 f"Installed cryptography wheel SBOM hash drift: {installed_path}"
             )
         installed_documents[installed_path.name] = json.loads(
-            installed.read_text(encoding="utf-8")
+            (project_root / record["path"]).read_text(encoding="utf-8")
         )
 
     openssl_document = installed_documents.get("sbom.json", {})
@@ -844,7 +782,7 @@ def resolve_uv_tree(
             "--no-dev",
             "--frozen",
             "--python-version",
-            str(policy["python_version"]),
+            str(policy["python_versions"][platform]),
             "--python-platform",
             uv_platform,
         ],
@@ -996,11 +934,11 @@ def render_inventory(
             if platform == "linux"
             else "Reviewed uv resolver closure; this is not an exact PyInstaller payload inventory."
         ),
-        "python_version": policy["python_version"],
+        "python_version": policy["python_versions"][platform],
         "schema_version": 1,
         "uv_command": (
             "uv tree --no-dev --frozen "
-            f"--python-version {policy['python_version']} "
+            f"--python-version {policy['python_versions'][platform]} "
             f"--python-platform {policy['uv_platforms'][platform]}"
         ),
     }
@@ -1022,12 +960,15 @@ def render_flatpak_qt_inventory(*, project_root: Path = PROJECT_ROOT) -> str:
 
     distributions: list[dict[str, Any]] = []
     files: set[str] = set()
-    for distribution_name in ("PySide6-Essentials", "PySide6-Addons"):
+    for distribution_name in ("PySide6-Essentials",):
         distribution = importlib.metadata.distribution(distribution_name)
         distribution_files = sorted(
             file.as_posix()
             for file in (distribution.files or ())
             if file.as_posix().startswith("PySide6/")
+            and not any(
+                Path(file).is_relative_to(excluded) for excluded in EXCLUDED_QT_PATHS
+            )
         )
         distributions.append(
             {
@@ -1071,8 +1012,9 @@ def render_flatpak_qt_inventory(*, project_root: Path = PROJECT_ROOT) -> str:
         "schema_version": 1,
         "platform": "linux-flatpak-x86_64",
         "scope": (
-            "Files installed by the complete locked PySide6-Essentials and "
-            "PySide6-Addons wheels; this is broader than modules imported by MDLogger."
+            "Files installed by the complete locked PySide6-Essentials wheel; "
+            "this is broader than modules imported by MDLogger. Addons, WebEngine, "
+            "Pdf and Multimedia are not installed."
         ),
         "distributions": distributions,
         "direct_source_imports": sorted(source_imports),
@@ -1087,6 +1029,7 @@ def render_flatpak_qt_inventory(*, project_root: Path = PROJECT_ROOT) -> str:
             file.startswith("PySide6/Qt/resources/") for file in files
         ),
         "excluded_files": [
+            *EXCLUDED_QT_PATHS,
             "pyqtgraph/colors/maps/PAL-relaxed.hex",
             "pyqtgraph/colors/maps/PAL-relaxed_bright.hex",
         ],
@@ -1109,19 +1052,13 @@ def _runtime_binary_record(package_root: Path, relative: str) -> dict[str, objec
     }
 
 
-def _required_c_string(value: object, label: str) -> str:
-    if not isinstance(value, bytes):
-        raise ComplianceError(f"Unable to inspect {label}")
-    return value.decode("utf-8")
-
-
 def render_qt_third_party_runtime_inventory(
     policy: Mapping[str, Any],
     *,
     project_root: Path = PROJECT_ROOT,
     inspect_runtime: bool = True,
 ) -> str:
-    """Render binary evidence for QtWebEngine/Chromium and FFmpeg on Linux."""
+    """Render every native Essentials file, not only modules used by the app."""
 
     tracked = (
         project_root
@@ -1137,58 +1074,58 @@ def render_qt_third_party_runtime_inventory(
         return tracked.read_text(encoding="utf-8")
 
     runtime = policy["qt_runtime_attributions"]
-    chromium_policy = runtime["chromium"]
-    ffmpeg_policy = runtime["ffmpeg"]
-    distribution = importlib.metadata.distribution("PySide6-Addons")
+    validate_qt_runtime_attributions(policy, project_root=project_root)
+    distribution = importlib.metadata.distribution(runtime["distribution"])
     package_root = Path(str(distribution.locate_file("PySide6"))).resolve()
+    from PySide6.QtCore import qVersion
 
-    from PySide6.QtWebEngineCore import qWebEngineChromiumVersion, qWebEngineVersion
-
-    qt_webengine_version = qWebEngineVersion()
-    chromium_version = qWebEngineChromiumVersion()
-    if qt_webengine_version != "6.11.1":
-        raise ComplianceError(
-            f"QtWebEngine runtime version drift: {qt_webengine_version}"
-        )
-    if chromium_version != chromium_policy["runtime_version"]:
-        raise ComplianceError(f"Chromium runtime version drift: {chromium_version}")
-
-    avcodec = ctypes.CDLL(str(package_root / "Qt/lib/libavcodec.so.61"))
-    avutil = ctypes.CDLL(str(package_root / "Qt/lib/libavutil.so.59"))
-    avcodec.avcodec_configuration.restype = ctypes.c_char_p
-    avcodec.avcodec_license.restype = ctypes.c_char_p
-    avutil.av_version_info.restype = ctypes.c_char_p
-    ffmpeg_version = _required_c_string(
-        avutil.av_version_info(), "FFmpeg runtime version"
-    )
-    ffmpeg_license = _required_c_string(
-        avcodec.avcodec_license(), "FFmpeg runtime license"
-    )
-    ffmpeg_configure = _required_c_string(
-        avcodec.avcodec_configuration(), "FFmpeg configure flags"
-    )
-    for value, expected, label in (
-        (ffmpeg_version, ffmpeg_policy["version"], "version"),
-        (ffmpeg_license, ffmpeg_policy["runtime_license"], "license"),
-        (ffmpeg_configure, ffmpeg_policy["configure"], "configure flags"),
-    ):
-        if value != expected:
-            raise ComplianceError(
-                f"Qt Multimedia FFmpeg runtime {label} drift: {value}"
-            )
+    if qVersion() != runtime["version"]:
+        raise ComplianceError("Qt runtime version drift")
+    icu_major = runtime["icu_version"].split(".", 1)[0]
+    icu = ctypes.CDLL(str(package_root / f"Qt/lib/libicuuc.so.{icu_major}"))
+    get_version = getattr(icu, f"u_getVersion_{icu_major}")
+    get_version.argtypes = [ctypes.POINTER(ctypes.c_uint8)]
+    get_version.restype = None
+    version = (ctypes.c_uint8 * 4)()
+    get_version(version)
+    icu_version = ".".join(str(value) for value in version[:2])
+    if icu_version != runtime["icu_version"]:
+        raise ComplianceError("Qt bundled ICU runtime version drift")
+    native_files = []
+    for path in sorted(package_root.rglob("*")):
+        if any(
+            path.relative_to(package_root.parent).is_relative_to(excluded)
+            for excluded in EXCLUDED_QT_PATHS
+        ):
+            continue
+        if path.is_file():
+            with path.open("rb") as stream:
+                if stream.read(4) == b"\x7fELF":
+                    native_files.append(
+                        _runtime_binary_record(
+                            package_root, path.relative_to(package_root).as_posix()
+                        )
+                    )
+    if not native_files:
+        raise ComplianceError("Qt Essentials native payload is empty")
 
     inventory = {
-        "schema_version": 1,
+        "schema_version": 2,
         "platform": "linux-flatpak-x86_64",
         "scope": (
-            "Binary inspection of the complete locked PySide6-Addons wheel "
-            "installed by Flatpak."
+            "All ELF binaries from the locked PySide6-Essentials Linux wheel, "
+            "including bindings, Qt libraries, plugins and tools."
         ),
         "distribution": {
             "name": distribution.metadata["Name"],
             "version": distribution.version,
         },
         "exact_build_sbom_available": runtime["exact_build_sbom_available"],
+        "excluded_distributions": runtime["excluded_distributions"],
+        "excluded_binding_modules": runtime["excluded_binding_modules"],
+        "excluded_paths": list(EXCLUDED_QT_PATHS),
+        "icu_version": icu_version,
+        "payload_files": native_files,
         "qt_source_attributions": {
             "path": policy["qt_source_attributions"]["file"]["path"],
             "record_count": policy["qt_source_attributions"]["record_count"],
@@ -1198,51 +1135,11 @@ def render_qt_third_party_runtime_inventory(
             ],
             "scope": policy["qt_source_attributions"]["scope"],
         },
-        "chromium": {
-            "qt_webengine_version": qt_webengine_version,
-            "runtime_version": chromium_version,
-            "source_based_on_version": chromium_policy["source_based_on_version"],
-            "security_patch_version": chromium_policy["security_patch_version"],
-            "payload_files": [
-                _runtime_binary_record(package_root, relative)
-                for relative in WEBENGINE_RUNTIME_FILES
-            ],
-            "source_credits": {
-                "component_count": chromium_policy["source_credits_component_count"],
-                "path": (
-                    "licenses/desktop/qt-6.11.1/qtwebengine/"
-                    "chromium-source-credits.html"
-                ),
-                "scope": chromium_policy["source_credits_scope"],
-            },
-            "legal_files": [record["path"] for record in chromium_policy["files"]],
-        },
-        "ffmpeg": {
-            "version": ffmpeg_version,
-            "runtime_license": ffmpeg_license,
-            "selected_license_expression": ffmpeg_policy["selected_license_expression"],
-            "aggregate_attribution_expression": ffmpeg_policy[
-                "aggregate_attribution_expression"
-            ],
-            "components": ffmpeg_policy["components"],
-            "configure": ffmpeg_configure,
-            "source_url": ffmpeg_policy["source_url"],
-            "source_sha256": ffmpeg_policy["source_sha256"],
-            "payload_files": [
-                _runtime_binary_record(package_root, relative)
-                for relative in FFMPEG_RUNTIME_FILES
-            ],
-            "dynamic_system_dependencies": [
-                "libbz2.so.1",
-                "libm.so.6",
-                "libz.so.1",
-            ],
-            "legal_files": [record["path"] for record in ffmpeg_policy["files"]],
-        },
         "provenance_note": (
             "The PySide wheel publisher did not include an exact-build SBOM. "
             "This inventory therefore combines exact binary inspection with "
-            "attribution metadata from the verified Qt 6.11.1 source archive."
+            "attribution metadata from the verified matching Qt source archive. "
+            "Unused Addons/WebEngine/Pdf/Multimedia, Chromium and FFmpeg are absent."
         ),
     }
     return json.dumps(inventory, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
@@ -1259,41 +1156,32 @@ def _markdown_desktop_section(policy: Mapping[str, Any]) -> str:
         "- Review status: lockfile closures, tracked legal files, and selected ",
         "  license expressions are reviewed. Final Windows payload inspection ",
         "  remains a Windows release-host check.",
-        "- Linux Flatpak resolver closure: 19 third-party distributions.",
-        "- Windows resolver closure: 15 third-party distributions. This is not ",
+        f"- Linux Flatpak resolver closure: {policy['expected_distribution_counts']['linux']} third-party distributions (Python {policy['python_versions']['linux']}).",
+        f"- Windows resolver closure: {policy['expected_distribution_counts']['windows']} third-party distributions (Python {policy['python_versions']['windows']}). This is not ",
         "  represented as an exact PyInstaller payload inventory.",
-        "- Windows also inventories the CPython 3.13 runtime and standard library ",
-        "  (with Microsoft Visual C++ Distributable Code, OpenSSL 3.5.9, libffi 3.4.4, ",
-        "  and xz/liblzma 5.2.5), PyInstaller 6.21.0 bootloader and runtime hooks, ",
-        "  pyinstaller-hooks-contrib 2026.6 runtime hooks, NumPy Windows OpenBLAS/LAPACK ",
+        "- Windows also inventories the uv-managed CPython runtime and standard library ",
+        "  (python-build-standalone; exact vendor evidence is retained), ",
+        "  PyInstaller bootloader and runtime hooks, ",
+        "  pyinstaller-hooks-contrib runtime hooks, NumPy Windows OpenBLAS/LAPACK ",
         "  and libgfortran, Qt Windows D3D12MemoryAllocator and Wintab, and the ",
         "  Inno Setup 6 loader/uninstaller.",
         "- Qt/PySide6 is distributed under the selected `GPL-3.0-only` path.",
         "- Exact Qt/PySide6 corresponding-source instructions: ",
         "  `licenses/sources/desktop-source-offer.md`.",
-        "- The 83 unique license texts from all 402 Qt 6.11.1 source archive ",
-        "  `LICENSES` entries are preserved under `licenses/desktop/qt-6.11.1/`.",
-        "- Qt package-specific source attribution: 123 records and 88 referenced ",
-        "  legal files under `licenses/desktop/qt-6.11.1/`. This is a conservative ",
-        "  Linux source-attribution superset (which also covers shared cross-platform ",
+        f"- Qt license corpus: {policy['qt_license_corpus']['unique_license_file_count']} unique source texts; manifest `{policy['qt_license_corpus']['manifest']}`.",
+        f"- Qt package-specific source attribution: {policy['qt_source_attributions']['record_count']} records and {policy['qt_source_attributions']['legal_file_count']} referenced legal files.",
+        "  This is a conservative Essentials source-attribution superset (which also covers cross-platform ",
         "  QtCore/QtGui/QtWidgets/QtSvg third-party code on Windows), not an exact ",
         "  wheel-build SBOM.",
-        "- The full Linux wheel also ships QtWebEngine with Chromium ",
-        "  `140.0.7339.225` and Qt Multimedia with FFmpeg `7.1.3`; exact binary ",
-        "  evidence is in `licenses/inventory/qt-third-party-runtime-linux-flatpak.json`.",
-        "- Chromium's 262-component credits are a conservative Linux source-tree ",
-        "  superset generated without the unavailable wheel publisher GN ",
-        "  dependency graph: `licenses/desktop/qt-6.11.1/qtwebengine/",
-        "  chromium-source-credits.html`.",
-        "- FFmpeg 7.1.3 attribution covers FFmpeg, libjpeg, zlib, and Boost; its ",
-        "  aggregate expression and all texts are under ",
-        "  `licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/`.",
+        "- Only PySide6-Essentials and shiboken6 are installed. Addons, WebEngine, ",
+        "  Pdf, Multimedia, Chromium and FFmpeg are absent. Every Essentials ELF ",
+        "  binary is inventoried in `licenses/inventory/qt-third-party-runtime-linux-flatpak.json`.",
         "- The PySide wheel publisher did not include an exact-build SBOM; the ",
         "  tracked evidence does not claim otherwise. Cryptography is separate: its ",
         "  Linux wheel ships exact OpenSSL and Rust build-provenance SBOM files under ",
-        "  `licenses/desktop/cryptography-50.0.0/sboms/`; the Rust document is not ",
-        "  an object-level linker map. Codec patent obligations ",
-        "  can vary by format and distribution country and are not granted by Qt.",
+        f"  `licenses/desktop/cryptography-{policy['cryptography_wheel_sbom_evidence']['version']}/sboms/`; the Rust document is not ",
+        "  an object-level linker map. These are Python 3.14 Flatpak wheel bytes, ",
+        "  not Python 3.15 or Windows binary evidence.",
         "- `PAL-relaxed.hex` and `PAL-relaxed_bright.hex` from pyqtgraph are ",
         "  excluded from both supported desktop distributions because their ",
         "  license and provenance could not be confirmed; `opengl32sw.dll`, ",
@@ -1356,18 +1244,16 @@ def _text_desktop_section(policy: Mapping[str, Any]) -> str:
         "=====================",
         "",
         "Review status: lockfile closures, tracked legal files, and selected license expressions are reviewed; final Windows payload inspection remains a Windows release-host check.",
-        "Linux Flatpak resolver closure: 19 third-party distributions.",
-        "Windows resolver closure: 15 third-party distributions plus CPython 3.13 runtime/stdlib (with Microsoft Visual C++ Distributable Code, OpenSSL 3.5.9, libffi 3.4.4, xz/liblzma 5.2.5), PyInstaller 6.21.0 bootloader and runtime hooks, pyinstaller-hooks-contrib 2026.6 runtime hooks, NumPy Windows OpenBLAS/LAPACK and libgfortran, Qt Windows D3D12MemoryAllocator and Wintab, and Inno Setup 6 loader/uninstaller; this is not an exact PyInstaller payload inventory.",
+        f"Linux Flatpak resolver closure: {policy['expected_distribution_counts']['linux']} third-party distributions (Python {policy['python_versions']['linux']}).",
+        f"Windows resolver closure: {policy['expected_distribution_counts']['windows']} third-party distributions (Python {policy['python_versions']['windows']}) plus the uv-managed CPython runtime, PyInstaller/hooks, NumPy native libraries, Qt Windows third-party code and Inno Setup; this is not an exact PyInstaller payload inventory.",
         "Qt/PySide6 selected license: GPL-3.0-only.",
         "Source instructions: licenses/sources/desktop-source-offer.md",
-        "Qt license corpus: licenses/desktop/qt-6.11.1/LICENSES-MANIFEST.json (83 unique texts from 402 source entries).",
-        "Qt package-specific attribution: 123-record conservative Linux source-attribution superset (also covering shared cross-platform QtCore/QtGui/QtWidgets/QtSvg third-party code on Windows) plus 88 referenced legal files; not an exact wheel-build SBOM.",
-        "QtWebEngine Chromium runtime: 140.0.7339.225; 262-component conservative Linux source-tree superset generated without the unavailable wheel publisher GN dependency graph: licenses/desktop/qt-6.11.1/qtwebengine/chromium-source-credits.html.",
-        "Qt Multimedia FFmpeg runtime: 7.1.3; attribution covers FFmpeg, libjpeg, zlib, and Boost: licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/.",
+        f"Qt license corpus: {policy['qt_license_corpus']['manifest']} ({policy['qt_license_corpus']['unique_license_file_count']} unique texts).",
+        f"Qt source attribution: {policy['qt_source_attributions']['record_count']} records and {policy['qt_source_attributions']['legal_file_count']} legal files; conservative cross-platform Essentials superset, not an exact wheel-build SBOM.",
+        "Only PySide6-Essentials and shiboken6 are installed. Addons, WebEngine, Pdf, Multimedia, Chromium and FFmpeg are absent; every Essentials ELF binary is inventoried.",
         "Binary evidence: licenses/inventory/qt-third-party-runtime-linux-flatpak.json.",
         "The PySide wheel publisher did not include an exact-build SBOM; no exact-build SBOM is claimed for PySide.",
-        "Cryptography Linux wheel SBOM evidence for OpenSSL and 39 Rust build components: licenses/desktop/cryptography-50.0.0/sboms/; the Rust document is not an object-level linker map.",
-        "Codec patent obligations vary by format and country and are not granted by Qt.",
+        f"Cryptography Linux Python 3.14 wheel SBOM evidence for OpenSSL and Rust build components: licenses/desktop/cryptography-{policy['cryptography_wheel_sbom_evidence']['version']}/sboms/; the Rust document is not an object-level linker map or Python 3.15/Windows evidence.",
         "Excluded unverified/unused assets: pyqtgraph/colors/maps/PAL-relaxed.hex, PAL-relaxed_bright.hex, and Windows opengl32sw.dll, qpdf.dll, Qt6Pdf.dll.",
         "",
         "RUNTIME DISTRIBUTIONS",
@@ -1618,6 +1504,19 @@ def generate(*, check: bool) -> None:
     """Validate all evidence, then generate or check committed artifacts."""
 
     policy = load_policy()
+    if sys.platform.startswith("linux") and (
+        f"{sys.version_info.major}.{sys.version_info.minor}"
+        != policy["python_versions"]["linux"]
+    ):
+        if not check:
+            raise ComplianceError(
+                f"Generate Flatpak evidence with Python {policy['python_versions']['linux']}; "
+                "the default development interpreter uses different native wheels"
+            )
+        print(
+            f"Retained Flatpak evidence targets Python {policy['python_versions']['linux']}; "
+            "installed native wheel bytes require a check with that interpreter"
+        )
     validate_policy(policy)
     validate_lock_versions(policy, load_lock_versions())
     closures = validate_platform_closures(policy)

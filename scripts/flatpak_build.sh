@@ -2,7 +2,7 @@
 # MDLogger Flatpak 빌드·설치 스크립트
 #
 # 동작:
-#   1) flatpak-builder 와 FreeDesktop SDK(25.08)가 있는지 확인하고, 없으면
+#   1) flatpak-builder 와 FreeDesktop SDK(26.08)가 있는지 확인하고, 없으면
 #      사용자 당(--user) 설치를 안내·시도한다.
 #   2) 생성된 Supabase 설정 모듈(_bundled_config.py)이 없으면 생성 스크립트로
 #      만든다(환경변수 미지정 시 온라인 기능 제외). 생성 모듈은 .gitignore 라서
@@ -23,7 +23,7 @@
 set -euo pipefail
 
 APP_ID="io.github.dusten45.MDLogger"
-RUNTIME_REF="org.freedesktop.Sdk//25.08"
+RUNTIME_REF="org.freedesktop.Sdk//26.08"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MANIFEST="flatpak/${APP_ID}.yaml"
 BUNDLED_CONFIG="src/mdlogger/remote/_bundled_config.py"
@@ -45,7 +45,7 @@ fi
 
 if ! flatpak info "${RUNTIME_REF}" >/dev/null 2>&1 \
   && ! flatpak info --system "${RUNTIME_REF}" >/dev/null 2>&1; then
-  echo "[안내] FreeDesktop SDK 25.08 이 없어 설치를 시도합니다."
+  echo "[안내] FreeDesktop SDK 26.08 이 없어 설치를 시도합니다."
   flatpak install --user flathub "${RUNTIME_REF}"
 fi
 

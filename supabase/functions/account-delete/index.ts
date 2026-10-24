@@ -14,7 +14,7 @@
 //   철회가 아니므로 withdrawn_at을 설정하지 않는다, 로드맵 9.3).
 // - 요청한 사용자와 대상 사용자가 일치해야만 삭제를 수행한다.
 
-import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2.118.0";
 
 const MAX_BODY_BYTES = 4 * 1024;
 
@@ -162,7 +162,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
             code: "account_deleted",
             user_id: subject,
             ...counts,
-            deleted_auth_user: deletedUser?.id ?? subject,
+            deleted_auth_user: deletedUser?.user?.id ?? subject,
             note: "delete_account_data cleanup skipped; FK cascade already removed personal data",
         });
     }
@@ -171,6 +171,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
         code: "account_deleted",
         user_id: subject,
         ...counts,
-        deleted_auth_user: deletedUser?.id ?? subject,
+        deleted_auth_user: deletedUser?.user?.id ?? subject,
     });
 });

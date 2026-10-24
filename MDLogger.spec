@@ -40,15 +40,17 @@ excluded_binaries = {
     "qt6pdf.dll",
     "libqpdf.so",
     "libqt6pdf.so.6",
+    "qwebengineview.dll",
+    "libqwebengineview.so",
 }
 
-# Linux 전용 런타임 패키지 및 Linux Flatpak 전용 QtWebEngine(Chromium)/QtMultimedia(FFmpeg)
-# 고지 파일은 Windows 배포 폴더에서 제외한다.
+# Linux 전용 런타임 패키지의 고지 파일은 Windows 배포 폴더에서 제외한다.
 excluded_windows_license_dirs = (
     "cffi-2.1.1",
-    "cryptography-50.0.0",
+    "cryptography-50.0.2",
+    "icu-73.2",
     "jeepney-0.9.0",
-    "pycparser-3.0",
+    "pycparser-3.12",
     "secretstorage-3.5.0",
     "qtwebengine",
     "qtmultimedia",
@@ -56,7 +58,8 @@ excluded_windows_license_dirs = (
 
 # 동적 import 문자열(`importlib.import_module`)이라 정적 분석 대상이 아니므로
 # publishable 설정 모듈을 명시적으로 포함한다. 없으면 PyInstaller가 무시한다.
-hiddenimports = ["mdlogger.remote._bundled_config"]
+# Essentials만 설치하면 PyInstaller의 PySide6 메타패키지 검사가 이 모듈을 놓친다.
+hiddenimports = ["mdlogger.remote._bundled_config", "PySide6.support.deprecated"]
 
 a = Analysis(
     ["run.py"],
@@ -92,6 +95,7 @@ a.datas = [
     entry
     for entry in a.datas
     if entry[0].replace("\\", "/") not in excluded_pyqtgraph_data
+    and entry[0].replace("\\", "/") != "PySide6/resources/icudtl.dat"
 ]
 pyz = PYZ(a.pure)
 

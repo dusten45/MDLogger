@@ -5,7 +5,7 @@
       "copyright": "Copyright (C) 2002-2017 Free Software Foundation, Inc.",
       "license_files": [
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt",
           "sha256": "4860083caa0de2ac3292ca98bd074bd8f45d8b32624e37b1e70a240bff61e488"
         }
       ],
@@ -13,7 +13,7 @@
       "platforms": [
         "linux"
       ],
-      "purpose": "Shared runtime library bundled as numpy.libs/libgfortran-040039e1-0352e75f.so.5.0.0.",
+      "purpose": "Shared runtime library bundled as numpy.libs/libgfortran-83c28eba-468e71e5.so.5.0.0.",
       "review_notes": "Known limitation: The exact GCC revision is not disclosed by the wheel; the retained NumPy LICENSE.txt identifies the bundled runtime and notices.",
       "selected_license_expression": "GPL-3.0-or-later WITH GCC-exception-3.1",
       "source_repository": "https://gcc.gnu.org/git/?p=gcc.git;a=tree;f=libgfortran",
@@ -23,7 +23,7 @@
       "copyright": "Copyright (C) 2010-2019 Free Software Foundation, Inc.",
       "license_files": [
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt",
           "sha256": "4860083caa0de2ac3292ca98bd074bd8f45d8b32624e37b1e70a240bff61e488"
         }
       ],
@@ -31,17 +31,35 @@
       "platforms": [
         "linux"
       ],
-      "purpose": "Shared runtime library bundled as numpy.libs/libquadmath-96973f99-934c22de.so.0.0.0.",
+      "purpose": "Shared runtime library bundled as numpy.libs/libquadmath-2284e583-a9307bba.so.0.0.0.",
       "review_notes": "Known limitation: The exact GCC revision is not disclosed by the wheel; the retained NumPy LICENSE.txt identifies the bundled runtime and notices.",
       "selected_license_expression": "LGPL-2.1-or-later",
       "source_repository": "https://gcc.gnu.org/git/?p=gcc.git;a=tree;f=libquadmath",
       "version": "0.0.0 (wheel file)"
     },
     {
+      "copyright": "Copyright 1991-2023 Unicode, Inc.; International Business Machines Corporation and dictionary/data authors named in the retained ICU license.",
+      "license_files": [
+        {
+          "path": "licenses/desktop/icu-73.2/LICENSE",
+          "sha256": "f3005e195ff74d8812cc1f182a1c446fab678d70a10e3dada497585befee5416"
+        }
+      ],
+      "name": "ICU Unicode libraries from Qt Linux wheel",
+      "platforms": [
+        "linux"
+      ],
+      "purpose": "libicudata.so.73, libicui18n.so.73 and libicuuc.so.73 bundled by PySide6-Essentials; runtime version verified using u_getVersion_73.",
+      "review_notes": "Exact release-73-2 license and supplemental notices retained, including dictionaries and public-domain time-zone data. Autoconf helper notices also occur in the source license but are not distributed runtime code. This older ICU is bundled by the latest Qt wheel; it is not independently substituted across its native ABI. No exact publisher build SBOM is claimed.",
+      "selected_license_expression": "Unicode-DFS-2016 AND ICU AND BSD-2-Clause AND BSD-3-Clause AND NAIST-2003 AND LicenseRef-IANA-TZ-Public-Domain",
+      "source_repository": "https://github.com/unicode-org/icu/tree/release-73-2",
+      "version": "73.2"
+    },
+    {
       "copyright": "Copyright (c) 2011-2014 The OpenBLAS Project; LAPACK contributors listed in NumPy LICENSE.txt",
       "license_files": [
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt",
           "sha256": "4860083caa0de2ac3292ca98bd074bd8f45d8b32624e37b1e70a240bff61e488"
         }
       ],
@@ -49,17 +67,17 @@
       "platforms": [
         "linux"
       ],
-      "purpose": "Shared numerical library bundled in numpy.libs/libscipy_openblas64_-32a4b2a6.so.",
+      "purpose": "Shared numerical library bundled in numpy.libs/libscipy_openblas64_-f48b354e.so.",
       "review_notes": "Known limitation: The exact OpenBLAS revision is not disclosed by the wheel; the retained NumPy LICENSE.txt identifies the bundled binary and notices.",
       "selected_license_expression": "BSD-3-Clause AND BSD-3-Clause-Open-MPI",
       "source_repository": "https://github.com/OpenMathLib/OpenBLAS/",
-      "version": "2.4.6 wheel bundle"
+      "version": "2.5.4 wheel bundle"
     },
     {
       "copyright": "Copyright 1998-2026 The OpenSSL Project Authors. All Rights Reserved.",
       "license_files": [
         {
-          "path": "licenses/desktop/cryptography-50.0.0/licenses/LICENSE.APACHE",
+          "path": "licenses/desktop/cryptography-50.0.2/licenses/LICENSE.APACHE",
           "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe"
         }
       ],
@@ -71,12 +89,12 @@
       "review_notes": "Exact source URL, SHA256 and build flags are validated from the wheel SBOM.",
       "selected_license_expression": "Apache-2.0",
       "source_repository": "https://github.com/openssl/openssl",
-      "version": "4.0.1"
+      "version": "4.0.3"
     }
   ],
-  "distribution_count": 19,
+  "distribution_count": 17,
   "generated_by": "scripts/generate_desktop_licenses.py",
-  "lockfile_sha256": "0c9b9b38957644b547e5cdac1321417b09949f738623d72c5a1f34a457d19561",
+  "lockfile_sha256": "d4aefa1c40be37e3072a5fcc462292dcebd0c0d5766066aefd9c6d1a0e3cb9dc",
   "packages": [
     {
       "copyright": "Armin Rigo, Maciej Fijalkowski and contributors",
@@ -128,15 +146,15 @@
       "homepage": "https://cryptography.io/",
       "license_files": [
         {
-          "path": "licenses/desktop/cryptography-50.0.0/licenses/LICENSE",
+          "path": "licenses/desktop/cryptography-50.0.2/licenses/LICENSE",
           "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb"
         },
         {
-          "path": "licenses/desktop/cryptography-50.0.0/licenses/LICENSE.APACHE",
+          "path": "licenses/desktop/cryptography-50.0.2/licenses/LICENSE.APACHE",
           "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe"
         },
         {
-          "path": "licenses/desktop/cryptography-50.0.0/licenses/LICENSE.BSD",
+          "path": "licenses/desktop/cryptography-50.0.2/licenses/LICENSE.BSD",
           "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb"
         }
       ],
@@ -150,7 +168,7 @@
       "review_notes": "The BSD-3-Clause alternative is explicitly selected; LICENSE and both upstream alternative texts are preserved.",
       "selected_license_expression": "BSD-3-Clause",
       "source_repository": "https://github.com/pyca/cryptography",
-      "version": "50.0.0"
+      "version": "50.0.2"
     },
     {
       "copyright": "Copyright (c) 2010 openpyxl; Python Software Foundation contributors",
@@ -298,7 +316,7 @@
       "homepage": "https://more-itertools.readthedocs.io/",
       "license_files": [
         {
-          "path": "licenses/desktop/more-itertools-11.1.0/licenses/LICENSE",
+          "path": "licenses/desktop/more-itertools-11.2.1/licenses/LICENSE",
           "sha256": "09f1c8c9e941af3e584d59641ea9b87d83c0cb0fd007eb5ef391a7e2643c1a46"
         }
       ],
@@ -312,7 +330,7 @@
       "review_notes": "",
       "selected_license_expression": "MIT",
       "source_repository": "https://github.com/more-itertools/more-itertools",
-      "version": "11.1.0"
+      "version": "11.2.1"
     },
     {
       "copyright": "Copyright (c) 2005-2025 NumPy Developers and bundled component authors",
@@ -320,87 +338,87 @@
       "homepage": "https://numpy.org/",
       "license_files": [
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/LICENSE-windows.txt",
           "sha256": "a804dff0ead9fadc5293456410bcbfc32bf024be9c4513459663fb7b442d2341"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt",
           "sha256": "4860083caa0de2ac3292ca98bd074bd8f45d8b32624e37b1e70a240bff61e488"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt",
           "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING",
           "sha256": "3f2c1ffa76383a55ae0aac01c9737cd70050dff63e1f026694fbe9d662573c98"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/highway/LICENSE",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/_core/src/highway/LICENSE",
           "sha256": "e340270d4f64384569a91d546acb5b094d69ce47f0c015db77abb74dc6f815af"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/multiarray/dragon4_LICENSE.txt",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/_core/src/multiarray/dragon4_LICENSE.txt",
           "sha256": "f7b14309e5f54e5022b26448eefd419988ada2aec01d3c1162d84a0ea8f21f2c"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md",
           "sha256": "211e7d737d6179a08f791ebb0a99897ce7cd2457410c542876d125576edfe910"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/umath/svml/LICENSE",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/_core/src/umath/svml/LICENSE",
           "sha256": "c17011467b4fe6e20fbfbeda4df09e58c2bca5480a063e55735a4000a379aad9"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/fft/pocketfft/LICENSE.md",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/fft/pocketfft/LICENSE.md",
           "sha256": "a85ca13fdf90160b64a0698215868c13b74d835ad0a4e2ba44713b8c5058a056"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/linalg/lapack_lite/LICENSE.txt",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/linalg/lapack_lite/LICENSE.txt",
           "sha256": "a14cc25e10d40a3aa705b7de2fb764a6535d8ee9b2db4e1724900585457dfd55"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/ma/LICENSE",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/ma/LICENSE",
           "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/random/LICENSE.md",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/random/LICENSE.md",
           "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/distributions/LICENSE.md",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/distributions/LICENSE.md",
           "sha256": "469778be8f33d54e1bcaab28c281cc472916d2d273f835e55bc487d30503face"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/mt19937/LICENSE.md",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/mt19937/LICENSE.md",
           "sha256": "0e111337b25494a773106695f0e799f642b8567aaacca4f116a74a8177179156"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/pcg64/LICENSE.md",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/pcg64/LICENSE.md",
           "sha256": "e7d4f4fb20358f314210a892ae17351e04993813646f697ec387385ca2a36918"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/philox/LICENSE.md",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/philox/LICENSE.md",
           "sha256": "6f5828a57223d4cc7f8ea505a2623e7b978b242752c1515e355f46ba2cec1800"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/sfc64/LICENSE.md",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/sfc64/LICENSE.md",
           "sha256": "9d4098846018319cd68e228ee6220361787f73bccbf00237a85e4fc9621b998f"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/splitmix64/LICENSE.md",
+          "path": "licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/splitmix64/LICENSE.md",
           "sha256": "268b0ca06759d31ea3ca68dd35f20e877916e927b1c2a835e4592a3c4354b1f9"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/numpy/_core/include/numpy/random/LICENSE.txt",
+          "path": "licenses/desktop/numpy-2.5.4/numpy/_core/include/numpy/random/LICENSE.txt",
           "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/numpy/ma/LICENSE",
+          "path": "licenses/desktop/numpy-2.5.4/numpy/ma/LICENSE",
           "sha256": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
         },
         {
-          "path": "licenses/desktop/numpy-2.4.6/numpy/random/LICENSE.md",
+          "path": "licenses/desktop/numpy-2.5.4/numpy/random/LICENSE.md",
           "sha256": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
         }
       ],
@@ -411,10 +429,10 @@
       },
       "name": "numpy",
       "purpose": "Numerical arrays used by pyqtgraph.",
-      "review_notes": "All 20 legal files reported by the wheel are preserved, including bundled random generators, SIMD code, LAPACK, libdivide, and compatibility components.",
+      "review_notes": "All legal files declared by the Linux wheel and the platform-specific Windows native-runtime notice are preserved.",
       "selected_license_expression": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
       "source_repository": "https://github.com/numpy/numpy",
-      "version": "2.4.6"
+      "version": "2.5.4"
     },
     {
       "copyright": "Copyright (c) 2010 openpyxl; Eric Gazoni, Charlie Clark and contributors",
@@ -448,8 +466,8 @@
       "homepage": "https://github.com/eliben/pycparser",
       "license_files": [
         {
-          "path": "licenses/desktop/pycparser-3.0/licenses/LICENSE",
-          "sha256": "0c846399369ea76ddd7b5c44fe6d16497415fcf015f5cbb508c24bf98b81c5b1"
+          "path": "licenses/desktop/pycparser-3.12/licenses/LICENSE",
+          "sha256": "0a9e78156ae8b96caf1b4f11ac2df424b83de29736f9e757630548a6272fdf90"
         }
       ],
       "local_modifications": "None",
@@ -462,7 +480,7 @@
       "review_notes": "",
       "selected_license_expression": "BSD-3-Clause",
       "source_repository": "https://github.com/eliben/pycparser",
-      "version": "3.0"
+      "version": "3.12"
     },
     {
       "copyright": "Copyright (c) 2012 University of North Carolina at Chapel Hill and Luke Campagnola; Peter Kovesi/ColorCET; Anton Mikhailov et al.",
@@ -512,208 +530,64 @@
       "homepage": "https://pyside.org/",
       "license_files": [
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/Apache-2.0.txt",
+          "path": "licenses/desktop/pyside6-essentials-6.12.0/windows/licenses/LicenseRef-Qt-Commercial.txt",
+          "sha256": "4f54763ac0fe2abd8f7f8d8fe370a94a08ebf84786aa0b91045bd6628deb08a3"
+        },
+        {
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/Apache-2.0.txt",
           "sha256": "e3ba223bb1423f0aad8c3dfce0fe3148db48926d41e6fbc3afbbf5ff9e1c89cb"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/BSD-3-Clause.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/BSD-3-Clause.txt",
           "sha256": "62803a6fcceef9091a129d7293d2469ea332b35d30f5e1bc4c628a9f35f3d29c"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GFDL-1.3-no-invariants-only.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/GFDL-1.3-no-invariants-only.txt",
           "sha256": "110535522396708cea37c72a802c5e7e81391139f5f7985631c93ef242b206a4"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-2.0-only.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/GPL-2.0-only.txt",
           "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-3.0-only.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/GPL-3.0-only.txt",
           "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/LGPL-3.0-only.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/LGPL-3.0-only.txt",
           "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/Qt-GPL-exception-1.0.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/LicenseRef-Qt-Commercial.txt",
+          "sha256": "9b1f50aae6267f9d5e0ceb6775ee86450262c25ec7c0573e151fe5d3f18a4700"
+        },
+        {
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/Qt-GPL-exception-1.0.txt",
           "sha256": "40678d338ce53cd93f8b22b281a2ecbcaa3ee65ce60b25ffb0c462b0530846b2"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/pyside6/COPYING",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/pyside6/COPYING",
           "sha256": "3700b1c56fae3813dfaaef1cba101b6ec108167f36b19f4b2cc8824cc829aa2b"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/pyside6/PySide6/licensecomment.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/pyside6/PySide6/licensecomment.txt",
           "sha256": "dd6a83da77d0b6a113a574154c12cb009751c2b0dfe5c22e288cd86ebc2a1f13"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/AUTHORS",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/AUTHORS",
           "sha256": "c8c34b3908d064357783424b12b818a6ac98fde49d556866335bc412ceb93931"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING",
           "sha256": "9bf82b3636570e28118ee558ddab479b8f183d3e20327b7685a7479df52d6493"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libsample",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING.libsample",
           "sha256": "902847d35abac99283b01c6bdd6f358d361de6bb1473c931756af8d68b890b2b"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libshiboken",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING.libshiboken",
           "sha256": "902847d35abac99283b01c6bdd6f358d361de6bb1473c931756af8d68b890b2b"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/libshiboken/embed/qt_python_license.txt",
-          "sha256": "bea27410e09bbfeccd4b3c6e2fcc85b477855603c5d56ecc1a8a3ed73a857364"
-        }
-      ],
-      "local_modifications": "None",
-      "metadata_license": {
-        "source": "License",
-        "value": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only"
-      },
-      "name": "PySide6",
-      "purpose": "Qt for Python metapackage.",
-      "review_notes": "The GPL-3.0-only alternative is explicitly selected.",
-      "selected_license_expression": "GPL-3.0-only",
-      "source_repository": "https://code.qt.io/cgit/pyside/pyside-setup.git/",
-      "version": "6.11.1"
-    },
-    {
-      "copyright": "Copyright (c) The Qt Company Ltd. and Qt contributors",
-      "dependency": "indirect",
-      "homepage": "https://pyside.org/",
-      "license_files": [
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/Apache-2.0.txt",
-          "sha256": "e3ba223bb1423f0aad8c3dfce0fe3148db48926d41e6fbc3afbbf5ff9e1c89cb"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/BSD-3-Clause.txt",
-          "sha256": "62803a6fcceef9091a129d7293d2469ea332b35d30f5e1bc4c628a9f35f3d29c"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GFDL-1.3-no-invariants-only.txt",
-          "sha256": "110535522396708cea37c72a802c5e7e81391139f5f7985631c93ef242b206a4"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-2.0-only.txt",
-          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-3.0-only.txt",
-          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/LGPL-3.0-only.txt",
-          "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/Qt-GPL-exception-1.0.txt",
-          "sha256": "40678d338ce53cd93f8b22b281a2ecbcaa3ee65ce60b25ffb0c462b0530846b2"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/pyside6/COPYING",
-          "sha256": "3700b1c56fae3813dfaaef1cba101b6ec108167f36b19f4b2cc8824cc829aa2b"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/pyside6/PySide6/licensecomment.txt",
-          "sha256": "dd6a83da77d0b6a113a574154c12cb009751c2b0dfe5c22e288cd86ebc2a1f13"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/AUTHORS",
-          "sha256": "c8c34b3908d064357783424b12b818a6ac98fde49d556866335bc412ceb93931"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING",
-          "sha256": "9bf82b3636570e28118ee558ddab479b8f183d3e20327b7685a7479df52d6493"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libsample",
-          "sha256": "902847d35abac99283b01c6bdd6f358d361de6bb1473c931756af8d68b890b2b"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libshiboken",
-          "sha256": "902847d35abac99283b01c6bdd6f358d361de6bb1473c931756af8d68b890b2b"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/libshiboken/embed/qt_python_license.txt",
-          "sha256": "bea27410e09bbfeccd4b3c6e2fcc85b477855603c5d56ecc1a8a3ed73a857364"
-        }
-      ],
-      "local_modifications": "None",
-      "metadata_license": {
-        "source": "License",
-        "value": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only"
-      },
-      "name": "PySide6-Addons",
-      "purpose": "Full Qt add-on modules and binaries installed by PySide6.",
-      "review_notes": "The full wheel is retained. It can contain modules that are GPL-only under open-source distribution; these are not hidden or pruned.",
-      "selected_license_expression": "GPL-3.0-only",
-      "source_repository": "https://code.qt.io/cgit/pyside/pyside-setup.git/",
-      "version": "6.11.1"
-    },
-    {
-      "copyright": "Copyright (c) The Qt Company Ltd. and Qt contributors",
-      "dependency": "indirect",
-      "homepage": "https://pyside.org/",
-      "license_files": [
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/Apache-2.0.txt",
-          "sha256": "e3ba223bb1423f0aad8c3dfce0fe3148db48926d41e6fbc3afbbf5ff9e1c89cb"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/BSD-3-Clause.txt",
-          "sha256": "62803a6fcceef9091a129d7293d2469ea332b35d30f5e1bc4c628a9f35f3d29c"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GFDL-1.3-no-invariants-only.txt",
-          "sha256": "110535522396708cea37c72a802c5e7e81391139f5f7985631c93ef242b206a4"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-2.0-only.txt",
-          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-3.0-only.txt",
-          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/LGPL-3.0-only.txt",
-          "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/Qt-GPL-exception-1.0.txt",
-          "sha256": "40678d338ce53cd93f8b22b281a2ecbcaa3ee65ce60b25ffb0c462b0530846b2"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/pyside6/COPYING",
-          "sha256": "3700b1c56fae3813dfaaef1cba101b6ec108167f36b19f4b2cc8824cc829aa2b"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/pyside6/PySide6/licensecomment.txt",
-          "sha256": "dd6a83da77d0b6a113a574154c12cb009751c2b0dfe5c22e288cd86ebc2a1f13"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/AUTHORS",
-          "sha256": "c8c34b3908d064357783424b12b818a6ac98fde49d556866335bc412ceb93931"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING",
-          "sha256": "9bf82b3636570e28118ee558ddab479b8f183d3e20327b7685a7479df52d6493"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libsample",
-          "sha256": "902847d35abac99283b01c6bdd6f358d361de6bb1473c931756af8d68b890b2b"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libshiboken",
-          "sha256": "902847d35abac99283b01c6bdd6f358d361de6bb1473c931756af8d68b890b2b"
-        },
-        {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/libshiboken/embed/qt_python_license.txt",
-          "sha256": "bea27410e09bbfeccd4b3c6e2fcc85b477855603c5d56ecc1a8a3ed73a857364"
         }
       ],
       "local_modifications": "None",
@@ -726,7 +600,7 @@
       "review_notes": "",
       "selected_license_expression": "GPL-3.0-only",
       "source_repository": "https://code.qt.io/cgit/pyside/pyside-setup.git/",
-      "version": "6.11.1"
+      "version": "6.12.0"
     },
     {
       "copyright": "Copyright 2012-2025 Dmitry Shachnev",
@@ -756,60 +630,64 @@
       "homepage": "https://doc.qt.io/qtforpython/",
       "license_files": [
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/Apache-2.0.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/Apache-2.0.txt",
           "sha256": "e3ba223bb1423f0aad8c3dfce0fe3148db48926d41e6fbc3afbbf5ff9e1c89cb"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/BSD-3-Clause.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/BSD-3-Clause.txt",
           "sha256": "62803a6fcceef9091a129d7293d2469ea332b35d30f5e1bc4c628a9f35f3d29c"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GFDL-1.3-no-invariants-only.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/GFDL-1.3-no-invariants-only.txt",
           "sha256": "110535522396708cea37c72a802c5e7e81391139f5f7985631c93ef242b206a4"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-2.0-only.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/GPL-2.0-only.txt",
           "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-3.0-only.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/GPL-3.0-only.txt",
           "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/LGPL-3.0-only.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/LGPL-3.0-only.txt",
           "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/LICENSES/Qt-GPL-exception-1.0.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/LicenseRef-Qt-Commercial.txt",
+          "sha256": "9b1f50aae6267f9d5e0ceb6775ee86450262c25ec7c0573e151fe5d3f18a4700"
+        },
+        {
+          "path": "licenses/desktop/qt-for-python-6.12.0/LICENSES/Qt-GPL-exception-1.0.txt",
           "sha256": "40678d338ce53cd93f8b22b281a2ecbcaa3ee65ce60b25ffb0c462b0530846b2"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/pyside6/COPYING",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/pyside6/COPYING",
           "sha256": "3700b1c56fae3813dfaaef1cba101b6ec108167f36b19f4b2cc8824cc829aa2b"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/pyside6/PySide6/licensecomment.txt",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/pyside6/PySide6/licensecomment.txt",
           "sha256": "dd6a83da77d0b6a113a574154c12cb009751c2b0dfe5c22e288cd86ebc2a1f13"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/AUTHORS",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/AUTHORS",
           "sha256": "c8c34b3908d064357783424b12b818a6ac98fde49d556866335bc412ceb93931"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING",
           "sha256": "9bf82b3636570e28118ee558ddab479b8f183d3e20327b7685a7479df52d6493"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libsample",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING.libsample",
           "sha256": "902847d35abac99283b01c6bdd6f358d361de6bb1473c931756af8d68b890b2b"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libshiboken",
+          "path": "licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING.libshiboken",
           "sha256": "902847d35abac99283b01c6bdd6f358d361de6bb1473c931756af8d68b890b2b"
         },
         {
-          "path": "licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/libshiboken/embed/qt_python_license.txt",
-          "sha256": "bea27410e09bbfeccd4b3c6e2fcc85b477855603c5d56ecc1a8a3ed73a857364"
+          "path": "licenses/desktop/shiboken6-6.12.0/windows/licenses/LicenseRef-Qt-Commercial.txt",
+          "sha256": "4f54763ac0fe2abd8f7f8d8fe370a94a08ebf84786aa0b91045bd6628deb08a3"
         }
       ],
       "local_modifications": "None",
@@ -822,12 +700,12 @@
       "review_notes": "",
       "selected_license_expression": "GPL-3.0-only",
       "source_repository": "https://code.qt.io/cgit/pyside/pyside-setup.git/",
-      "version": "6.11.1"
+      "version": "6.12.0"
     }
   ],
   "platform": "linux",
-  "python_version": "3.13",
+  "python_version": "3.14",
   "schema_version": 1,
   "scope": "Reviewed uv resolver closure; final Flatpak image verification is performed separately.",
-  "uv_command": "uv tree --no-dev --frozen --python-version 3.13 --python-platform x86_64-unknown-linux-gnu"
+  "uv_command": "uv tree --no-dev --frozen --python-version 3.14 --python-platform x86_64-unknown-linux-gnu"
 }

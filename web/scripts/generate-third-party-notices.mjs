@@ -20,14 +20,14 @@ const WEB_ROOT = path.resolve(SCRIPT_DIR, "..");
 export const REVIEWED_PACKAGES = Object.freeze([
     reviewed(
         "@supabase/auth-js",
-        "2.112.3",
+        "2.118.0",
         "MIT",
         "main-sourcemap",
         "LICENSE",
     ),
     reviewed(
         "@supabase/functions-js",
-        "2.112.3",
+        "2.118.0",
         "MIT",
         "main-sourcemap",
         "LICENSE",
@@ -41,48 +41,56 @@ export const REVIEWED_PACKAGES = Object.freeze([
     ),
     reviewed(
         "@supabase/postgrest-js",
-        "2.112.3",
+        "2.118.0",
         "MIT",
         "main-sourcemap",
         "LICENSE",
     ),
     reviewed(
         "@supabase/realtime-js",
-        "2.112.3",
+        "2.118.0",
         "MIT",
         "main-sourcemap",
         "LICENSE",
     ),
     reviewed(
         "@supabase/storage-js",
-        "2.112.3",
+        "2.118.0",
         "MIT",
         "main-sourcemap",
         "LICENSE",
     ),
     reviewed(
         "@supabase/supabase-js",
-        "2.112.3",
+        "2.118.0",
         "MIT",
         "main-sourcemap",
         "LICENSE",
     ),
     reviewed("iceberg-js", "0.8.1", "MIT", "main-sourcemap", "LICENSE"),
-    reviewed("react", "18.3.1", "MIT", "main-sourcemap", "LICENSE"),
-    reviewed("react-dom", "18.3.1", "MIT", "main-sourcemap", "LICENSE"),
-    reviewed("react-router", "7.18.2", "MIT", "main-sourcemap", "LICENSE.md"),
+    reviewed("react", "19.3.1", "MIT", "main-sourcemap", "LICENSE"),
+    reviewed("react-dom", "19.3.1", "MIT", "main-sourcemap", "LICENSE"),
+    reviewed("react-router", "7.18.4", "MIT", "main-sourcemap", "LICENSE.md"),
     reviewed(
         "react-router-dom",
-        "7.18.2",
+        "7.18.4",
         "MIT",
         "tree-shaken-facade",
         "LICENSE.md",
     ),
-    reviewed("scheduler", "0.23.2", "MIT", "main-sourcemap", "LICENSE"),
+    reviewed(
+        "rolldown",
+        "1.2.15",
+        "MIT",
+        "rolldown-generated-helper",
+        "LICENSE",
+        "THIRD-PARTY-LICENSE",
+    ),
+    reviewed("scheduler", "0.28.0", "MIT", "main-sourcemap", "LICENSE"),
     reviewed("tslib", "2.8.1", "0BSD", "main-sourcemap", "LICENSE.txt"),
     reviewed(
         "vite-plugin-pwa",
-        "1.3.0",
+        "2.0.0",
         "MIT",
         "pwa-virtual-module",
         "LICENSE",
@@ -122,11 +130,10 @@ export const REVIEWED_PACKAGES = Object.freeze([
         "pwa-window-sourcemap",
         "LICENSE",
     ),
-    reviewed("vite", "6.4.5", "MIT", "vite-generated-helper", "LICENSE.md"),
+    reviewed("vite", "8.3.5", "MIT", "vite-generated-helper", "LICENSE.md"),
 ]);
 
 const VITE_BUNDLED_DEPENDENCY_LICENSE_EXPRESSIONS = Object.freeze([
-    "Apache-2.0",
     "BSD-2-Clause",
     "CC0-1.0",
     "ISC",
@@ -156,13 +163,13 @@ const EXPECTED_BUILD_INPUTS = Object.freeze([
     },
 ]);
 
-function reviewed(name, version, license, evidence, requiredLicenseFile) {
+function reviewed(name, version, license, evidence, ...requiredLicenseFiles) {
     return Object.freeze({
         name,
         version,
         license,
         evidence,
-        requiredLicenseFiles: Object.freeze([requiredLicenseFile]),
+        requiredLicenseFiles: Object.freeze(requiredLicenseFiles),
     });
 }
 
@@ -220,7 +227,9 @@ export function safePackagePath(packageName) {
 
 function licenseLikeFiles(packageDir) {
     return readdirSync(packageDir)
-        .filter((name) => /^(license|notice|copying)(\..*)?$/i.test(name))
+        .filter((name) =>
+            /^(license|notice|copying|third-party-license)(\..*)?$/i.test(name),
+        )
         .filter((name) => statSync(path.join(packageDir, name)).isFile())
         .sort((left, right) => left.localeCompare(right, "en"));
 }
@@ -413,13 +422,14 @@ function renderNotices(packages, excludedBuildInputs) {
         "--------------------------------------------------------------------------------",
         "",
         "This file is generated deterministically from package-lock.json and installed package metadata/license files.",
-        "It covers code present in the production browser bundle, PWA registration helper, generated service worker runtime, and Vite-generated runtime helper evidence.",
+        "It covers code present in the production browser bundle, PWA registration helper, generated service worker runtime, and Vite/Rolldown-generated runtime helper evidence.",
         "Build-, test-, lint-, and icon-generation-only packages are excluded from runtime notices.",
         "",
         `Runtime package count: ${packages.length}`,
         "Reviewed top-level runtime package license expressions: 0BSD, MIT",
-        "Vite's retained bundled-dependency notice additionally contains: Apache-2.0, BSD-2-Clause, CC0-1.0, ISC, MIT.",
+        "Vite's retained bundled-dependency notice additionally contains: BSD-2-Clause, CC0-1.0, ISC, MIT.",
         "The full bundled-dependency notice is copied at /licenses/vite/LICENSE.md.",
+        "Rolldown's generated CommonJS helpers retain upstream MIT notices at /licenses/rolldown/THIRD-PARTY-LICENSE.",
         "",
         "Build-time evidence (not runtime packages):",
         ...excludedBuildInputs.map(
@@ -466,6 +476,7 @@ function inventoryForJson(packages, excludedBuildInputs) {
             rejectMissingSeeLicenseFile: true,
             rejectUnreviewedExpressions: true,
             includeViteBundledThirdPartyNotices: true,
+            includeRolldownBundledThirdPartyNotices: true,
         },
         runtimePackageCount: packages.length,
         packages: packages.map(({ _files, ...packageRecord }) => packageRecord),
@@ -688,6 +699,8 @@ export function checkBundleEvidence({
     }
     if (existsSync(path.join(distDirectory, "index.html"))) {
         observed.set("vite", new Set(["vite-generated-helper"]));
+        // Vite 8 emits Rolldown CommonJS helpers outside package sourcemap entries.
+        observed.set("rolldown", new Set(["rolldown-generated-helper"]));
     }
 
     const allObserved = [...observed.keys()].sort((left, right) =>

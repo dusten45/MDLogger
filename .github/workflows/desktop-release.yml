@@ -37,17 +37,17 @@ jobs:
 
         steps:
             - name: Check out requested tag
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7.0.1
               with:
                   ref: ${{ inputs.tag }}
                   fetch-depth: 0
                   persist-credentials: false
 
             - name: Set up uv
-              uses: astral-sh/setup-uv@v4
+              uses: astral-sh/setup-uv@v10.3.2
               with:
-                  version: "0.11.28"
-                  python-version: "3.13"
+                  version: "0.13.5"
+                  python-version: "3.15.1"
 
             - name: Install locked development dependencies
               run: uv sync --locked --group dev
@@ -67,7 +67,9 @@ jobs:
                     --output "$RUNNER_TEMP/release-inputs/release-context.json"
 
             - name: Verify committed desktop license artifacts
-              run: uv run python scripts/generate_desktop_licenses.py --check
+              env:
+                  UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/mdlogger-license-env
+              run: uv run --python 3.14.9 --frozen python scripts/generate_desktop_licenses.py --check
 
             - name: Audit Python release dependencies
               run: |
@@ -102,7 +104,7 @@ jobs:
 
             - name: Upload immutable build inputs
               id: upload-release-inputs
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7.0.2
               with:
                   name: release-inputs-${{ github.run_id }}
                   path: ${{ runner.temp }}/release-inputs
@@ -131,13 +133,13 @@ jobs:
 
         steps:
             - name: Set up uv
-              uses: astral-sh/setup-uv@v4
+              uses: astral-sh/setup-uv@v10.3.2
               with:
-                  version: "0.11.28"
-                  python-version: "3.13"
+                  version: "0.13.5"
+                  python-version: "3.15.1"
 
             - name: Download immutable build inputs
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8.0.2
               with:
                   artifact-ids: ${{ needs.prepare.outputs.input_artifact_id }}
                   path: ${{ github.workspace }}/.release-work/release-inputs
@@ -207,7 +209,7 @@ jobs:
 
             - name: Upload Windows release artifact
               id: upload-windows-release
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7.0.2
               with:
                   name: windows-release-${{ github.run_id }}
                   path: |
@@ -219,7 +221,7 @@ jobs:
                   retention-days: 30
 
             - name: Upload short-lived Windows debug artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7.0.2
               with:
                   name: windows-debug-${{ github.run_id }}
                   path: |
@@ -253,13 +255,13 @@ jobs:
 
         steps:
             - name: Set up uv
-              uses: astral-sh/setup-uv@v4
+              uses: astral-sh/setup-uv@v10.3.2
               with:
-                  version: "0.11.28"
-                  python-version: "3.13"
+                  version: "0.13.5"
+                  python-version: "3.15.1"
 
             - name: Download immutable build inputs
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8.0.2
               with:
                   artifact-ids: ${{ needs.prepare.outputs.input_artifact_id }}
                   path: ${{ github.workspace }}/.release-work/release-inputs
@@ -279,8 +281,8 @@ jobs:
                   sudo apt-get install --yes flatpak flatpak-builder
                   flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
                   flatpak install --user --noninteractive --assumeyes flathub \
-                    org.freedesktop.Sdk//25.08 \
-                    org.freedesktop.Platform//25.08
+                    org.freedesktop.Sdk//26.08 \
+                    org.freedesktop.Platform//26.08
 
             - name: Install locked development dependencies
               run: uv sync --locked --group dev
@@ -292,7 +294,9 @@ jobs:
                   uv run python scripts/generate_build_config.py
 
             - name: Verify desktop license artifacts
-              run: uv run python scripts/generate_desktop_licenses.py --check
+              env:
+                  UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/mdlogger-license-env
+              run: uv run --python 3.14.9 --frozen python scripts/generate_desktop_licenses.py --check
 
             - name: Build clean Flatpak image
               run: |
@@ -315,7 +319,7 @@ jobs:
 
             - name: Upload Flatpak release artifact
               id: upload-flatpak-release
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7.0.2
               with:
                   name: flatpak-release-${{ github.run_id }}
                   path: |
@@ -346,25 +350,25 @@ jobs:
 
         steps:
             - name: Set up uv
-              uses: astral-sh/setup-uv@v4
+              uses: astral-sh/setup-uv@v10.3.2
               with:
-                  version: "0.11.28"
-                  python-version: "3.13"
+                  version: "0.13.5"
+                  python-version: "3.15.1"
 
             - name: Download immutable build inputs
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8.0.2
               with:
                   artifact-ids: ${{ needs.prepare.outputs.input_artifact_id }}
                   path: ${{ github.workspace }}/.release-work/release-inputs
 
             - name: Download Windows artifact
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8.0.2
               with:
                   artifact-ids: ${{ needs.windows.outputs.artifact_id }}
                   path: ${{ github.workspace }}/.release-work/windows-artifacts
 
             - name: Download Flatpak artifact
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8.0.2
               with:
                   artifact-ids: ${{ needs.flatpak.outputs.artifact_id }}
                   path: ${{ github.workspace }}/.release-work/flatpak-artifacts
@@ -406,7 +410,7 @@ jobs:
 
             - name: Upload final draft-release asset set
               id: upload-release-assets
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7.0.2
               with:
                   name: release-assets-${{ github.run_id }}
                   path: ${{ env.RELEASE_ASSETS }}
@@ -435,8 +439,19 @@ jobs:
             RELEASE_ASSETS: ${{ github.workspace }}/.release-work/release-assets
 
         steps:
+            - name: Install verified GitHub CLI
+              run: |
+                  curl --proto '=https' --tlsv1.2 --fail --location \
+                    --output "$RUNNER_TEMP/gh.tar.gz" \
+                    https://github.com/cli/cli/releases/download/v2.103.2/gh_2.103.2_linux_amd64.tar.gz
+                  printf '%s  %s\n' \
+                    62ccf747115ddc61237efffdde66a3c8f70ba249433dc64f70801089b59c59c8 \
+                    "$RUNNER_TEMP/gh.tar.gz" | sha256sum --check
+                  tar -xzf "$RUNNER_TEMP/gh.tar.gz" -C "$RUNNER_TEMP"
+                  echo "$RUNNER_TEMP/gh_2.103.2_linux_amd64/bin" >> "$GITHUB_PATH"
+
             - name: Download verified release assets
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8.0.2
               with:
                   artifact-ids: ${{ needs.assemble-release.outputs.release_asset_artifact_id }}
                   path: ${{ github.workspace }}/.release-work/release-assets

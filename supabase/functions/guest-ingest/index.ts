@@ -11,7 +11,7 @@
 //   Turnstile(challenge)은 여전히 범위 제외로, 남용이 관찰되면 붙인다.
 // - service-role key는 서버 환경 변수로만 주입되며 클라이언트에 포함되지 않는다.
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 
 const MAX_BODY_BYTES = 256 * 1024;
 const MAX_BATCH_SIZE = 200;

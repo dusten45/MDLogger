@@ -3,6 +3,8 @@
 이 문서는 MDLogger의 Flatpak 배포판과 Windows exe 배포판을 만드는 절차를 기록한다.
 모든 명령은 프로젝트 루트에서 실행한다.
 
+기본 개발·Windows 빌드는 Python 3.15.1, Flatpak은 Freedesktop 26.08의 Python 3.14를 사용한다. 웹 도구는 루트 `.nvmrc`의 Node 26.12.1을 사용하며, `nvm use`로 선택한다.
+
 ## GitHub Actions 데스크톱 릴리스 초안
 
 데스크톱 릴리스는 `.github/workflows/desktop-release.yml`의 수동 workflow만 사용한다. 지원 대상은 Windows x64 Inno Setup 설치 프로그램과 Linux Flatpak bundle이며, 웹 배포와 Flathub 제출은 이 workflow에 포함하지 않는다. workflow는 GitHub Release를 **draft**로만 만들며, 공개 publish 또는 기존 release·asset 덮어쓰기를 자동으로 수행하지 않는다.
@@ -51,7 +53,7 @@ MDLogger-<version>.flatpak
 MDLogger-<version>.flatpak.sha256
 ```
 
-MDLogger 자체의 소스 아카이브는 GitHub Release가 자동으로 첨부하는 `Source code (zip)` 및 `Source code (tar.gz)`로 제공되며, CI 내부 검증용 `MDLogger-<version>-source.tar.gz`와 `MDLogger-<version>-release-manifest.json`은 GitHub Actions workflow artifact(`release-assets-<run_id>`)에 보관된다. 수정하지 않은 제3자 라이브러리(Qt, PySide6, FFmpeg, cryptography, OpenSSL, NumPy)의 원본 소스는 **GPL-3.0 제6조 d항**에 따라 각 공식 업스트림 서버(`download.qt.io`, `github.com`, `files.pythonhosted.org`)를 통해 제공되며, 저장소 내 `licenses/sources/desktop-source-offer.md`를 통해 정확한 다운로드 URL과 SHA-256 해시를 안내한다.
+MDLogger 자체의 소스 아카이브는 GitHub Release가 자동으로 첨부하는 `Source code (zip)` 및 `Source code (tar.gz)`로 제공되며, CI 내부 검증용 `MDLogger-<version>-source.tar.gz`와 `MDLogger-<version>-release-manifest.json`은 GitHub Actions workflow artifact(`release-assets-<run_id>`)에 보관된다. 수정하지 않은 제3자 라이브러리(Qt, PySide6, cryptography, OpenSSL, NumPy)의 원본 소스는 **GPL-3.0 제6조 d항**에 따라 각 공식 업스트림 서버(`download.qt.io`, `github.com`, `files.pythonhosted.org`)를 통해 제공되며, 저장소 내 `licenses/sources/desktop-source-offer.md`를 통해 정확한 다운로드 URL과 SHA-256 해시를 안내한다.
 
 공개 전에는 다음을 확인한다.
 
@@ -78,8 +80,9 @@ npm run strip:source-maps
 npm run check:secrets
 cd ..
 
-uv run python scripts/generate_desktop_licenses.py
-uv run python scripts/generate_desktop_licenses.py --check
+# Linux에서는 Flatpak과 같은 Python 3.14 wheel을 별도 환경에서 검증한다.
+UV_PROJECT_ENVIRONMENT=/tmp/mdlogger-license-env uv run --python 3.14.9 --frozen python scripts/generate_desktop_licenses.py
+UV_PROJECT_ENVIRONMENT=/tmp/mdlogger-license-env uv run --python 3.14.9 --frozen python scripts/generate_desktop_licenses.py --check
 
 git status --porcelain --untracked-files=all -- \
   THIRD_PARTY_NOTICES.md THIRD_PARTY_NOTICES.txt \
@@ -89,27 +92,15 @@ git status --porcelain --untracked-files=all -- \
 
 새 package, 새 license expression, 누락된 LICENSE/NOTICE/COPYING 파일이 발견되면 자동 승인하지 않는다. `scripts/desktop_license_policy.json` 또는 `web/scripts/generate-third-party-notices.mjs`의 검토 정책을 갱신하기 전에 실제 production 포함 근거와 upstream 원문을 확인한다.
 
-Qt/PySide6, FFmpeg, cryptography/OpenSSL와 NumPy 자체의 source archive는 `licenses/sources/desktop-source-offer.md`에 기록된 URL, 크기와 SHA-256을 릴리스마다 다시 확인한다. 현재 Qt/PySide6 선택 경로는 GPL-3.0-only이며, 공식 archive에 detached signature가 없는 상태를 signature 검증 완료로 표현하지 않는다. 바이너리와 같은 릴리스 다운로드 위치에 검증한 source archive와 MDLogger source revision·패키징 파일을 함께 제공한다. NumPy wheel의 OpenBLAS/GCC runtime은 정확한 toolchain revision이 공개되지 않은 알려진 한계다. 보존된 고지와 라이선스 원문을 포함하되, upstream URL을 해당 바이너리의 exact corresponding-source snapshot으로 표현하지 않는다. 일치하는 revision과 source hash가 나중에 확인되면 릴리스 기록과 source archive에 추가한다.
+Qt/PySide6, cryptography/OpenSSL와 NumPy 자체의 source archive는 `licenses/sources/desktop-source-offer.md`에 기록된 URL, 크기와 SHA-256을 릴리스마다 다시 확인한다. 현재 Qt/PySide6 선택 경로는 GPL-3.0-only이며, 공식 archive에 detached signature가 없는 상태를 signature 검증 완료로 표현하지 않는다. 바이너리와 같은 릴리스 다운로드 위치에 검증한 source archive와 MDLogger source revision·패키징 파일을 함께 제공한다. NumPy wheel의 OpenBLAS/GCC runtime은 정확한 toolchain revision이 공개되지 않은 알려진 한계다. 보존된 고지와 라이선스 원문을 포함하되, upstream URL을 해당 바이너리의 exact corresponding-source snapshot으로 표현하지 않는다. 일치하는 revision과 source hash가 나중에 확인되면 릴리스 기록과 source archive에 추가한다.
 
-Qt 또는 PySide6 버전이 바뀌면 새 Qt source archive에서 Chromium credits를 다시 생성한다. 이 파일은 wheel 제작자의 exact-build SBOM이 아니라, GN dependency graph를 확보할 수 없을 때 사용하는 보수적인 Linux source-tree superset이다.
-
-```bash
-mkdir -p /tmp/mdlogger-qt-license-audit
-tar -xf qt-everywhere-src-6.11.1.tar.xz \
-  -C /tmp/mdlogger-qt-license-audit \
-  qt-everywhere-src-6.11.1/qtwebengine
-cd /tmp/mdlogger-qt-license-audit/qt-everywhere-src-6.11.1/qtwebengine/src/3rdparty/chromium
-python tools/licenses/licenses.py --format txt --target-os linux credits \
-  "$OLDPWD/licenses/desktop/qt-6.11.1/qtwebengine/chromium-source-credits.html"
-cd "$OLDPWD"
-uv run python scripts/generate_desktop_licenses.py --check
-```
+Qt 또는 PySide6 버전이 바뀌면 실제 Essentials wheel과 같은 버전의 Qt/PySide source archive에서 법률 원문과 attribution을 다시 확인한다. Linux의 wheel 원본 hash와 Flatpak Builder 후처리 이후의 final-image hash는 각각 검증한다. 사용하지 않는 QtWebEngine, QtPdf, QtMultimedia와 Chromium/FFmpeg는 설치하지 않으며, inventory와 배포 검사에서도 이 제외 조건을 확인한다.
 
 pyqtgraph의 `PAL-relaxed.hex`와 `PAL-relaxed_bright.hex`는 라이선스와 출처를 확인할 수 없어 Windows와 Flatpak 배포물에서 제외한다. 두 파일이 다시 나타나면 릴리스를 중단한다.
 
-### 선택적 Flatpak 경량화
+### Qt 배포 범위
 
-현재는 검증이 끝난 full `PySide6` 구성을 유지한다. Windows PyInstaller는 사용하지 않는 Addons를 대부분 제외하므로 주요 Windows 배포 영향은 작지만, Linux Flatpak은 `PySide6-Addons` wheel 전체를 설치해 다운로드와 디스크 사용량이 커진다. 사용하지 않는 모듈은 실행 시 불러오지 않으므로 시작 시간과 메모리 영향은 제한적이다. 나중에 Linux 배포 크기를 줄이려면 현재 직접 사용하는 QtCore, QtGui, QtWidgets, QtSvg를 모두 제공하는 `PySide6-Essentials`로 전환할 수 있으며, 이때 lockfile, inventory, 고지와 실제 패키지 회귀 검사를 함께 갱신한다.
+앱이 사용하는 QtCore, QtGui, QtWidgets, QtSvg와 테스트용 QtTest는 `PySide6-Essentials`가 제공한다. umbrella `PySide6`와 Addons 대신 Essentials만 고정하여 사용하지 않는 모듈의 보안·배포 부담을 줄인다. Python import 이름은 계속 `PySide6`이며, PyInstaller에는 Essentials-only 설치에서도 필요한 `PySide6.support.deprecated` hidden import를 명시한다.
 
 ## Flatpak 배포판 생성 및 삭제
 
@@ -118,7 +109,7 @@ pyqtgraph의 `PAL-relaxed.hex`와 `PAL-relaxed_bright.hex`는 라이선스와 �
 호스트에 `flatpak`과 `flatpak-builder`를 설치하고, 프로젝트가 요구하는 SDK를 설치한다.
 
 ```bash
-flatpak install flathub org.freedesktop.Sdk//25.08
+flatpak install --user flathub org.freedesktop.Sdk//26.08
 ```
 
 온라인 기능을 포함한 배포본은 빌드 전에 프로젝트 루트의 `.env`에서 Supabase publishable(anon) 설정을 생성한다. `.env` 파일이 없거나 필수 값이 비어 있으면 생성은 중단된다. service-role 또는 secret 키는 절대 사용하지 않는다.
@@ -172,15 +163,15 @@ flatpak run --command=sh io.github.dusten45.MDLogger -c \
    test -f /app/share/licenses/mdlogger/inventory/qt-modules-linux-flatpak.json && \
    test -f /app/share/licenses/mdlogger/inventory/qt-third-party-runtime-linux-flatpak.json && \
    test ! -e /app/share/licenses/mdlogger/inventory/desktop-windows.json && \
-   test -f /app/share/licenses/mdlogger/desktop/qt-6.11.1/qtwebengine/chromium-source-credits.html && \
-   test -f /app/share/licenses/mdlogger/desktop/qt-6.11.1/qtmultimedia/ffmpeg/LICENSE.LGPL-2.1-or-later.txt && \
+   test ! -e /app/venv/lib/python3.14/site-packages/PySide6/Qt/lib/libQt6WebEngineCore.so.6 && \
+   test ! -e /app/venv/lib/python3.14/site-packages/PySide6/Qt/lib/libQt6Multimedia.so.6 && \
    test -f /app/share/doc/mdlogger/sources/desktop-source-offer.md && \
-   test -f /app/share/licenses/mdlogger/desktop/qt-6.11.1/QT-THIRD-PARTY-ATTRIBUTIONS.json && \
-   test -d /app/share/licenses/mdlogger/desktop/qt-6.11.1/third-party-source-files && \
-   test ! -e /app/venv/lib/python3.13/site-packages/pip && \
+   test -f /app/share/licenses/mdlogger/desktop/qt-6.12.0/QT-THIRD-PARTY-ATTRIBUTIONS.json && \
+   test -d /app/share/licenses/mdlogger/desktop/qt-6.12.0/third-party-source-files && \
+   test ! -e /app/venv/lib/python3.14/site-packages/pip && \
    test ! -e /app/venv/bin/pip && \
-   test ! -e /app/venv/lib/python3.13/site-packages/pyqtgraph/colors/maps/PAL-relaxed.hex && \
-   test ! -e /app/venv/lib/python3.13/site-packages/pyqtgraph/colors/maps/PAL-relaxed_bright.hex'
+   test ! -e /app/venv/lib/python3.14/site-packages/pyqtgraph/colors/maps/PAL-relaxed.hex && \
+   test ! -e /app/venv/lib/python3.14/site-packages/pyqtgraph/colors/maps/PAL-relaxed_bright.hex'
 ```
 
 생성한 파일의 설치·실행 방법은 다음과 같다.
@@ -247,7 +238,7 @@ uv run python -m mdlogger.checksum dist\MDLogger
 $required = @(
   "dist\MDLogger\LICENSE",
   "dist\MDLogger\THIRD_PARTY_NOTICES.txt",
-  "dist\MDLogger\licenses\desktop\qt-6.11.1\LICENSES\GPL-3.0-only.txt"
+  "dist\MDLogger\licenses\desktop\qt-6.12.0\LICENSES\GPL-3.0-only.txt"
 )
 $required | ForEach-Object { if (-not (Test-Path $_)) { throw "누락: $_" } }
 $palettes = Get-ChildItem dist\MDLogger -Recurse -File |

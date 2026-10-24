@@ -181,10 +181,8 @@ def test_default_policy_records_numpy_native_known_limitation():
 def test_default_policy_records_windows_qt_commercial_metadata_files():
     policy = LICENSES.load_policy()
     expected_files = {
-        "PySide6": "pyside6-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt",
-        "PySide6-Addons": "pyside6_addons-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt",
-        "PySide6-Essentials": "pyside6_essentials-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt",
-        "shiboken6": "shiboken6-6.11.1.dist-info/licenses/LicenseRef-Qt-Commercial.txt",
+        "PySide6-Essentials": "pyside6_essentials-6.12.0.dist-info/licenses/LicenseRef-Qt-Commercial.txt",
+        "shiboken6": "shiboken6-6.12.0.dist-info/licenses/LicenseRef-Qt-Commercial.txt",
     }
     packages = {package["name"]: package for package in policy["packages"]}
 
@@ -202,16 +200,16 @@ def test_qt_license_corpus_preserves_all_unique_source_texts():
             PROJECT_ROOT
             / "licenses"
             / "desktop"
-            / "qt-6.11.1"
+            / "qt-6.12.0"
             / "LICENSES-MANIFEST.json"
         ).read_text(encoding="utf-8")
     )
 
     assert manifest["source_sha256"] == (
-        "252acef8c5ae68074d91cadba2ee4a83465051bbb970dd26e8f0daa0f3904e03"
+        "98ff4f44bac6ec3e1e62ee2a4316ae0e3d15badb015d753cc0268a20db52f165"
     )
-    assert manifest["archive_license_member_count"] == 402
-    assert manifest["unique_license_file_count"] == 83
+    assert manifest["archive_license_member_count"] == 374
+    assert manifest["unique_license_file_count"] == 69
     LICENSES.validate_qt_license_corpus(policy)
 
 
@@ -222,13 +220,13 @@ def test_qt_source_attributions_preserve_linux_scope_and_legal_files():
             PROJECT_ROOT
             / "licenses"
             / "desktop"
-            / "qt-6.11.1"
+            / "qt-6.12.0"
             / "QT-THIRD-PARTY-ATTRIBUTIONS.json"
         ).read_text(encoding="utf-8")
     )
 
     assert document["exact_build_sbom_available"] is False
-    assert document["record_count"] == 123
+    assert document["record_count"] == 98
     assert (
         document["source_archive"]["sha256"]
         == policy["qt_source_attributions"]["source_archive_sha256"]
@@ -242,7 +240,7 @@ def test_qt_source_attributions_preserve_linux_scope_and_legal_files():
         for record in document["records"]
         for legal_file in record["legal_files"]
     }
-    assert len(legal_files) == 88
+    assert len(legal_files) == 61
     LICENSES.validate_qt_source_attributions(policy)
 
 
@@ -251,7 +249,8 @@ def test_cryptography_wheel_sbom_evidence_is_exact_and_limited():
     evidence = policy["cryptography_wheel_sbom_evidence"]
 
     assert evidence["exact_build_sbom_available"] is True
-    assert evidence["openssl"]["version"] == "4.0.1"
+    assert evidence["openssl"]["version"] == "4.0.3"
+    assert evidence["python_version"] == "3.14"
     assert evidence["rust"]["component_count"] == 39
     assert "Apache-2.0 WITH LLVM-exception" in evidence["rust"]["license_expressions"]
     assert "Apache-2.0 OR GPL-2.0-only" in evidence["rust"]["license_expressions"]
@@ -272,26 +271,28 @@ def test_windows_policy_validation_skips_linux_wheel_evidence(monkeypatch):
     LICENSES.validate_policy(policy)
 
 
-def test_qt_runtime_attributions_preserve_chromium_and_ffmpeg_evidence():
+def test_qt_runtime_attributions_enforce_essentials_only():
     policy = LICENSES.load_policy()
     runtime = policy["qt_runtime_attributions"]
 
     assert runtime["exact_build_sbom_available"] is False
-    assert runtime["chromium"]["runtime_version"] == "140.0.7339.225"
-    assert runtime["chromium"]["source_credits_component_count"] == 262
-    assert "Linux source-tree superset" in runtime["chromium"]["source_credits_scope"]
-    assert runtime["ffmpeg"]["version"] == "7.1.3"
-    assert runtime["ffmpeg"]["runtime_license"] == "LGPL version 2.1 or later"
-    ffmpeg = runtime["ffmpeg"]
-    assert {component["id"] for component in ffmpeg["components"]} == {
-        "ffmpeg",
-        "ffmpeg-boost",
-        "ffmpeg-libjpeg",
-        "ffmpeg-zlib",
+    assert runtime["distribution"] == "PySide6-Essentials"
+    assert runtime["version"] == "6.12.0"
+    assert set(runtime["excluded_distributions"]) == {
+        "PySide6",
+        "PySide6-Addons",
+        "PySide6-Pdf",
+        "PySide6-WebEngine",
     }
-    for expression in ("IJG", "Zlib", "BSL-1.0"):
-        assert expression in ffmpeg["aggregate_attribution_expression"]
+    assert "chromium" not in runtime and "ffmpeg" not in runtime
     LICENSES.validate_qt_runtime_attributions(policy)
+
+
+def test_qt_runtime_policy_rejects_optional_distribution():
+    policy = copy.deepcopy(LICENSES.load_policy())
+    policy["packages"].append({"name": "PySide6-Addons", "version": "6.12.0"})
+    with pytest.raises(LICENSES.ComplianceError, match="Excluded Qt distribution"):
+        LICENSES.validate_qt_runtime_attributions(policy)
 
 
 def test_qt_runtime_inventory_tracks_binary_payload_and_no_exact_build_sbom():
@@ -305,16 +306,15 @@ def test_qt_runtime_inventory_tracks_binary_payload_and_no_exact_build_sbom():
     )
 
     assert inventory["exact_build_sbom_available"] is False
-    assert inventory["chromium"]["runtime_version"] == "140.0.7339.225"
-    assert inventory["chromium"]["source_credits"]["component_count"] == 262
-    chromium_paths = {item["path"] for item in inventory["chromium"]["payload_files"]}
-    assert "PySide6/Qt/lib/libQt6WebEngineCore.so.6" in chromium_paths
-    assert "PySide6/Qt/libexec/QtWebEngineProcess" in chromium_paths
-
-    assert inventory["ffmpeg"]["version"] == "7.1.3"
-    ffmpeg_paths = {item["path"] for item in inventory["ffmpeg"]["payload_files"]}
-    assert "PySide6/Qt/lib/libavcodec.so.61.19.101" in ffmpeg_paths
-    assert "PySide6/Qt/plugins/multimedia/libffmpegmediaplugin.so" in ffmpeg_paths
+    assert inventory["schema_version"] == 2
+    assert inventory["icu_version"] == "73.2"
+    paths = {item["path"] for item in inventory["payload_files"]}
+    assert "PySide6/Qt/lib/libQt6Core.so.6" in paths
+    assert "PySide6/Qt/lib/libQt6Svg.so.6" in paths
+    assert "PySide6/Qt/plugins/platforms/libqxcb.so" in paths
+    assert "PySide6/Qt/lib/libQt6WebEngineCore.so.6" not in paths
+    assert "chromium" not in inventory and "ffmpeg" not in inventory
+    assert inventory["excluded_paths"] == list(LICENSES.EXCLUDED_QT_PATHS)
 
 
 def test_uv_tree_parser_deduplicates_and_rejects_version_conflicts():
@@ -336,9 +336,9 @@ def test_current_uv_closures_match_reviewed_counts_and_versions():
     policy = LICENSES.load_policy()
     closures = LICENSES.validate_platform_closures(policy)
 
-    assert len(closures["linux"]) == 19
-    assert len(closures["windows"]) == 15
-    assert closures["linux"]["cryptography"] == "50.0.0"
+    assert len(closures["linux"]) == 17
+    assert len(closures["windows"]) == 13
+    assert closures["linux"]["cryptography"] == "50.0.2"
     assert "cryptography" not in closures["windows"]
     assert closures["windows"]["pywin32-ctypes"] == "0.2.3"
 
@@ -380,8 +380,8 @@ def test_lock_version_drift_is_rejected():
 
 def test_generated_inventories_are_stably_sorted_without_duplicates():
     for filename, expected_count in (
-        ("desktop-linux.json", 19),
-        ("desktop-windows.json", 15),
+        ("desktop-linux.json", 17),
+        ("desktop-windows.json", 13),
     ):
         inventory = json.loads(
             (PROJECT_ROOT / "licenses" / "inventory" / filename).read_text(
@@ -402,11 +402,11 @@ def test_generated_inventories_are_stably_sorted_without_duplicates():
         component["name"]: component for component in windows["components"]
     }
     assert "PyInstaller bootloader" in windows_components
-    assert windows_components["PyInstaller bootloader"]["version"] == "6.21.0"
+    assert windows_components["PyInstaller bootloader"]["version"] == "6.22.3"
     assert "pyinstaller-hooks-contrib runtime hooks" in windows_components
     assert (
         windows_components["pyinstaller-hooks-contrib runtime hooks"]["version"]
-        == "2026.6"
+        == "2026.9"
     )
     assert "CPython runtime and standard library" in windows_components
     assert "Inno Setup runtime loader and uninstaller" in windows_components
@@ -416,7 +416,7 @@ def test_generated_inventories_are_stably_sorted_without_duplicates():
     assert "Qt Windows Wintab API" in windows_components
 
 
-def test_flatpak_qt_inventory_tracks_full_wheels_and_direct_imports():
+def test_flatpak_qt_inventory_tracks_essentials_and_direct_imports():
     inventory = json.loads(
         (
             PROJECT_ROOT / "licenses" / "inventory" / "qt-modules-linux-flatpak.json"
@@ -432,10 +432,13 @@ def test_flatpak_qt_inventory_tracks_full_wheels_and_direct_imports():
     assert "QtCore" in inventory["binding_modules"]
     assert "libQt6Core.so.6" in inventory["qt_libraries"]
     assert inventory["translation_file_count"] > 0
-    assert "QtWebEngineCore" in inventory["binding_modules"]
-    assert "libQt6WebEngineCore.so.6" in inventory["qt_libraries"]
-    assert "multimedia/libffmpegmediaplugin.so" in inventory["plugins"]
+    assert "QtWebEngineCore" not in inventory["binding_modules"]
+    assert "libQt6WebEngineCore.so.6" not in inventory["qt_libraries"]
+    assert "multimedia/libffmpegmediaplugin.so" not in inventory["plugins"]
+    assert "designer/libqwebengineview.so" not in inventory["plugins"]
+    assert "imageformats/libqpdf.so" not in inventory["plugins"]
     assert inventory["excluded_files"] == [
+        *LICENSES.EXCLUDED_QT_PATHS,
         "pyqtgraph/colors/maps/PAL-relaxed.hex",
         "pyqtgraph/colors/maps/PAL-relaxed_bright.hex",
     ]
@@ -445,7 +448,10 @@ def test_flatpak_runtime_requirements_preserve_platform_markers():
     requirements = (PROJECT_ROOT / "flatpak" / "requirements-runtime.txt").read_text(
         encoding="utf-8"
     )
-    assert "cryptography==50.0.0 ; sys_platform == 'linux'" in requirements
+    assert "cryptography==50.0.2 ; sys_platform == 'linux'" in requirements
+    assert "pyside6-essentials==6.12.0" in requirements
+    assert "pyside6-addons==" not in requirements
+    assert "pyside6==" not in requirements
     assert "pywin32-ctypes==0.2.3 ; sys_platform == 'win32'" in requirements
     names = [
         LICENSES.normalize_name(line.split("==", 1)[0])
@@ -465,7 +471,8 @@ def test_pyinstaller_spec_exposes_legal_files_and_excludes_unverified_palettes()
     assert "ignore=ignore_patterns(*excluded_windows_license_dirs)" in spec
     assert '"qtwebengine"' in spec
     assert '"qtmultimedia"' in spec
-    assert '"cryptography-50.0.0"' in spec
+    assert '"cryptography-50.0.2"' in spec
+    assert '"PySide6.support.deprecated"' in spec
     assert 'copytree("licenses/sources"' not in spec
     assert "desktop-windows.json" not in spec
     assert 'contents_directory="."' not in spec
@@ -474,6 +481,8 @@ def test_pyinstaller_spec_exposes_legal_files_and_excludes_unverified_palettes()
     assert '"opengl32sw.dll"' in spec
     assert '"qpdf.dll"' in spec
     assert '"qt6pdf.dll"' in spec
+    assert '"qwebengineview.dll"' in spec
+    assert '"PySide6/resources/icudtl.dat"' in spec
     assert '"PySide6.QtPdf"' in spec
     assert "entry[0]" in spec
 
@@ -514,11 +523,11 @@ def test_flatpak_uses_pins_no_deps_and_installs_legal_documents():
     assert "/app/share/doc/mdlogger/THIRD_PARTY_NOTICES.txt" in manifest
     assert "/app/share/doc/mdlogger/sources" in manifest
     assert (
-        "rm -f /app/venv/lib/python3.13/site-packages/pyqtgraph/colors/maps/PAL-relaxed.hex"
+        "rm -f /app/venv/lib/python3.14/site-packages/pyqtgraph/colors/maps/PAL-relaxed.hex"
         in manifest
     )
     assert (
-        "test ! -e /app/venv/lib/python3.13/site-packages/pyqtgraph/colors/maps/PAL-relaxed_bright.hex"
+        "test ! -e /app/venv/lib/python3.14/site-packages/pyqtgraph/colors/maps/PAL-relaxed_bright.hex"
         in manifest
     )
 
@@ -528,26 +537,31 @@ def test_flatpak_native_payload_policy_is_pinned_to_the_linux_wheel():
     payload = policy["flatpak_linux_native_payload"]
 
     assert [record["path"] for record in payload] == sorted(
-        record["path"] for record in payload
+        (record["path"] for record in payload), key=str.lower
     )
     assert {Path(record["path"]).name for record in payload} == {
         "_rust.abi3.so",
-        "libgfortran-040039e1-0352e75f.so.5.0.0",
-        "libquadmath-96973f99-934c22de.so.0.0.0",
-        "libscipy_openblas64_-32a4b2a6.so",
+        "libgfortran-83c28eba-468e71e5.so.5.0.0",
+        "libquadmath-2284e583-a9307bba.so.0.0.0",
+        "libscipy_openblas64_-f48b354e.so",
+        "libicudata.so.73",
+        "libicui18n.so.73",
+        "libicuuc.so.73",
+        "libPySidePlugin.so",
+        "QtQmlFeatures.abi3.so",
     }
     openblas = next(
         record
         for record in payload
-        if record["path"].endswith("libscipy_openblas64_-32a4b2a6.so")
+        if record["path"].endswith("libscipy_openblas64_-f48b354e.so")
     )
     assert openblas["wheel"] == {
-        "size": 25409073,
-        "sha256": "05c9f9eb89ee68a4b9d673184fa91c99587e736392c0c2d49180a8aa5303d080",
+        "size": 24325657,
+        "sha256": "432e1c1739731468ba305771af96773939e43016643e2d630f58cb45b6670e96",
     }
     assert openblas["final_image"] == {
-        "size": 25411168,
-        "sha256": "bb3fa92ddcb248780063434a9f46701ecc2a949a15198af19e95078db765f7a4",
+        "size": 24330480,
+        "sha256": "17172f323d911ededd4b99a15d3760a309ea76767ae1f8ad270704cb7df9a971",
     }
     LICENSES.validate_flatpak_linux_native_payload(policy)
 
@@ -605,7 +619,7 @@ def _write_flatpak_license_fixture(tmp_path: Path) -> tuple[Path, Path]:
             "version": package["version"],
         }
         for package in policy["packages"]
-        if package["name"] in {"PySide6-Essentials", "PySide6-Addons"}
+        if package["name"] == "PySide6-Essentials"
     ]
     (inventory_directory / "qt-modules-linux-flatpak.json").write_text(
         json.dumps(
@@ -629,18 +643,17 @@ def _write_flatpak_license_fixture(tmp_path: Path) -> tuple[Path, Path]:
             / "licenses/inventory/qt-third-party-runtime-linux-flatpak.json"
         ).read_text(encoding="utf-8")
     )
-    for section, filename in (("chromium", "chromium.bin"), ("ffmpeg", "ffmpeg.bin")):
-        contents = f"fixture {section}".encode()
-        payload_path = site_packages / "PySide6/runtime" / filename
-        payload_path.parent.mkdir(parents=True, exist_ok=True)
-        payload_path.write_bytes(contents)
-        runtime[section]["payload_files"] = [
-            {
-                "path": f"PySide6/runtime/{filename}",
-                "size": len(contents),
-                "sha256": hashlib.sha256(contents).hexdigest(),
-            }
-        ]
+    contents = b"\x7fELFfixture essentials"
+    payload_path = site_packages / "PySide6/runtime/essentials.bin"
+    payload_path.parent.mkdir(parents=True, exist_ok=True)
+    payload_path.write_bytes(contents)
+    runtime["payload_files"] = [
+        {
+            "path": "PySide6/runtime/essentials.bin",
+            "size": len(contents),
+            "sha256": hashlib.sha256(contents).hexdigest(),
+        }
+    ]
     (inventory_directory / "qt-third-party-runtime-linux-flatpak.json").write_text(
         json.dumps(runtime), encoding="utf-8"
     )
@@ -654,7 +667,7 @@ def _write_flatpak_license_fixture(tmp_path: Path) -> tuple[Path, Path]:
     }
     policy["flatpak_linux_native_payload"] = [
         {
-            "path": "venv/lib/python3.13/site-packages/fixture-native.so",
+            "path": f"{FLATPAK_VERIFIER.SITE_PACKAGES}/fixture-native.so",
             "wheel": native_pin,
             "final_image": native_pin,
         }
@@ -678,6 +691,110 @@ def test_flatpak_final_image_verifier_accepts_a_complete_matching_fixture(tmp_pa
     FLATPAK_VERIFIER.verify(app_root, policy_path, payload_phase="wheel")
 
 
+def test_flatpak_verifier_rejects_changed_essentials_binary(tmp_path):
+    app_root, policy_path = _write_flatpak_license_fixture(tmp_path)
+    path = app_root / FLATPAK_VERIFIER.SITE_PACKAGES / "PySide6/runtime/essentials.bin"
+    path.write_bytes(path.read_bytes().replace(b"essentials", b"tampered!!"))
+
+    with pytest.raises(
+        FLATPAK_VERIFIER.ComplianceError, match="Essentials payload hash drift"
+    ):
+        FLATPAK_VERIFIER.verify(app_root, policy_path)
+
+
+def test_flatpak_verifier_rejects_unlisted_native_qt_file(tmp_path):
+    app_root, policy_path = _write_flatpak_license_fixture(tmp_path)
+    path = app_root / FLATPAK_VERIFIER.SITE_PACKAGES / "PySide6/runtime/extra.bin"
+    path.write_bytes(b"\x7fELFunreviewed")
+
+    with pytest.raises(
+        FLATPAK_VERIFIER.ComplianceError, match="native-file inventory drift"
+    ):
+        FLATPAK_VERIFIER.verify(app_root, policy_path)
+
+
+@pytest.mark.parametrize(
+    "relative",
+    (
+        *LICENSES.EXCLUDED_QT_PATHS,
+        "mdlogger/secret_scan.py",
+        "mdlogger/__pycache__/secret_scan.cpython-314.pyc",
+    ),
+)
+def test_flatpak_verifier_rejects_excluded_runtime_files(tmp_path, relative):
+    app_root, policy_path = _write_flatpak_license_fixture(tmp_path)
+    path = app_root / FLATPAK_VERIFIER.SITE_PACKAGES / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"unreviewed optional plugin")
+
+    with pytest.raises(
+        FLATPAK_VERIFIER.ComplianceError, match="Excluded Flatpak files"
+    ):
+        FLATPAK_VERIFIER.verify(app_root, policy_path)
+
+
+def test_flatpak_verifier_rejects_missing_native_pin(tmp_path):
+    app_root, policy_path = _write_flatpak_license_fixture(tmp_path)
+    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    policy["flatpak_linux_native_payload"][0]["final_image"] = None
+    policy_path.write_text(json.dumps(policy), encoding="utf-8")
+
+    with pytest.raises(
+        FLATPAK_VERIFIER.ComplianceError, match="Missing Flatpak final_image"
+    ):
+        FLATPAK_VERIFIER.verify(app_root, policy_path)
+
+
+def test_flatpak_qt_hashes_distinguish_wheel_and_finished_payload(tmp_path):
+    app_root, policy_path = _write_flatpak_license_fixture(tmp_path)
+    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    relative = "PySide6/runtime/essentials.bin"
+    path = app_root / FLATPAK_VERIFIER.SITE_PACKAGES / relative
+    original = path.read_bytes()
+    finished = b"\x7fELFfinished essentials"
+    policy["flatpak_linux_native_payload"].append(
+        {
+            "path": f"{FLATPAK_VERIFIER.SITE_PACKAGES}/{relative}",
+            "wheel": {
+                "size": len(original),
+                "sha256": hashlib.sha256(original).hexdigest(),
+            },
+            "final_image": {
+                "size": len(finished),
+                "sha256": hashlib.sha256(finished).hexdigest(),
+            },
+        }
+    )
+    policy_path.write_text(json.dumps(policy), encoding="utf-8")
+    FLATPAK_VERIFIER.verify(app_root, policy_path, payload_phase="wheel")
+    path.write_bytes(finished)
+    FLATPAK_VERIFIER.verify(app_root, policy_path, payload_phase="final_image")
+    with pytest.raises(FLATPAK_VERIFIER.ComplianceError, match="wheel native payload"):
+        FLATPAK_VERIFIER.verify(app_root, policy_path, payload_phase="wheel")
+
+
+def test_flatpak_verifier_rejects_modified_icu_license(tmp_path):
+    app_root, policy_path = _write_flatpak_license_fixture(tmp_path)
+    path = app_root / "share/licenses/mdlogger/desktop/icu-73.2/LICENSE"
+    path.write_bytes(b"tampered license")
+    with pytest.raises(
+        FLATPAK_VERIFIER.ComplianceError, match="ICU legal-file hash drift"
+    ):
+        FLATPAK_VERIFIER.verify(app_root, policy_path)
+
+
+def test_platform_python_versions_are_not_interchangeable():
+    policy = LICENSES.load_policy()
+    assert policy["python_versions"] == {"linux": "3.14", "windows": "3.15"}
+    for platform, version in policy["python_versions"].items():
+        inventory = json.loads(
+            (PROJECT_ROOT / f"licenses/inventory/desktop-{platform}.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert inventory["python_version"] == version
+
+
 def test_windows_ci_does_not_treat_linux_runtime_evidence_as_payload_evidence():
     workflow = (PROJECT_ROOT / ".github" / "workflows" / "ci.yml").read_text(
         encoding="utf-8"
@@ -686,10 +803,9 @@ def test_windows_ci_does_not_treat_linux_runtime_evidence_as_payload_evidence():
 
     assert "Analysis-00.toc" in windows_job
     assert "COLLECT-00.toc" in windows_job
-    assert (
-        "Linux Qt runtime evidence must not be treated as Windows payload evidence"
-        in windows_job
-    )
+    assert "Internal CI license inventories must not be bundled" in windows_job
+    assert "Unused Qt WebEngine licenses must not be bundled" in windows_job
+    assert "Unused Qt multimedia licenses must not be bundled" in windows_job
     assert "ISCC.exe" in windows_job
     assert "Install and verify Inno Setup payload" in windows_job
     assert "/VERYSILENT" in windows_job

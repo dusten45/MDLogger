@@ -90,10 +90,10 @@ flatpak run --user --command=sh "$APP_ID" -c '
   test -f /app/share/licenses/mdlogger/inventory/qt-third-party-runtime-linux-flatpak.json && \
   test ! -e /app/share/licenses/mdlogger/inventory/desktop-windows.json && \
   test -f /app/share/doc/mdlogger/sources/desktop-source-offer.md && \
-  test ! -e /app/venv/lib/python3.13/site-packages/pip && \
+  test ! -e /app/venv/lib/python3.14/site-packages/pip && \
   test ! -e /app/venv/bin/pip && \
-  test ! -e /app/venv/lib/python3.13/site-packages/pyqtgraph/colors/maps/PAL-relaxed.hex && \
-  test ! -e /app/venv/lib/python3.13/site-packages/pyqtgraph/colors/maps/PAL-relaxed_bright.hex
+  test ! -e /app/venv/lib/python3.14/site-packages/pyqtgraph/colors/maps/PAL-relaxed.hex && \
+  test ! -e /app/venv/lib/python3.14/site-packages/pyqtgraph/colors/maps/PAL-relaxed_bright.hex
 '
 
 python_version="$(uv run python --version)"
@@ -102,7 +102,7 @@ flatpak_version="$(flatpak --version)"
 builder_version="$(flatpak-builder --version)"
 runtime_ref="$(flatpak info --user --show-runtime "$APP_ID")"
 runtime_commit="$(flatpak info --user --show-commit "$runtime_ref")"
-sdk_commit="$(flatpak info --user --show-commit org.freedesktop.Sdk//25.08)"
+sdk_commit="$(flatpak info --user --show-commit org.freedesktop.Sdk//26.08)"
 
 uv run python scripts/release/create_release_manifest.py platform-record \
   --platform linux-flatpak-x86_64 \

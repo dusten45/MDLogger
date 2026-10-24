@@ -30,7 +30,7 @@
 #ifnexist "..\dist\MDLogger\THIRD_PARTY_NOTICES.txt"
     #error "dist\MDLogger\THIRD_PARTY_NOTICES.txt is required"
 #endif
-#ifnexist "..\dist\MDLogger\licenses\desktop\qt-6.11.1\LICENSES\GPL-3.0-only.txt"
+#ifnexist "..\dist\MDLogger\licenses\desktop\qt-6.12.0\LICENSES\GPL-3.0-only.txt"
     #error "dist\MDLogger\licenses\desktop is required"
 #endif
 

@@ -20,41 +20,32 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Review status: lockfile closures, tracked legal files, and selected
   license expressions are reviewed. Final Windows payload inspection
   remains a Windows release-host check.
-- Linux Flatpak resolver closure: 19 third-party distributions.
-- Windows resolver closure: 15 third-party distributions. This is not
+- Linux Flatpak resolver closure: 17 third-party distributions (Python 3.14).
+- Windows resolver closure: 13 third-party distributions (Python 3.15). This is not
   represented as an exact PyInstaller payload inventory.
-- Windows also inventories the CPython 3.13 runtime and standard library
-  (with Microsoft Visual C++ Distributable Code, OpenSSL 3.5.9, libffi 3.4.4,
-  and xz/liblzma 5.2.5), PyInstaller 6.21.0 bootloader and runtime hooks,
-  pyinstaller-hooks-contrib 2026.6 runtime hooks, NumPy Windows OpenBLAS/LAPACK
+- Windows also inventories the uv-managed CPython runtime and standard library
+  (python-build-standalone; exact vendor evidence is retained),
+  PyInstaller bootloader and runtime hooks,
+  pyinstaller-hooks-contrib runtime hooks, NumPy Windows OpenBLAS/LAPACK
   and libgfortran, Qt Windows D3D12MemoryAllocator and Wintab, and the
   Inno Setup 6 loader/uninstaller.
 - Qt/PySide6 is distributed under the selected `GPL-3.0-only` path.
 - Exact Qt/PySide6 corresponding-source instructions:
   `licenses/sources/desktop-source-offer.md`.
-- The 83 unique license texts from all 402 Qt 6.11.1 source archive
-  `LICENSES` entries are preserved under `licenses/desktop/qt-6.11.1/`.
-- Qt package-specific source attribution: 123 records and 88 referenced
-  legal files under `licenses/desktop/qt-6.11.1/`. This is a conservative
-  Linux source-attribution superset (which also covers shared cross-platform
+- Qt license corpus: 69 unique source texts; manifest `licenses/desktop/qt-6.12.0/LICENSES-MANIFEST.json`.
+- Qt package-specific source attribution: 98 records and 61 referenced legal files.
+  This is a conservative Essentials source-attribution superset (which also covers cross-platform
   QtCore/QtGui/QtWidgets/QtSvg third-party code on Windows), not an exact
   wheel-build SBOM.
-- The full Linux wheel also ships QtWebEngine with Chromium
-  `140.0.7339.225` and Qt Multimedia with FFmpeg `7.1.3`; exact binary
-  evidence is in `licenses/inventory/qt-third-party-runtime-linux-flatpak.json`.
-- Chromium's 262-component credits are a conservative Linux source-tree
-  superset generated without the unavailable wheel publisher GN
-  dependency graph: `licenses/desktop/qt-6.11.1/qtwebengine/
-  chromium-source-credits.html`.
-- FFmpeg 7.1.3 attribution covers FFmpeg, libjpeg, zlib, and Boost; its
-  aggregate expression and all texts are under
-  `licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/`.
+- Only PySide6-Essentials and shiboken6 are installed. Addons, WebEngine,
+  Pdf, Multimedia, Chromium and FFmpeg are absent. Every Essentials ELF
+  binary is inventoried in `licenses/inventory/qt-third-party-runtime-linux-flatpak.json`.
 - The PySide wheel publisher did not include an exact-build SBOM; the
   tracked evidence does not claim otherwise. Cryptography is separate: its
   Linux wheel ships exact OpenSSL and Rust build-provenance SBOM files under
-  `licenses/desktop/cryptography-50.0.0/sboms/`; the Rust document is not
-  an object-level linker map. Codec patent obligations
-  can vary by format and distribution country and are not granted by Qt.
+  `licenses/desktop/cryptography-50.0.2/sboms/`; the Rust document is not
+  an object-level linker map. These are Python 3.14 Flatpak wheel bytes,
+  not Python 3.15 or Windows binary evidence.
 - `PAL-relaxed.hex` and `PAL-relaxed_bright.hex` from pyqtgraph are
   excluded from both supported desktop distributions because their
   license and provenance could not be confirmed; `opengl32sw.dll`,
@@ -88,7 +79,7 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Legal files: `licenses/desktop/colorama-0.4.6/licenses/LICENSE.txt`
 - Review note: No additional note.
 
-#### cryptography 50.0.0
+#### cryptography 50.0.2
 
 - Platforms: Linux
 - Dependency: indirect
@@ -98,7 +89,7 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Homepage: https://cryptography.io/
 - Source: https://github.com/pyca/cryptography
 - Local modifications: None
-- Legal files: `licenses/desktop/cryptography-50.0.0/licenses/LICENSE`, `licenses/desktop/cryptography-50.0.0/licenses/LICENSE.APACHE`, `licenses/desktop/cryptography-50.0.0/licenses/LICENSE.BSD`
+- Legal files: `licenses/desktop/cryptography-50.0.2/licenses/LICENSE`, `licenses/desktop/cryptography-50.0.2/licenses/LICENSE.APACHE`, `licenses/desktop/cryptography-50.0.2/licenses/LICENSE.BSD`
 - Review note: The BSD-3-Clause alternative is explicitly selected; LICENSE and both upstream alternative texts are preserved.
 
 #### et-xmlfile 2.0.0
@@ -179,7 +170,7 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Legal files: `licenses/desktop/keyring-25.7.0/licenses/LICENSE`
 - Review note: No additional note.
 
-#### more-itertools 11.1.0
+#### more-itertools 11.2.1
 
 - Platforms: Linux, Windows
 - Dependency: indirect
@@ -189,10 +180,10 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Homepage: https://more-itertools.readthedocs.io/
 - Source: https://github.com/more-itertools/more-itertools
 - Local modifications: None
-- Legal files: `licenses/desktop/more-itertools-11.1.0/licenses/LICENSE`
+- Legal files: `licenses/desktop/more-itertools-11.2.1/licenses/LICENSE`
 - Review note: No additional note.
 
-#### numpy 2.4.6
+#### numpy 2.5.4
 
 - Platforms: Linux, Windows
 - Dependency: direct
@@ -202,8 +193,8 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Homepage: https://numpy.org/
 - Source: https://github.com/numpy/numpy
 - Local modifications: None
-- Legal files: `licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt`, `licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/highway/LICENSE`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/multiarray/dragon4_LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/_core/src/umath/svml/LICENSE`, `licenses/desktop/numpy-2.4.6/licenses/numpy/fft/pocketfft/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/linalg/lapack_lite/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/licenses/numpy/ma/LICENSE`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/distributions/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/mt19937/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/pcg64/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/philox/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/sfc64/LICENSE.md`, `licenses/desktop/numpy-2.4.6/licenses/numpy/random/src/splitmix64/LICENSE.md`, `licenses/desktop/numpy-2.4.6/numpy/_core/include/numpy/random/LICENSE.txt`, `licenses/desktop/numpy-2.4.6/numpy/ma/LICENSE`, `licenses/desktop/numpy-2.4.6/numpy/random/LICENSE.md`
-- Review note: All 20 legal files reported by the wheel are preserved, including bundled random generators, SIMD code, LAPACK, libdivide, and compatibility components.
+- Legal files: `licenses/desktop/numpy-2.5.4/licenses/LICENSE-windows.txt`, `licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt`, `licenses/desktop/numpy-2.5.4/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt`, `licenses/desktop/numpy-2.5.4/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING`, `licenses/desktop/numpy-2.5.4/licenses/numpy/_core/src/highway/LICENSE`, `licenses/desktop/numpy-2.5.4/licenses/numpy/_core/src/multiarray/dragon4_LICENSE.txt`, `licenses/desktop/numpy-2.5.4/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md`, `licenses/desktop/numpy-2.5.4/licenses/numpy/_core/src/umath/svml/LICENSE`, `licenses/desktop/numpy-2.5.4/licenses/numpy/fft/pocketfft/LICENSE.md`, `licenses/desktop/numpy-2.5.4/licenses/numpy/linalg/lapack_lite/LICENSE.txt`, `licenses/desktop/numpy-2.5.4/licenses/numpy/ma/LICENSE`, `licenses/desktop/numpy-2.5.4/licenses/numpy/random/LICENSE.md`, `licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/distributions/LICENSE.md`, `licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/mt19937/LICENSE.md`, `licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/pcg64/LICENSE.md`, `licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/philox/LICENSE.md`, `licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/sfc64/LICENSE.md`, `licenses/desktop/numpy-2.5.4/licenses/numpy/random/src/splitmix64/LICENSE.md`, `licenses/desktop/numpy-2.5.4/numpy/_core/include/numpy/random/LICENSE.txt`, `licenses/desktop/numpy-2.5.4/numpy/ma/LICENSE`, `licenses/desktop/numpy-2.5.4/numpy/random/LICENSE.md`
+- Review note: All legal files declared by the Linux wheel and the platform-specific Windows native-runtime notice are preserved.
 
 #### openpyxl 3.1.5
 
@@ -218,7 +209,7 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Legal files: `licenses/desktop/openpyxl-3.1.5/AUTHORS.rst`, `licenses/desktop/openpyxl-3.1.5/LICENCE.rst`
 - Review note: No additional note.
 
-#### pycparser 3.0
+#### pycparser 3.12
 
 - Platforms: Linux
 - Dependency: indirect
@@ -228,7 +219,7 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Homepage: https://github.com/eliben/pycparser
 - Source: https://github.com/eliben/pycparser
 - Local modifications: None
-- Legal files: `licenses/desktop/pycparser-3.0/licenses/LICENSE`
+- Legal files: `licenses/desktop/pycparser-3.12/licenses/LICENSE`
 - Review note: No additional note.
 
 #### pyqtgraph 0.14.0
@@ -244,43 +235,17 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Legal files: `licenses/desktop/pyqtgraph-0.14.0/Apache-2.0.txt`, `licenses/desktop/pyqtgraph-0.14.0/COLORCET-ATTRIBUTION.txt`, `licenses/desktop/pyqtgraph-0.14.0/colors/maps/CC-BY license - applies to CET color map data.txt`, `licenses/desktop/pyqtgraph-0.14.0/colors/maps/CC0 legal code - applies to virids, magma, plasma, inferno and cividis.txt`, `licenses/desktop/pyqtgraph-0.14.0/colors/maps/turbo.csv`, `licenses/desktop/pyqtgraph-0.14.0/licenses/LICENSE.txt`
 - Review note: MIT code, CC-BY-4.0 CET maps, CC0 maps, and Apache-2.0 turbo are preserved. PAL-relaxed files are excluded from both supported desktop distributions because their license and provenance could not be confirmed.
 
-#### PySide6 6.11.1
+#### PySide6-Essentials 6.12.0
 
 - Platforms: Linux, Windows
 - Dependency: direct
-- Purpose: Qt for Python metapackage.
-- Selected license: `GPL-3.0-only`
-- Copyright/attribution: Copyright (c) The Qt Company Ltd. and Qt contributors
-- Homepage: https://pyside.org/
-- Source: https://code.qt.io/cgit/pyside/pyside-setup.git/
-- Local modifications: None
-- Legal files: `licenses/desktop/qt-for-python-6.11.1/LICENSES/Apache-2.0.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/BSD-3-Clause.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GFDL-1.3-no-invariants-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-2.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/LGPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/Qt-GPL-exception-1.0.txt`, `licenses/desktop/qt-for-python-6.11.1/sources/pyside6/COPYING`, `licenses/desktop/qt-for-python-6.11.1/sources/pyside6/PySide6/licensecomment.txt`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/AUTHORS`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libsample`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libshiboken`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/libshiboken/embed/qt_python_license.txt`
-- Review note: The GPL-3.0-only alternative is explicitly selected.
-
-#### PySide6-Addons 6.11.1
-
-- Platforms: Linux, Windows
-- Dependency: indirect
-- Purpose: Full Qt add-on modules and binaries installed by PySide6.
-- Selected license: `GPL-3.0-only`
-- Copyright/attribution: Copyright (c) The Qt Company Ltd. and Qt contributors
-- Homepage: https://pyside.org/
-- Source: https://code.qt.io/cgit/pyside/pyside-setup.git/
-- Local modifications: None
-- Legal files: `licenses/desktop/qt-for-python-6.11.1/LICENSES/Apache-2.0.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/BSD-3-Clause.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GFDL-1.3-no-invariants-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-2.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/LGPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/Qt-GPL-exception-1.0.txt`, `licenses/desktop/qt-for-python-6.11.1/sources/pyside6/COPYING`, `licenses/desktop/qt-for-python-6.11.1/sources/pyside6/PySide6/licensecomment.txt`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/AUTHORS`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libsample`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libshiboken`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/libshiboken/embed/qt_python_license.txt`
-- Review note: The full wheel is retained. It can contain modules that are GPL-only under open-source distribution; these are not hidden or pruned.
-
-#### PySide6-Essentials 6.11.1
-
-- Platforms: Linux, Windows
-- Dependency: indirect
 - Purpose: Qt Core/Gui/Widgets/Svg and other essential Qt binaries.
 - Selected license: `GPL-3.0-only`
 - Copyright/attribution: Copyright (c) The Qt Company Ltd. and Qt contributors
 - Homepage: https://pyside.org/
 - Source: https://code.qt.io/cgit/pyside/pyside-setup.git/
 - Local modifications: None
-- Legal files: `licenses/desktop/qt-for-python-6.11.1/LICENSES/Apache-2.0.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/BSD-3-Clause.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GFDL-1.3-no-invariants-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-2.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/LGPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/Qt-GPL-exception-1.0.txt`, `licenses/desktop/qt-for-python-6.11.1/sources/pyside6/COPYING`, `licenses/desktop/qt-for-python-6.11.1/sources/pyside6/PySide6/licensecomment.txt`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/AUTHORS`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libsample`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libshiboken`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/libshiboken/embed/qt_python_license.txt`
+- Legal files: `licenses/desktop/pyside6-essentials-6.12.0/windows/licenses/LicenseRef-Qt-Commercial.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/Apache-2.0.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/BSD-3-Clause.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/GFDL-1.3-no-invariants-only.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/GPL-2.0-only.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/GPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/LGPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/LicenseRef-Qt-Commercial.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/Qt-GPL-exception-1.0.txt`, `licenses/desktop/qt-for-python-6.12.0/sources/pyside6/COPYING`, `licenses/desktop/qt-for-python-6.12.0/sources/pyside6/PySide6/licensecomment.txt`, `licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/AUTHORS`, `licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING`, `licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING.libsample`, `licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING.libshiboken`
 - Review note: No additional note.
 
 #### pywin32-ctypes 0.2.3
@@ -309,7 +274,7 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Legal files: `licenses/desktop/secretstorage-3.5.0/licenses/LICENSE`
 - Review note: No additional note.
 
-#### shiboken6 6.11.1
+#### shiboken6 6.12.0
 
 - Platforms: Linux, Windows
 - Dependency: indirect
@@ -319,120 +284,130 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Homepage: https://doc.qt.io/qtforpython/
 - Source: https://code.qt.io/cgit/pyside/pyside-setup.git/
 - Local modifications: None
-- Legal files: `licenses/desktop/qt-for-python-6.11.1/LICENSES/Apache-2.0.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/BSD-3-Clause.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GFDL-1.3-no-invariants-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-2.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/GPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/LGPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.11.1/LICENSES/Qt-GPL-exception-1.0.txt`, `licenses/desktop/qt-for-python-6.11.1/sources/pyside6/COPYING`, `licenses/desktop/qt-for-python-6.11.1/sources/pyside6/PySide6/licensecomment.txt`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/AUTHORS`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libsample`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/COPYING.libshiboken`, `licenses/desktop/qt-for-python-6.11.1/sources/shiboken6/libshiboken/embed/qt_python_license.txt`
+- Legal files: `licenses/desktop/qt-for-python-6.12.0/LICENSES/Apache-2.0.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/BSD-3-Clause.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/GFDL-1.3-no-invariants-only.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/GPL-2.0-only.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/GPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/LGPL-3.0-only.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/LicenseRef-Qt-Commercial.txt`, `licenses/desktop/qt-for-python-6.12.0/LICENSES/Qt-GPL-exception-1.0.txt`, `licenses/desktop/qt-for-python-6.12.0/sources/pyside6/COPYING`, `licenses/desktop/qt-for-python-6.12.0/sources/pyside6/PySide6/licensecomment.txt`, `licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/AUTHORS`, `licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING`, `licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING.libsample`, `licenses/desktop/qt-for-python-6.12.0/sources/shiboken6/COPYING.libshiboken`, `licenses/desktop/shiboken6-6.12.0/windows/licenses/LicenseRef-Qt-Commercial.txt`
 - Review note: No additional note.
 
 ### Additional distributed components
 
-#### PyInstaller bootloader 6.21.0
+#### ICU Unicode libraries from Qt Linux wheel 73.2
+
+- Platforms: Linux
+- Purpose: libicudata.so.73, libicui18n.so.73 and libicuuc.so.73 bundled by PySide6-Essentials; runtime version verified using u_getVersion_73.
+- License: `Unicode-DFS-2016 AND ICU AND BSD-2-Clause AND BSD-3-Clause AND NAIST-2003 AND LicenseRef-IANA-TZ-Public-Domain`
+- Copyright: Copyright 1991-2023 Unicode, Inc.; International Business Machines Corporation and dictionary/data authors named in the retained ICU license.
+- Source: https://github.com/unicode-org/icu/tree/release-73-2
+- Legal files: `licenses/desktop/icu-73.2/LICENSE`
+- Review note: Exact release-73-2 license and supplemental notices retained, including dictionaries and public-domain time-zone data. Autoconf helper notices also occur in the source license but are not distributed runtime code. This older ICU is bundled by the latest Qt wheel; it is not independently substituted across its native ABI. No exact publisher build SBOM is claimed.
+
+#### PyInstaller bootloader 6.22.3
 
 - Platforms: Windows
 - Purpose: Compiled bootloader, Python loader modules, and PyInstaller runtime hooks (pyi_rth_*.py, _pyi_rth_utils) embedded in the Windows executable by PyInstaller.
 - License: `GPL-2.0-or-later WITH Bootloader-exception AND Apache-2.0`
 - Copyright: Copyright (c) 2010-2023 PyInstaller Development Team; prior authors listed in COPYING.txt
 - Source: https://github.com/pyinstaller/pyinstaller
-- Legal files: `licenses/desktop/pyinstaller-6.21.0/licenses/COPYING.txt`
+- Legal files: `licenses/desktop/pyinstaller-6.22.3/licenses/COPYING.txt`
 - Review note: Manually inventoried because the bootloader (GPL-2.0-or-later WITH Bootloader-exception) and embedded runtime hooks (Apache-2.0) are distributed build components, not runtime dependency edges in uv tree.
 
-#### pyinstaller-hooks-contrib runtime hooks 2026.6
+#### pyinstaller-hooks-contrib runtime hooks 2026.9
 
 - Platforms: Windows
 - Purpose: Community runtime hook (pyi_rth_pyqtgraph_multiprocess.py) embedded in the Windows executable by PyInstaller.
 - License: `Apache-2.0`
 - Copyright: Copyright (c) 2020-2026 PyInstaller Development Team
 - Source: https://github.com/pyinstaller/pyinstaller-hooks-contrib
-- Legal files: `licenses/desktop/pyinstaller-hooks-contrib-2026.6/licenses/LICENSE`
+- Legal files: `licenses/desktop/pyinstaller-hooks-contrib-2026.9/licenses/LICENSE`
 - Review note: Runtime hooks in _pyinstaller_hooks_contrib/rthooks/ are licensed under Apache-2.0 per upstream LICENSE.
 
-#### NumPy Linux OpenBLAS and LAPACK 2.4.6 wheel bundle
+#### NumPy Linux OpenBLAS and LAPACK 2.5.4 wheel bundle
 
 - Platforms: Linux
-- Purpose: Shared numerical library bundled in numpy.libs/libscipy_openblas64_-32a4b2a6.so.
+- Purpose: Shared numerical library bundled in numpy.libs/libscipy_openblas64_-f48b354e.so.
 - License: `BSD-3-Clause AND BSD-3-Clause-Open-MPI`
 - Copyright: Copyright (c) 2011-2014 The OpenBLAS Project; LAPACK contributors listed in NumPy LICENSE.txt
 - Source: https://github.com/OpenMathLib/OpenBLAS/
-- Legal files: `licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt`
+- Legal files: `licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt`
 - Review note: Known limitation: The exact OpenBLAS revision is not disclosed by the wheel; the retained NumPy LICENSE.txt identifies the bundled binary and notices.
 
 #### GNU libgfortran runtime from NumPy Linux wheel 5.0.0 (wheel file)
 
 - Platforms: Linux
-- Purpose: Shared runtime library bundled as numpy.libs/libgfortran-040039e1-0352e75f.so.5.0.0.
+- Purpose: Shared runtime library bundled as numpy.libs/libgfortran-83c28eba-468e71e5.so.5.0.0.
 - License: `GPL-3.0-or-later WITH GCC-exception-3.1`
 - Copyright: Copyright (C) 2002-2017 Free Software Foundation, Inc.
 - Source: https://gcc.gnu.org/git/?p=gcc.git;a=tree;f=libgfortran
-- Legal files: `licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt`
+- Legal files: `licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt`
 - Review note: Known limitation: The exact GCC revision is not disclosed by the wheel; the retained NumPy LICENSE.txt identifies the bundled runtime and notices.
 
 #### GNU libquadmath runtime from NumPy Linux wheel 0.0.0 (wheel file)
 
 - Platforms: Linux
-- Purpose: Shared runtime library bundled as numpy.libs/libquadmath-96973f99-934c22de.so.0.0.0.
+- Purpose: Shared runtime library bundled as numpy.libs/libquadmath-2284e583-a9307bba.so.0.0.0.
 - License: `LGPL-2.1-or-later`
 - Copyright: Copyright (C) 2010-2019 Free Software Foundation, Inc.
 - Source: https://gcc.gnu.org/git/?p=gcc.git;a=tree;f=libquadmath
-- Legal files: `licenses/desktop/numpy-2.4.6/licenses/LICENSE.txt`
+- Legal files: `licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt`
 - Review note: Known limitation: The exact GCC revision is not disclosed by the wheel; the retained NumPy LICENSE.txt identifies the bundled runtime and notices.
 
-#### OpenSSL embedded in cryptography Linux wheel 4.0.1
+#### OpenSSL embedded in cryptography Linux wheel 4.0.3
 
 - Platforms: Linux
 - Purpose: Statically built into cryptography _rust.abi3.so according to the wheel SBOM (no-shared).
 - License: `Apache-2.0`
 - Copyright: Copyright 1998-2026 The OpenSSL Project Authors. All Rights Reserved.
 - Source: https://github.com/openssl/openssl
-- Legal files: `licenses/desktop/cryptography-50.0.0/licenses/LICENSE.APACHE`
+- Legal files: `licenses/desktop/cryptography-50.0.2/licenses/LICENSE.APACHE`
 - Review note: Exact source URL, SHA256 and build flags are validated from the wheel SBOM.
 
-#### NumPy Windows OpenBLAS and LAPACK 2.4.6 wheel bundle
+#### NumPy Windows OpenBLAS and LAPACK 2.5.4 wheel bundle
 
 - Platforms: Windows
 - Purpose: Shared numerical library bundled in numpy.libs/libscipy_openblas64_*.dll in the locked Windows wheel.
 - License: `BSD-3-Clause AND BSD-3-Clause-Open-MPI`
 - Copyright: Copyright (c) 2011-2014 The OpenBLAS Project; LAPACK contributors listed in NumPy LICENSE-windows.txt
 - Source: https://github.com/OpenMathLib/OpenBLAS/
-- Legal files: `licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt`
+- Legal files: `licenses/desktop/numpy-2.5.4/licenses/LICENSE-windows.txt`
 - Review note: Known limitation: The exact OpenBLAS revision is not disclosed by the Windows wheel; the retained NumPy LICENSE-windows.txt identifies the bundled binary and notices.
 
-#### GNU libgfortran runtime from NumPy Windows wheel 2.4.6 wheel bundle
+#### GNU libgfortran runtime from NumPy Windows wheel 2.5.4 wheel bundle
 
 - Platforms: Windows
 - Purpose: GCC runtime library statically linked into numpy.libs/libscipy_openblas64_*.dll in the locked Windows wheel.
 - License: `GPL-3.0-or-later WITH GCC-exception-3.1`
 - Copyright: Copyright (C) 2009 Free Software Foundation, Inc.
 - Source: https://gcc.gnu.org/git/?p=gcc.git;a=tree;f=libgfortran
-- Legal files: `licenses/desktop/numpy-2.4.6/licenses/LICENSE-windows.txt`
+- Legal files: `licenses/desktop/numpy-2.5.4/licenses/LICENSE-windows.txt`
 - Review note: Known limitation: The exact GCC revision is not disclosed by the Windows wheel; the retained NumPy LICENSE-windows.txt identifies the statically linked runtime and GCC Runtime Library Exception 3.1 notices.
 
-#### CPython runtime and standard library 3.13
+#### CPython runtime and standard library 3.15.1 (python-build-standalone 20261021)
 
 - Platforms: Windows
-- Purpose: Python 3.13 interpreter DLLs, standard library, Microsoft Visual C++ Distributable Code (vcruntime140*.dll, msvcp140*.dll), and bundled native C libraries (OpenSSL 3.5.9, libffi 3.4.4, xz/liblzma 5.2.5, Expat, bzip2, libmpdec, zlib, SQLite, mimalloc, SipHash24) packaged into the Windows PyInstaller onedir bundle.
+- Purpose: uv-managed Windows CPython 3.15.1 interpreter, standard library, Microsoft Visual C++ Distributable Code and bundled native libraries, including zstd added in Python 3.14. The matching vendor PYTHON.json describes build inputs; the Windows PyInstaller TOC remains the final payload authority.
 - License: `PSF-2.0 AND 0BSD AND Apache-2.0 AND MIT AND BSD-2-Clause AND BSD-3-Clause AND Zlib AND bzip2-1.0.6 AND blessing AND CC0-1.0 AND LicenseRef-Microsoft-Distributable-Code`
-- Copyright: Copyright (c) 2001-2026 Python Software Foundation; Copyright (c) 1998-2026 The OpenSSL Project Authors; Copyright (c) 1996-2022 Anthony Green, Red Hat, Inc and others; Microsoft Corporation; third-party authors listed in Doc-license.rst and LICENSE.txt
+- Copyright: Python Software Foundation, Microsoft Corporation, and third-party authors identified in the retained vendor and CPython license originals.
 - Source: https://github.com/python/cpython
-- Legal files: `licenses/desktop/cpython-3.13/bzip2-LICENSE.txt`, `licenses/desktop/cpython-3.13/crtlicense.txt`, `licenses/desktop/cpython-3.13/Doc-license.rst`, `licenses/desktop/cpython-3.13/libffi-LICENSE.txt`, `licenses/desktop/cpython-3.13/LICENSE.txt`, `licenses/desktop/cpython-3.13/openssl-LICENSE.txt`, `licenses/desktop/cpython-3.13/xz-COPYING.txt`, `licenses/desktop/qt-6.11.1/LICENSES/blessing.txt`
-- Review note: Matches CPython PCbuild/regen.targets Windows license inputs (LICENSE, PC/crtlicense.txt, bzip2/LICENSE, libffi/LICENSE, openssl/LICENSE.txt) plus xz/COPYING for _lzma.pyd and SQLite blessing.
+- Legal files: `licenses/desktop/cpython-3.15.1/Doc-license.rst`, `licenses/desktop/cpython-3.15.1/LICENSE.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.bzip2.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.cpython.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.expat.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.libffi.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.liblzma.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.mpdecimal.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.openssl-3.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.sqlite.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.zlib-ng.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.zlib.txt`, `licenses/desktop/cpython-3.15.1/licenses/LICENSE.zstd.txt`, `licenses/desktop/cpython-3.15.1/PYTHON.json`, `licenses/desktop/cpython-3.15.1/VENDOR-MANIFEST.json`
+- Review note: Originals extracted from verified python-build-standalone 20261021 Windows install-only and matching pgo-full archives, plus CPython v3.15.1 Doc/license.rst. These are not python.org installer SPDX evidence. tkinter is excluded from the app bundle; unrelated vendor license files and pip build-tool notices are not represented as runtime components.
 
-#### Qt Windows D3D12 Memory Allocator 6.11.1
+#### Qt Windows D3D12 Memory Allocator 6.12.0
 
 - Platforms: Windows
 - Purpose: Direct3D 12 memory allocation library bundled in QtGui on Windows.
 - License: `MIT`
-- Copyright: Copyright (c) 2019-2022 Advanced Micro Devices, Inc. All rights reserved.
+- Copyright: Copyright (c) 2019-2026 Advanced Micro Devices, Inc. All rights reserved.
 - Source: https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
-- Legal files: `licenses/desktop/qt-6.11.1/windows-3rdparty/D3D12MemoryAllocator/LICENSE.txt`
-- Review note: Windows-specific Qt 6.11.1 qtbase third-party component; opengl32sw.dll (Mesa/LLVM) and qpdf.dll/Qt6Pdf.dll are explicitly excluded in MDLogger.spec.
+- Legal files: `licenses/desktop/qt-6.12.0/windows-3rdparty/D3D12MemoryAllocator/LICENSE.txt`
+- Review note: Windows-specific Qt 6.12.0 qtbase third-party component; opengl32sw.dll (Mesa/LLVM) and qpdf.dll/Qt6Pdf.dll are explicitly excluded in MDLogger.spec.
 
-#### Qt Windows Wintab API 6.11.1
+#### Qt Windows Wintab API 6.12.0
 
 - Platforms: Windows
 - Purpose: Wintab tablet interface headers used by the Qt Windows QPA plugin.
 - License: `LicenseRef-Lcs-Telegraphics`
 - Copyright: Copyright (c) 1991-1998 by LCS/Telegraphics.
-- Source: https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz
-- Legal files: `licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Lcs-Telegraphics.txt`
-- Review note: Windows-specific Qt 6.11.1 qtbase third-party component.
+- Source: https://download.qt.io/official_releases/qt/6.12/6.12.0/single/qt-everywhere-src-6.12.0.tar.xz
+- Legal files: `licenses/desktop/qt-6.12.0/LICENSES/LicenseRef-Lcs-Telegraphics.txt`
+- Review note: Windows-specific Qt 6.12.0 qtbase third-party component.
 
 #### Inno Setup runtime loader and uninstaller 6
 
@@ -453,7 +428,7 @@ helper, and generated Workbox service worker inventory. The complete plain-text
 notice is published as `web/public/third-party-notices.txt` and deployed at
 `/third-party-notices.txt`.
 
-- Runtime package count: 21.
+- Runtime package count: 22.
 - Reviewed runtime license expressions: `MIT`, `0BSD`.
 - Package-specific originals: `web/public/licenses/`.
 - Actual bundle evidence is checked from temporary Vite production sourcemaps.
@@ -463,22 +438,23 @@ notice is published as `web/public/third-party-notices.txt` and deployed at
 
 ### Web runtime packages
 
-- **@supabase/auth-js 2.112.3** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/auth-js/LICENSE`
-- **@supabase/functions-js 2.112.3** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/functions-js/LICENSE`
+- **@supabase/auth-js 2.118.0** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/auth-js/LICENSE`
+- **@supabase/functions-js 2.118.0** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/functions-js/LICENSE`
 - **@supabase/phoenix 0.4.5** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/phoenix/LICENSE.md`
-- **@supabase/postgrest-js 2.112.3** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/postgrest-js/LICENSE`
-- **@supabase/realtime-js 2.112.3** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/realtime-js/LICENSE`
-- **@supabase/storage-js 2.112.3** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/storage-js/LICENSE`
-- **@supabase/supabase-js 2.112.3** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/supabase-js/LICENSE`
+- **@supabase/postgrest-js 2.118.0** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/postgrest-js/LICENSE`
+- **@supabase/realtime-js 2.118.0** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/realtime-js/LICENSE`
+- **@supabase/storage-js 2.118.0** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/storage-js/LICENSE`
+- **@supabase/supabase-js 2.118.0** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/@supabase/supabase-js/LICENSE`
 - **iceberg-js 0.8.1** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/iceberg-js/LICENSE`
-- **react 18.3.1** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/react/LICENSE`
-- **react-dom 18.3.1** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/react-dom/LICENSE`
-- **react-router 7.18.2** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/react-router/LICENSE.md`
-- **react-router-dom 7.18.2** — `MIT`; evidence: `tree-shaken-facade`; legal files: `web/public/licenses/react-router-dom/LICENSE.md`
-- **scheduler 0.23.2** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/scheduler/LICENSE`
+- **react 19.3.1** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/react/LICENSE`
+- **react-dom 19.3.1** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/react-dom/LICENSE`
+- **react-router 7.18.4** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/react-router/LICENSE.md`
+- **react-router-dom 7.18.4** — `MIT`; evidence: `tree-shaken-facade`; legal files: `web/public/licenses/react-router-dom/LICENSE.md`
+- **rolldown 1.2.15** — `MIT`; evidence: `rolldown-generated-helper`; legal files: `web/public/licenses/rolldown/LICENSE`, `web/public/licenses/rolldown/THIRD-PARTY-LICENSE`
+- **scheduler 0.28.0** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/scheduler/LICENSE`
 - **tslib 2.8.1** — `0BSD`; evidence: `main-sourcemap`; legal files: `web/public/licenses/tslib/LICENSE.txt`
-- **vite 6.4.5** — `MIT`; evidence: `vite-generated-helper`; legal files: `web/public/licenses/vite/LICENSE.md`
-- **vite-plugin-pwa 1.3.0** — `MIT`; evidence: `pwa-virtual-module`; legal files: `web/public/licenses/vite-plugin-pwa/LICENSE`
+- **vite 8.3.5** — `MIT`; evidence: `vite-generated-helper`; legal files: `web/public/licenses/vite/LICENSE.md`
+- **vite-plugin-pwa 2.0.0** — `MIT`; evidence: `pwa-virtual-module`; legal files: `web/public/licenses/vite-plugin-pwa/LICENSE`
 - **workbox-core 7.4.1** — `MIT`; evidence: `service-worker-sourcemap`; legal files: `web/public/licenses/workbox-core/LICENSE`
 - **workbox-precaching 7.4.1** — `MIT`; evidence: `service-worker-sourcemap`; legal files: `web/public/licenses/workbox-precaching/LICENSE`
 - **workbox-routing 7.4.1** — `MIT`; evidence: `service-worker-sourcemap`; legal files: `web/public/licenses/workbox-routing/LICENSE`

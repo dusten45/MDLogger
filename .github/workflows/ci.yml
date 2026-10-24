@@ -17,22 +17,26 @@ concurrency:
 
 jobs:
     validate:
-        name: Lint, type-check, tests, secret scan
+        name: Python ${{ matrix.python }} quality gates
         runs-on: ubuntu-latest
         timeout-minutes: 20
+        strategy:
+            fail-fast: false
+            matrix:
+                python: ["3.14.9", "3.15.1"]
         env:
             MDLOGGER_DATA_DIR: /tmp
             QT_QPA_PLATFORM: offscreen
 
         steps:
             - name: Check out repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7.0.1
 
             - name: Set up uv
-              uses: astral-sh/setup-uv@v4
+              uses: astral-sh/setup-uv@v10.3.2
               with:
-                  version: "0.11.28"
-                  python-version: "3.13"
+                  version: "0.13.5"
+                  python-version: ${{ matrix.python }}
 
             - name: Install dependencies
               run: uv sync --locked --group dev
@@ -43,7 +47,9 @@ jobs:
                   sudo apt-get install --yes libegl1 fonts-noto-cjk
 
             - name: Verify desktop license artifacts
-              run: uv run python scripts/generate_desktop_licenses.py --check
+              env:
+                  UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/mdlogger-license-env
+              run: uv run --python 3.14.9 --frozen python scripts/generate_desktop_licenses.py --check
 
             - name: Verify generated desktop and repository notices are committed
               run: |
@@ -101,12 +107,12 @@ jobs:
 
         steps:
             - name: Check out repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7.0.1
 
             - name: Set up Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7.1.0
               with:
-                  node-version: "22"
+                  node-version-file: ".nvmrc"
                   cache: npm
                   cache-dependency-path: web/package-lock.json
 
@@ -153,7 +159,7 @@ jobs:
 
         steps:
             - name: Check out repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7.0.1
 
             - name: Confirm runner checkout and license verifier source
               shell: pwsh
@@ -162,10 +168,10 @@ jobs:
                   Select-String -Path scripts/generate_desktop_licenses.py -Pattern "Validate the reviewed closure shape|uv found" -Context 1,1
 
             - name: Set up uv
-              uses: astral-sh/setup-uv@v4
+              uses: astral-sh/setup-uv@v10.3.2
               with:
-                  version: "0.11.28"
-                  python-version: "3.13"
+                  version: "0.13.5"
+                  python-version: "3.15.1"
 
             - name: Install dependencies
               run: uv sync --locked --group dev
@@ -206,16 +212,16 @@ jobs:
               run: |
                   if (-not (Test-Path dist/MDLogger/LICENSE)) { throw "LICENSE missing" }
                   if (-not (Test-Path dist/MDLogger/THIRD_PARTY_NOTICES.txt)) { throw "third-party notice missing" }
-                  if (-not (Test-Path dist/MDLogger/licenses/desktop/qt-6.11.1/LICENSES/GPL-3.0-only.txt)) { throw "desktop licenses missing" }
+                  if (-not (Test-Path dist/MDLogger/licenses/desktop/qt-6.12.0/LICENSES/GPL-3.0-only.txt)) { throw "desktop licenses missing" }
                   if (Test-Path dist/MDLogger/licenses/inventory) { throw "Internal CI license inventories must not be bundled in user installations" }
                   if (Test-Path dist/MDLogger/licenses/sources) { throw "Maintainer source docs must not be bundled in user installations" }
-                  if (Test-Path dist/MDLogger/licenses/desktop/qt-6.11.1/qtwebengine) { throw "Linux Qt runtime evidence must not be treated as Windows payload evidence" }
-                  if (Test-Path dist/MDLogger/licenses/desktop/qt-6.11.1/qtmultimedia) { throw "Linux Qt multimedia licenses must not be bundled on Windows" }
+                  if (Test-Path dist/MDLogger/licenses/desktop/qt-6.12.0/qtwebengine) { throw "Unused Qt WebEngine licenses must not be bundled" }
+                  if (Test-Path dist/MDLogger/licenses/desktop/qt-6.12.0/qtmultimedia) { throw "Unused Qt multimedia licenses must not be bundled" }
                   if (-not (Test-Path build/MDLogger/Analysis-00.toc)) { throw "PyInstaller Analysis TOC missing" }
                   if (-not (Test-Path build/MDLogger/COLLECT-00.toc)) { throw "PyInstaller COLLECT TOC missing" }
                   $analysis = Get-Content build/MDLogger/Analysis-00.toc -Raw
                   if ($analysis -notmatch "PySide6") { throw "PyInstaller Analysis TOC does not contain PySide6 evidence" }
-                  $palettes = Get-ChildItem dist/MDLogger -Recurse -File | Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex", "opengl32sw.dll", "qpdf.dll", "Qt6Pdf.dll") }
+                  $palettes = Get-ChildItem dist/MDLogger -Recurse -File | Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex", "opengl32sw.dll", "qpdf.dll", "Qt6Pdf.dll", "qwebengineview.dll", "icudtl.dat") }
                   if ($palettes) { throw "unverified pyqtgraph palettes or forbidden binaries were bundled" }
 
             - name: Compile Inno Setup installer
@@ -236,7 +242,7 @@ jobs:
                   if (-not (Test-Path "$installRoot/THIRD_PARTY_NOTICES.txt")) { throw "Installed third-party notice missing" }
                   if (-not (Test-Path "$installRoot/licenses/desktop")) { throw "Installed desktop licenses missing" }
                   if (Test-Path "$installRoot/licenses/inventory") { throw "Installed payload must not contain internal CI inventories" }
-                  $palettes = Get-ChildItem $installRoot -Recurse -File | Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex", "opengl32sw.dll", "qpdf.dll", "Qt6Pdf.dll") }
+                  $palettes = Get-ChildItem $installRoot -Recurse -File | Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex", "opengl32sw.dll", "qpdf.dll", "Qt6Pdf.dll", "qwebengineview.dll", "icudtl.dat") }
                   if ($palettes) { throw "Unverified pyqtgraph palettes or forbidden binaries were installed" }
                   Remove-Item -LiteralPath $installRoot -Recurse -Force
 

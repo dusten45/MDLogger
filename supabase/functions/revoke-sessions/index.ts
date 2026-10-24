@@ -20,7 +20,7 @@
 //     절대 노출하지 않는다. 인증 토큰도 로그에 남기지 않고 오류 코드만 기록한다.
 //   * 파괴적 경로이므로 메서드(POST)와 요청 크기만 엄격히 허용한다.
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 
 const MAX_BODY_BYTES = 512;
 

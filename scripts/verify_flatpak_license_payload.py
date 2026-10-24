@@ -15,7 +15,7 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 POLICY_PATH = PROJECT_ROOT / "scripts" / "desktop_license_policy.json"
-SITE_PACKAGES = "venv/lib/python3.13/site-packages"
+SITE_PACKAGES = "venv/lib/python3.14/site-packages"
 NORMALIZE_PATTERN = re.compile(r"[-_.]+")
 INVENTORY_DIRECTORY = "share/licenses/mdlogger/inventory"
 
@@ -113,9 +113,14 @@ def verify_absent_unreviewed_content(app_root: Path) -> None:
         *site_packages.glob("pip-*.dist-info"),
         app_root / "venv/bin/pip",
         app_root / "venv/bin/pip3",
-        app_root / "venv/bin/pip3.13",
+        *(app_root / "venv/bin").glob("pip3.*"),
         site_packages / "pyqtgraph/colors/maps/PAL-relaxed.hex",
         site_packages / "pyqtgraph/colors/maps/PAL-relaxed_bright.hex",
+        site_packages / "PySide6/Qt/plugins/designer/libqwebengineview.so",
+        site_packages / "PySide6/Qt/plugins/imageformats/libqpdf.so",
+        site_packages / "PySide6/Qt/qml/QtQuick/Pdf",
+        site_packages / "mdlogger/secret_scan.py",
+        *(site_packages / "mdlogger/__pycache__").glob("secret_scan*.pyc"),
     )
     present = [str(path) for path in forbidden if path.exists()]
     if present:
@@ -221,7 +226,7 @@ def verify_qt_module_inventory(app_root: Path) -> None:
     distribution_records = inventory.get("distributions", [])
     if not isinstance(distribution_records, list):
         raise ComplianceError("Flatpak Qt module distributions are invalid")
-    expected_names = {"pyside6-essentials", "pyside6-addons"}
+    expected_names = {"pyside6-essentials"}
     observed_names: set[str] = set()
     for record in distribution_records:
         if not isinstance(record, Mapping):
@@ -275,8 +280,10 @@ def verify_qt_module_inventory(app_root: Path) -> None:
             raise ComplianceError(f"Flatpak Qt module inventory drift: {field}")
 
 
-def verify_qt_runtime_inventory(app_root: Path, policy: dict[str, Any]) -> None:
-    """Verify the final QtWebEngine and FFmpeg binaries and their legal files."""
+def verify_qt_runtime_inventory(
+    app_root: Path, policy: dict[str, Any], *, payload_phase: str = "final_image"
+) -> None:
+    """Verify Essentials binaries and reject unreviewed optional Qt components."""
 
     inventory = load_deployed_inventory(
         app_root, "qt-third-party-runtime-linux-flatpak.json"
@@ -285,47 +292,77 @@ def verify_qt_runtime_inventory(app_root: Path, policy: dict[str, Any]) -> None:
     if inventory.get("exact_build_sbom_available") is not False:
         raise ComplianceError("Flatpak Qt runtime exact-build SBOM status drift")
 
-    chromium = inventory.get("chromium", {})
-    chromium_policy = runtime["chromium"]
-    if chromium.get("runtime_version") != chromium_policy["runtime_version"]:
-        raise ComplianceError("Flatpak Chromium runtime version drift")
-    source_credits = chromium.get("source_credits", {})
+    distribution = inventory.get("distribution", {})
     if (
-        source_credits.get("component_count")
-        != chromium_policy["source_credits_component_count"]
-        or source_credits.get("scope") != chromium_policy["source_credits_scope"]
+        inventory.get("schema_version") != 2
+        or normalize_name(distribution.get("name", ""))
+        != normalize_name(runtime["distribution"])
+        or distribution.get("version") != runtime["version"]
     ):
-        raise ComplianceError("Flatpak Chromium source-credit scope drift")
-    if chromium.get("legal_files") != [
-        record["path"] for record in chromium_policy["files"]
-    ]:
-        raise ComplianceError("Flatpak Chromium legal-file inventory drift")
-    verify_qt_payload_files(
-        app_root, chromium.get("payload_files", []), label="Chromium"
+        raise ComplianceError("Flatpak Qt runtime distribution drift")
+    for key in ("excluded_distributions", "excluded_binding_modules"):
+        if inventory.get(key) != runtime[key]:
+            raise ComplianceError(f"Flatpak Qt runtime exclusion drift: {key}")
+    if inventory.get("icu_version") != runtime["icu_version"]:
+        raise ComplianceError("Flatpak Qt bundled ICU version drift")
+    distributions = installed_distributions(app_root / SITE_PACKAGES)
+    if any(
+        normalize_name(name) in distributions
+        for name in runtime["excluded_distributions"]
+    ):
+        raise ComplianceError("Excluded Qt distribution is present")
+    forbidden = (
+        "webengine",
+        "multimedia",
+        "ffmpeg",
+        "libavcodec",
+        "libavformat",
+        "libavutil",
+        "libswresample",
+        "libswscale",
+        "qt6pdf",
+        "qtpdf",
     )
-    verify_deployed_legal_files(app_root, chromium_policy["files"], label="Chromium")
-
-    ffmpeg = inventory.get("ffmpeg", {})
-    ffmpeg_policy = runtime["ffmpeg"]
-    for field in (
-        "version",
-        "runtime_license",
-        "selected_license_expression",
-        "aggregate_attribution_expression",
-        "configure",
-        "source_url",
-        "source_sha256",
+    root = app_root / SITE_PACKAGES / "PySide6"
+    actual_native = set()
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(app_root / SITE_PACKAGES).as_posix()
+        if any(part in relative.lower() for part in forbidden):
+            raise ComplianceError(f"Excluded Qt runtime file is present: {relative}")
+        with path.open("rb") as stream:
+            if stream.read(4) == b"\x7fELF":
+                actual_native.add(relative)
+    records = inventory.get("payload_files", [])
+    if actual_native != {record["path"] for record in records}:
+        raise ComplianceError("Flatpak Qt native-file inventory drift")
+    overrides = {
+        Path(record["path"]).relative_to(SITE_PACKAGES).as_posix(): record
+        for record in policy["flatpak_linux_native_payload"]
+        if Path(record["path"]).is_relative_to(Path(SITE_PACKAGES) / "PySide6")
+    }
+    checked_records = []
+    for record in records:
+        override = overrides.get(record["path"])
+        if override is not None:
+            if override["wheel"] != {key: record[key] for key in ("size", "sha256")}:
+                raise ComplianceError("Flatpak Qt native wheel-pin inventory drift")
+            if payload_phase == "final_image":
+                record = {**record, **override["final_image"]}
+        checked_records.append(record)
+    verify_qt_payload_files(app_root, checked_records, label="Essentials")
+    for component in policy["components"]:
+        if component["name"] == "ICU Unicode libraries from Qt Linux wheel":
+            verify_deployed_legal_files(
+                app_root, component["license_files"], label="ICU"
+            )
+    source = policy["qt_source_attributions"]
+    if (
+        inventory.get("qt_source_attributions", {}).get("path")
+        != source["file"]["path"]
     ):
-        if ffmpeg.get(field) != ffmpeg_policy[field]:
-            raise ComplianceError(f"Flatpak FFmpeg runtime inventory drift: {field}")
-    if ffmpeg.get("components") != ffmpeg_policy["components"]:
-        raise ComplianceError("Flatpak FFmpeg component attribution drift")
-    if ffmpeg.get("legal_files") != [
-        record["path"] for record in ffmpeg_policy["files"]
-    ]:
-        raise ComplianceError("Flatpak FFmpeg legal-file inventory drift")
-    verify_qt_payload_files(app_root, ffmpeg.get("payload_files", []), label="FFmpeg")
-    verify_deployed_legal_files(app_root, ffmpeg_policy["files"], label="FFmpeg")
+        raise ComplianceError("Flatpak Qt runtime source attribution drift")
 
 
 def verify_cryptography_wheel_evidence(app_root: Path, policy: dict[str, Any]) -> None:
@@ -458,12 +495,14 @@ def verify(
     """Verify every reviewed runtime and legal-file boundary of a Flatpak image."""
 
     policy = load_policy(policy_path)
+    if policy["python_versions"]["linux"] != "3.14":
+        raise ComplianceError("Flatpak target Python version drift")
     verify_distribution_closure(app_root, policy)
     verify_absent_unreviewed_content(app_root)
     verify_documents(app_root)
     verify_native_payload(app_root, policy, payload_phase=payload_phase)
     verify_qt_module_inventory(app_root)
-    verify_qt_runtime_inventory(app_root, policy)
+    verify_qt_runtime_inventory(app_root, policy, payload_phase=payload_phase)
     verify_qt_attributions(app_root, policy)
     verify_cryptography_wheel_evidence(app_root, policy)
 
