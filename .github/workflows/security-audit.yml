@@ -1,0 +1,94 @@
+name: Dependency security audit
+
+on:
+    workflow_dispatch:
+    schedule:
+        # 매일 한국 시간 09:17. GitHub 스케줄은 UTC 기준이며 지연될 수 있다.
+        - cron: "17 0 * * *"
+
+permissions:
+    contents: read
+
+concurrency:
+    group: dependency-security-${{ github.ref }}
+    cancel-in-progress: false
+
+jobs:
+    python:
+        name: Python dependencies (${{ matrix.os }})
+        runs-on: ${{ matrix.os }}
+        timeout-minutes: 15
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest, windows-latest]
+        defaults:
+            run:
+                shell: bash
+
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v4
+              with:
+                  version: "0.11.28"
+                  python-version: "3.13"
+
+            - name: Install locked runtime and development dependencies
+              run: uv sync --locked --group dev --no-install-project
+
+            - name: Audit installed Python dependencies
+              run: |
+                  site_packages="$(uv run --no-sync python -c 'import sysconfig; from pathlib import Path; print(Path(sysconfig.get_path("purelib")).as_posix())')"
+                  test -d "$site_packages"
+                  uvx pip-audit==2.10.1 --path "$site_packages" --strict \
+                    --format=json --output "$RUNNER_TEMP/python-audit.json"
+
+            - name: Upload Python audit report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: python-dependency-audit-${{ matrix.os }}
+                  path: ${{ runner.temp }}/python-audit.json
+                  if-no-files-found: warn
+                  retention-days: 30
+
+    web:
+        name: Web dependencies
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        defaults:
+            run:
+                working-directory: web
+
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v4
+              with:
+                  persist-credentials: false
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "22"
+                  cache: npm
+                  cache-dependency-path: web/package-lock.json
+
+            - name: Install locked dependencies without lifecycle scripts
+              run: npm ci --no-audit --ignore-scripts
+
+            - name: Audit all web dependencies
+              run: npm audit --json > "$RUNNER_TEMP/npm-audit.json"
+
+            - name: Upload web audit report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: npm-dependency-audit
+                  path: ${{ runner.temp }}/npm-audit.json
+                  if-no-files-found: warn
+                  retention-days: 30

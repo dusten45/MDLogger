@@ -1,0 +1,60 @@
+version: 2
+
+# PR은 기존 라이선스 검토와 생성 산출물 검사를 통과한 뒤 사람이 병합한다.
+updates:
+    - package-ecosystem: uv
+      directory: "/"
+      schedule:
+          interval: weekly
+          day: monday
+          time: "09:30"
+          timezone: Asia/Seoul
+      open-pull-requests-limit: 2
+      commit-message:
+          prefix: chore
+      groups:
+          python-maintenance:
+              applies-to: version-updates
+              patterns: ["*"]
+              update-types: [minor, patch]
+          python-security:
+              applies-to: security-updates
+              patterns: ["*"]
+
+    - package-ecosystem: npm
+      directory: "/web"
+      schedule:
+          interval: weekly
+          day: monday
+          time: "09:40"
+          timezone: Asia/Seoul
+      open-pull-requests-limit: 2
+      commit-message:
+          prefix: chore
+      groups:
+          web-maintenance:
+              applies-to: version-updates
+              patterns: ["*"]
+              update-types: [minor, patch]
+          web-security:
+              applies-to: security-updates
+              patterns: ["*"]
+
+    - package-ecosystem: github-actions
+      directory: "/"
+      schedule:
+          interval: weekly
+          day: monday
+          time: "09:50"
+          timezone: Asia/Seoul
+      open-pull-requests-limit: 2
+      commit-message:
+          prefix: chore
+      groups:
+          actions-maintenance:
+              applies-to: version-updates
+              patterns: ["*"]
+              update-types: [minor, patch]
+          actions-security:
+              applies-to: security-updates
+              patterns: ["*"]

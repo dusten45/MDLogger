@@ -18,7 +18,7 @@
         "strip:source-maps": "node scripts/remove-source-maps.mjs dist",
         "check:secrets": "node scripts/check-secrets.mjs dist",
         "check:deploy-env": "node scripts/check-deploy-env.mjs",
-        "deploy": "npm run check:deploy-env && npm run check:licenses && npm run check:license-artifacts && npm run build && npm run check:license-bundle && npm run strip:source-maps && npm run check:secrets && wrangler deploy",
+        "deploy": "npm audit && npm run check:deploy-env && npm run check:licenses && npm run check:license-artifacts && npm run build && npm run check:license-bundle && npm run strip:source-maps && npm run check:secrets && wrangler deploy",
         "test:watch": "vitest"
     },
     "dependencies": {

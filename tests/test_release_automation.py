@@ -432,19 +432,113 @@ def test_windows_installation_waits_and_checks_its_own_exit_code(
     assert f'/DIR=`"{install_root}`"' in script
 
 
-def test_ci_audits_installed_project_dependencies_without_weakening_web_audit():
+def test_normal_ci_keeps_reproducible_checks_without_advisory_gates():
     workflow = (PROJECT_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    audit = workflow.split("- name: Python dependency security audit", 1)[1].split(
-        "- name:", 1
-    )[0]
 
-    assert 'sysconfig.get_path("purelib")' in audit
-    assert 'uvx pip-audit==2.10.1 --path "$site_packages" --skip-editable' in audit
+    assert "pip-audit" not in workflow
+    assert "npm audit" not in workflow
     assert "uv sync --group dev" not in workflow
     assert workflow.count("uv sync --locked --group dev") == 2
     assert "npm ci --no-audit" in workflow
-    assert "run: npm audit\n" in workflow
+    assert "uv run pytest" in workflow
+    assert "run: npm test" in workflow
+    assert "generate_desktop_licenses.py --check" in workflow
+    assert "npm run generate:licenses" in workflow
+    assert "Commit the regenerated artifacts." in workflow
+    assert "npm run check:license-bundle" in workflow
+    assert "npm run check:secrets" in workflow
+
+
+def test_security_audit_is_separate_and_checks_both_python_platforms():
+    workflow = (PROJECT_ROOT / ".github/workflows/security-audit.yml").read_text(
+        encoding="utf-8"
+    )
+    triggers = workflow.split("on:", 1)[1].split("permissions:", 1)[0]
+    python_job = workflow.split("    python:", 1)[1].split("    web:", 1)[0]
+    web_job = workflow.split("    web:", 1)[1]
+
+    assert "workflow_dispatch:" in triggers
+    assert 'cron: "17 0 * * *"' in triggers
+    assert "push:" not in triggers
+    assert "pull_request" not in triggers
+    assert "contents: read" in workflow
+    assert ": write" not in workflow
+    assert "fail-fast: false" in python_job
+    assert "os: [ubuntu-latest, windows-latest]" in python_job
+    assert "shell: bash" in python_job
+    assert "uv sync --locked --group dev --no-install-project" in python_job
+    assert "uv run --no-sync python -c" in python_job
+    assert 'sysconfig.get_path("purelib")' in python_job
+    assert 'test -d "$site_packages"' in python_job
+    assert 'uvx pip-audit==2.10.1 --path "$site_packages" --strict' in python_job
+    assert "--skip-editable" not in python_job
+    assert "--format=json --output" in python_job
+    assert "npm ci --no-audit --ignore-scripts" in web_job
+    assert 'npm audit --json > "$RUNNER_TEMP/npm-audit.json"' in web_job
+    assert workflow.count("if: always()") == 2
+    assert "python-dependency-audit-${{ matrix.os }}" in python_job
+    assert "${{ runner.temp }}/python-audit.json" in python_job
+    assert "${{ runner.temp }}/npm-audit.json" in web_job
+    assert "continue-on-error" not in workflow
+    assert "|| true" not in workflow
+    assert "--ignore-vuln" not in workflow
     assert "--omit=dev" not in workflow
+    assert "--audit-level" not in workflow
+    assert "npm run deploy" not in workflow
+
+
+def test_desktop_release_still_blocks_on_audit_of_the_selected_source():
+    workflow = (PROJECT_ROOT / ".github/workflows/desktop-release.yml").read_text(
+        encoding="utf-8"
+    )
+    prepare = workflow.split("    prepare:", 1)[1].split("    windows:", 1)[0]
+    windows = workflow.split("    windows:", 1)[1].split("    flatpak:", 1)[0]
+    audit_command = 'uvx pip-audit==2.10.1 --path "$site_packages" --skip-editable'
+
+    for job in (prepare, windows):
+        assert 'sysconfig.get_path("purelib")' in job
+        assert 'test -d "$site_packages"' in job
+        assert audit_command in job
+        assert "continue-on-error" not in job
+        assert "--ignore-vuln" not in job
+        assert "--strict" not in job
+        assert job.index("uv sync --locked --group dev") < job.index(audit_command)
+    assert "ref: ${{ inputs.tag }}" in prepare
+    assert prepare.index(audit_command) < prepare.index(
+        "Create immutable source archive"
+    )
+    assert "needs: prepare" in windows
+    assert windows.index(audit_command) < windows.index(
+        "Build PyInstaller onedir payload"
+    )
+    audit_step = windows.split("- name: Audit Windows release dependencies", 1)[
+        1
+    ].split("- name:", 1)[0]
+    assert "shell: bash" in audit_step
+
+
+def test_dependabot_covers_lockfiles_without_bypassing_dependency_review():
+    configuration = (PROJECT_ROOT / ".github/dependabot.yml").read_text(
+        encoding="utf-8"
+    )
+    blocks = configuration.split("    - package-ecosystem: ")[1:]
+    updates = dict(block.split("\n", 1) for block in blocks)
+
+    assert set(updates) == {"uv", "npm", "github-actions"}
+    for ecosystem, directory in (("uv", "/"), ("npm", "/web"), ("github-actions", "/")):
+        update = updates[ecosystem]
+        assert f'directory: "{directory}"' in update
+        assert "interval: weekly" in update
+        assert "timezone: Asia/Seoul" in update
+        assert "open-pull-requests-limit: 2" in update
+        assert "prefix: chore" in update
+        assert "applies-to: version-updates" in update
+        assert "update-types: [minor, patch]" in update
+        assert "applies-to: security-updates" in update
+        assert "update-types:" not in update.split("applies-to: security-updates", 1)[1]
+    assert "ignore:" not in configuration
+    assert "target-branch:" not in configuration
+    assert "auto-merge" not in configuration
 
 
 def test_ci_only_conditions_the_expensive_windows_steps():

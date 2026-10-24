@@ -313,29 +313,21 @@ test("생성 라이선스 산출물이 Git에 없으면 직접 deploy를 차단�
     );
 });
 
-test("직접 deploy도 생성물과 production bundle 라이선스를 검사한다", () => {
+test("직접 deploy는 전체 의존성 감사와 기존 배포 검사를 순서대로 실행한다", () => {
     const packageJson = JSON.parse(
         readFileSync(path.join(WEB_ROOT, "package.json"), "utf8"),
     );
     const deploy = packageJson.scripts.deploy;
 
-    assert.ok(deploy.indexOf("check:licenses") < deploy.indexOf("build"));
-    assert.ok(
-        deploy.indexOf("check:license-artifacts") >
-            deploy.indexOf("check:licenses"),
-    );
-    assert.ok(
-        deploy.indexOf("check:license-artifacts") < deploy.indexOf("build"),
-    );
-    assert.ok(deploy.indexOf("check:license-bundle") > deploy.indexOf("build"));
-    assert.ok(
-        deploy.indexOf("check:license-bundle") <
-            deploy.indexOf("strip:source-maps"),
-    );
-    assert.ok(
-        deploy.indexOf("strip:source-maps") < deploy.indexOf("check:secrets"),
-    );
-    assert.ok(
-        deploy.indexOf("check:license-bundle") < deploy.indexOf("wrangler"),
-    );
+    assert.deepEqual(deploy.split(" && "), [
+        "npm audit",
+        "npm run check:deploy-env",
+        "npm run check:licenses",
+        "npm run check:license-artifacts",
+        "npm run build",
+        "npm run check:license-bundle",
+        "npm run strip:source-maps",
+        "npm run check:secrets",
+        "wrangler deploy",
+    ]);
 });

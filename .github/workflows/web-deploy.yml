@@ -53,7 +53,10 @@ jobs:
                   cache-dependency-path: web/package-lock.json
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --no-audit
+
+            - name: Audit web dependencies before deployment
+              run: npm audit
 
             - name: Validate deployment configuration
               run: |

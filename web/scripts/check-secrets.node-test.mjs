@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -84,4 +84,33 @@ test("service_role JWT와 URL 임베드 자격 증명을 거부한다", () => {
     assert.equal(result.status, 1);
     assert.match(result.stderr, /service_role/);
     assert.match(result.stderr, /임베드된 자격 증명/);
+});
+
+test("웹 배포 워크플로는 전체 의존성 감사를 통과해야 빌드하고 배포한다", () => {
+    const workflow = readFileSync(
+        new URL("../../.github/workflows/web-deploy.yml", import.meta.url),
+        "utf8",
+    );
+    const steps = workflow.split(/\n\s*- name: /).slice(1);
+    const install = steps.findIndex((step) =>
+        /^\s+run: npm ci --no-audit\s*$/m.test(step),
+    );
+    const audit = steps.findIndex((step) =>
+        /^\s+run: npm audit\s*$/m.test(step),
+    );
+    const build = steps.findIndex((step) =>
+        /^\s+run: npm run build\s*$/m.test(step),
+    );
+    const deploy = steps.findIndex((step) =>
+        /^\s+run: npx wrangler deploy\b/m.test(step),
+    );
+
+    assert.ok(install >= 0);
+    assert.ok(audit > install);
+    assert.ok(build > audit);
+    assert.ok(deploy > build);
+    assert.doesNotMatch(workflow, /continue-on-error:/);
+    for (const index of [audit, build, deploy]) {
+        assert.doesNotMatch(steps[index], /^\s+if:/m);
+    }
 });

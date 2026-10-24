@@ -65,11 +65,6 @@ jobs:
             - name: Run tests
               run: uv run pytest
 
-            - name: Python dependency security audit
-              run: |
-                  site_packages="$(uv run python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
-                  uvx pip-audit==2.10.1 --path "$site_packages" --skip-editable
-
             # 빌드 산출물(번들 설정 모듈)에 service-role key·비밀 자격 증명이
             # 들어가지 않도록, 실제 빌드에서 사용하는 generate_build_config.py +
             # assert_not_secret + scan_file 파이프라인을 CI에서 실행한다
@@ -117,9 +112,6 @@ jobs:
 
             - name: Install dependencies
               run: npm ci --no-audit
-
-            - name: Web dependency security audit
-              run: npm audit
 
             - name: Regenerate web license artifacts
               run: npm run generate:licenses

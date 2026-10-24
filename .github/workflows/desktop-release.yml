@@ -69,6 +69,12 @@ jobs:
             - name: Verify committed desktop license artifacts
               run: uv run python scripts/generate_desktop_licenses.py --check
 
+            - name: Audit Python release dependencies
+              run: |
+                  site_packages="$(uv run python -c 'import sysconfig; from pathlib import Path; print(Path(sysconfig.get_path("purelib")).as_posix())')"
+                  test -d "$site_packages"
+                  uvx pip-audit==2.10.1 --path "$site_packages" --skip-editable
+
             - name: Re-run source quality gates
               run: |
                   uv run ruff check .
@@ -150,6 +156,13 @@ jobs:
 
             - name: Install locked development dependencies
               run: uv sync --locked --group dev
+
+            - name: Audit Windows release dependencies
+              shell: bash
+              run: |
+                  site_packages="$(uv run python -c 'import sysconfig; from pathlib import Path; print(Path(sysconfig.get_path("purelib")).as_posix())')"
+                  test -d "$site_packages"
+                  uvx pip-audit==2.10.1 --path "$site_packages" --skip-editable
 
             - name: Generate publishable bundled configuration
               shell: pwsh
