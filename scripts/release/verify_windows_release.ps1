@@ -58,11 +58,21 @@ function Test-PackagedStartup {
         $env:HTTPS_PROXY = "http://127.0.0.1:9"
         $env:QT_QPA_PLATFORM = "windows"
         $application = Start-Process -FilePath $Executable -PassThru
-        if (-not $application.WaitForInputIdle(45000)) { throw "Packaged application did not initialize" }
+        Write-Host "Packaged application started: PID $($application.Id)"
+        $application.WaitForInputIdle(5000) | Out-Null
+        $startup = [Diagnostics.Stopwatch]::StartNew()
         $application.Refresh()
-        if ($application.HasExited -or $application.MainWindowHandle -eq [IntPtr]::Zero) {
-            throw "Packaged application did not open its main window"
+        while (-not $application.HasExited -and $application.MainWindowHandle -eq [IntPtr]::Zero -and $startup.Elapsed.TotalSeconds -lt 45) {
+            Start-Sleep -Milliseconds 100
+            $application.Refresh()
         }
+        if ($application.HasExited -or $application.MainWindowHandle -eq [IntPtr]::Zero) {
+            Get-CimInstance Win32_Process -Filter "Name='MDLogger.exe'" |
+                Select-Object ProcessId, ParentProcessId, ExecutablePath | Format-List | Out-Host
+            $exit = if ($application.HasExited) { $application.ExitCode } else { "still running" }
+            throw "Packaged application did not open its main window: $exit"
+        }
+        Write-Host "Packaged application window ready: $($application.MainWindowTitle)"
         if (-not $application.CloseMainWindow() -or -not $application.WaitForExit(30000)) {
             throw "Packaged application did not exit gracefully"
         }
