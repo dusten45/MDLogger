@@ -458,7 +458,7 @@ def test_security_audit_is_separate_and_checks_both_python_platforms():
     web_job = workflow.split("    web:", 1)[1]
 
     assert "workflow_dispatch:" in triggers
-    assert 'cron: "17 0 * * *"' in triggers
+    assert 'cron: "17 0 1 * *"' in triggers
     assert "push:" not in triggers
     assert "pull_request" not in triggers
     assert "contents: read" in workflow
@@ -528,7 +528,8 @@ def test_dependabot_covers_lockfiles_without_bypassing_dependency_review():
     for ecosystem, directory in (("uv", "/"), ("npm", "/web"), ("github-actions", "/")):
         update = updates[ecosystem]
         assert f'directory: "{directory}"' in update
-        assert "interval: weekly" in update
+        assert "interval: monthly" in update
+        assert "day:" not in update
         assert "timezone: Asia/Seoul" in update
         assert "open-pull-requests-limit: 2" in update
         assert "prefix: chore" in update

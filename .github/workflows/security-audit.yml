@@ -3,8 +3,8 @@ name: Dependency security audit
 on:
     workflow_dispatch:
     schedule:
-        # 매일 한국 시간 09:17. GitHub 스케줄은 UTC 기준이며 지연될 수 있다.
-        - cron: "17 0 * * *"
+        # 매월 1일 한국 시간 09:17. GitHub 스케줄은 UTC 기준이며 지연될 수 있다.
+        - cron: "17 0 1 * *"
 
 permissions:
     contents: read
