@@ -723,14 +723,16 @@ def test_closing_auth_window_discards_late_successful_account_switch(
     auth_window._email.setText("a@test.local")
     auth_window._password.setText("password")
     auth_window._submit.click()
+    assert router._pending
 
     auth_window.close()
     gate.set()
     deadline = time.monotonic() + 1
-    while time.monotonic() < deadline:
+    while router._pending and time.monotonic() < deadline:
         qapp.processEvents()
         time.sleep(0.01)
 
+    assert not router._pending
     assert controller.current_profile is not None
     assert controller.current_profile.kind is ProfileKind.GUEST
     assert store.load_refresh_token(USER_ID) is None

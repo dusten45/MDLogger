@@ -144,28 +144,40 @@ def test_worker_survives_unexpected_exception_and_reports_failed(tmp_path: Path)
 def test_stop_keeps_thread_when_join_times_out():
     """P1-3: join이 타임아웃되면 _thread를 유지해 start() 중복 실행을 막는다."""
 
+    entered = threading.Event()
+    release = threading.Event()
+
     class BlockingEngine:
         def status(self) -> SyncStatus:
             return SyncStatus(SyncPhase.SYNCING, pending_count=0, failed_count=0)
 
         def run_once(self) -> SyncStatus:
-            # stop 이벤트를 무시하고 계속 블로킹한다.
-            while True:
-                time.sleep(0.01)
+            # stop 이벤트를 무시하고 테스트에서 해제할 때까지 대기한다.
+            entered.set()
+            release.wait()
+            return self.status()
 
     coordinator = SyncCoordinator(
         cast(SyncEngine, BlockingEngine()), interval_seconds=0.05
     )
     coordinator.start()
-    time.sleep(0.08)
+    try:
+        assert entered.wait(2.0), "worker가 run_once 진입에 실패"
+        worker = coordinator._thread
+        assert worker is not None
 
-    coordinator.stop(timeout_seconds=0.05)
-    # worker가 아직 떠나는 중이므로 스레드 참조를 유지해야 한다.
-    assert coordinator._thread is not None
+        assert coordinator.stop(timeout_seconds=0.05) is False
+        # worker가 아직 떠나는 중이므로 스레드 참조를 유지해야 한다.
+        assert coordinator._thread is worker
 
-    # 하드 배리어: stop 후 start()가 새 스레드를 만들지 않는다.
-    coordinator.start()
-    assert coordinator._thread is not None
+        # 하드 배리어: stop 후 start()가 새 스레드를 만들지 않는다.
+        coordinator.start()
+        assert coordinator._thread is worker
+    finally:
+        release.set()
+        assert coordinator.stop()
+
+    assert coordinator._thread is None
 
 
 def test_retry_failed_runs_on_caller_thread():
@@ -197,11 +209,14 @@ def test_retry_failed_runs_on_caller_thread():
 def test_list_conflicts_returns_engine_result():
     """list_conflicts는 worker를 거치지 않고 engine의 충돌 목록을 직접 반환한다."""
 
+    entered = threading.Event()
+
     class EngineWithConflicts:
         def status(self) -> SyncStatus:
             return SyncStatus(SyncPhase.SYNCED, pending_count=0, failed_count=0)
 
         def run_once(self) -> SyncStatus:
+            entered.set()
             return self.status()
 
         def list_conflicts(self) -> list:
@@ -211,8 +226,8 @@ def test_list_conflicts_returns_engine_result():
         cast(SyncEngine, EngineWithConflicts()), interval_seconds=0.05
     )
     coordinator.start()
-    time.sleep(0.1)
     try:
+        assert entered.wait(2.0), "worker가 run_once 진입에 실패"
         result = coordinator.list_conflicts()
     finally:
         coordinator.stop()
@@ -273,11 +288,14 @@ def test_resolve_conflict_propagates_stale_version_error():
     """resolve_conflict가 repository의 stale-version 가드(ValueError)를 호출자에게
     전파해 UI가 "충돌 정보 갱신 필요"를 표시할 수 있게 한다."""
 
+    entered = threading.Event()
+
     class EngineWithStaleGuard:
         def status(self) -> SyncStatus:
             return SyncStatus(SyncPhase.SYNCED, pending_count=0, failed_count=0)
 
         def run_once(self) -> SyncStatus:
+            entered.set()
             return self.status()
 
         def resolve_conflict(
@@ -294,8 +312,8 @@ def test_resolve_conflict_propagates_stale_version_error():
         cast(SyncEngine, EngineWithStaleGuard()), interval_seconds=0.05
     )
     coordinator.start()
-    time.sleep(0.1)
     try:
+        assert entered.wait(2.0), "worker가 run_once 진입에 실패"
         coordinator.resolve_conflict(1, "local", None, expected_remote_version=5)
         raised = False
     except ValueError:

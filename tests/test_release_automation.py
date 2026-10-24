@@ -432,6 +432,57 @@ def test_windows_installation_waits_and_checks_its_own_exit_code(
     assert f'/DIR=`"{install_root}`"' in script
 
 
+def test_ci_audits_installed_project_dependencies_without_weakening_web_audit():
+    workflow = (PROJECT_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    audit = workflow.split("- name: Python dependency security audit", 1)[1].split(
+        "- name:", 1
+    )[0]
+
+    assert 'sysconfig.get_path("purelib")' in audit
+    assert 'uvx pip-audit==2.10.1 --path "$site_packages" --skip-editable' in audit
+    assert "uv sync --group dev" not in workflow
+    assert workflow.count("uv sync --locked --group dev") == 2
+    assert "npm ci --no-audit" in workflow
+    assert "run: npm audit\n" in workflow
+    assert "--omit=dev" not in workflow
+
+
+def test_ci_only_conditions_the_expensive_windows_steps():
+    workflow = (PROJECT_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    windows = workflow.split("    windows-package:", 1)[1]
+    header, *step_blocks = windows.split("            - name: ")
+    steps = dict(block.split("\n", 1) for block in step_blocks)
+    condition = "if: steps.windows-changes.outputs.required != 'false'"
+
+    assert "concurrency:" in workflow
+    assert "group: ${{ github.workflow }}-${{ github.ref }}" in workflow
+    assert "cancel-in-progress: true" in workflow
+    assert "paths-ignore:" not in workflow
+    assert "if:" not in header
+    assert "if:" not in steps["Verify desktop license artifacts"]
+    assert "--check" in steps["Verify desktop license artifacts"]
+    assert "id: windows-changes" in steps["Determine Windows packaging scope"]
+    for name in (
+        "Generate safe bundled configuration",
+        "Build PyInstaller onedir",
+        "Verify onedir license contents and excluded palettes",
+        "Install Inno Setup",
+        "Compile Inno Setup installer",
+        "Install and verify Inno Setup payload",
+        "Scan Windows onedir for secrets",
+    ):
+        assert condition in steps[name]
+
+
+@pytest.mark.parametrize("filename", ["ci.yml", "desktop-release.yml"])
+def test_windows_workflows_reuse_the_checked_inno_setup_compiler(filename):
+    workflow = (PROJECT_ROOT / ".github/workflows" / filename).read_text(
+        encoding="utf-8"
+    )
+    assert "run: ./scripts/ensure_inno_setup.ps1" in workflow
+    assert "choco install innosetup" not in workflow
+
+
 def test_workflow_keeps_release_writes_and_notes_in_the_final_draft_job():
     workflow = (PROJECT_ROOT / ".github/workflows/desktop-release.yml").read_text(
         encoding="utf-8"

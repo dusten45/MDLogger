@@ -22,7 +22,7 @@ dev = [
     "pytest>=8.0,<10",
     "pyinstaller==6.21.0",  # keyring 번들링은 내장 hook-keyring.py에 의존(N-6)
     "ruff>=0.16.1",
-    "setuptools>=83.0.0",
+    "setuptools>=84.1.0",
     "ty>=0.0.69",
 ]
 

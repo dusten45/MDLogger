@@ -180,7 +180,7 @@
   ],
   "distribution_count": 15,
   "generated_by": "scripts/generate_desktop_licenses.py",
-  "lockfile_sha256": "d7cc075664c2a76319a51e3c0510d8f34eb02ba416d8c6681724c809c6bba7b0",
+  "lockfile_sha256": "0c9b9b38957644b547e5cdac1321417b09949f738623d72c5a1f34a457d19561",
   "packages": [
     {
       "copyright": "Copyright (c) 2010 Jonathan Hartley",

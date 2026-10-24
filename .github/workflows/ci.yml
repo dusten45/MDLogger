@@ -7,6 +7,14 @@ on:
             - master
     pull_request:
 
+permissions:
+    contents: read
+    actions: read
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
 jobs:
     validate:
         name: Lint, type-check, tests, secret scan
@@ -27,7 +35,7 @@ jobs:
                   python-version: "3.13"
 
             - name: Install dependencies
-              run: uv sync --group dev
+              run: uv sync --locked --group dev
 
             - name: Install Linux Qt test dependencies
               run: |
@@ -58,7 +66,9 @@ jobs:
               run: uv run pytest
 
             - name: Python dependency security audit
-              run: uvx pip-audit
+              run: |
+                  site_packages="$(uv run python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')"
+                  uvx pip-audit==2.10.1 --path "$site_packages" --skip-editable
 
             # 빌드 산출물(번들 설정 모듈)에 service-role key·비밀 자격 증명이
             # 들어가지 않도록, 실제 빌드에서 사용하는 generate_build_config.py +
@@ -106,7 +116,7 @@ jobs:
                   cache-dependency-path: web/package-lock.json
 
             - name: Install dependencies
-              run: npm ci
+              run: npm ci --no-audit
 
             - name: Web dependency security audit
               run: npm audit
@@ -166,12 +176,19 @@ jobs:
                   python-version: "3.13"
 
             - name: Install dependencies
-              run: uv sync --group dev
+              run: uv sync --locked --group dev
 
             - name: Verify desktop license artifacts
               run: uv run python scripts/generate_desktop_licenses.py --check
 
+            - name: Determine Windows packaging scope
+              id: windows-changes
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: uv run python scripts/ci_windows_changes.py
+
             - name: Generate safe bundled configuration
+              if: steps.windows-changes.outputs.required != 'false'
               shell: pwsh
               env:
                   MDLOGGER_SUPABASE_URL: https://example.supabase.co
@@ -179,9 +196,11 @@ jobs:
               run: uv run python scripts/generate_build_config.py
 
             - name: Build PyInstaller onedir
+              if: steps.windows-changes.outputs.required != 'false'
               run: uv run pyinstaller --noconfirm --clean MDLogger.spec
 
             - name: Verify onedir license contents and excluded palettes
+              if: steps.windows-changes.outputs.required != 'false'
               shell: pwsh
               run: |
                   if (-not (Test-Path dist/MDLogger/LICENSE)) { throw "LICENSE missing" }
@@ -199,14 +218,17 @@ jobs:
                   if ($palettes) { throw "unverified pyqtgraph palettes or forbidden binaries were bundled" }
 
             - name: Install Inno Setup
+              if: steps.windows-changes.outputs.required != 'false'
               shell: pwsh
-              run: choco install innosetup --yes --no-progress --limit-output
+              run: ./scripts/ensure_inno_setup.ps1
 
             - name: Compile Inno Setup installer
+              if: steps.windows-changes.outputs.required != 'false'
               shell: pwsh
               run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" scripts\installer_windows.iss'
 
             - name: Install and verify Inno Setup payload
+              if: steps.windows-changes.outputs.required != 'false'
               shell: pwsh
               run: |
                   $installer = Get-ChildItem dist/installer -Filter "MDLoggerSetup-*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -223,4 +245,5 @@ jobs:
                   Remove-Item -LiteralPath $installRoot -Recurse -Force
 
             - name: Scan Windows onedir for secrets
+              if: steps.windows-changes.outputs.required != 'false'
               run: uv run python -m mdlogger.secret_scan dist/MDLogger

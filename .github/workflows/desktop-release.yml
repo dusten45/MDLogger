@@ -167,7 +167,7 @@ jobs:
 
             - name: Install Inno Setup
               shell: pwsh
-              run: choco install innosetup --yes --no-progress --limit-output
+              run: ./scripts/ensure_inno_setup.ps1
 
             - name: Compile versioned Inno Setup installer
               shell: pwsh
