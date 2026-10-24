@@ -179,7 +179,8 @@ jobs:
 
             - name: Build independent native update helper
               run: |
-                  pwsh -NoProfile -File scripts/update/build_helper.ps1
+                  $builder = (Resolve-Path -LiteralPath "scripts/update/build_helper.ps1").Path
+                  powershell -NoProfile -File $builder
                   if ($LASTEXITCODE -ne 0) { throw "Native helper compilation failed" }
 
             - name: Build PyInstaller onedir payload
@@ -197,7 +198,8 @@ jobs:
               run: |
                   $installer = Join-Path $env:RELEASE_SOURCE "dist\installer\MDLoggerSetup-$env:RELEASE_VERSION.exe"
                   $record = Join-Path $env:RELEASE_SOURCE "dist\installer\windows-verification.json"
-                  pwsh -NoProfile -File scripts/release/verify_windows_release.ps1 `
+                  $verifier = (Resolve-Path -LiteralPath "scripts/release/verify_windows_release.ps1").Path
+                  pwsh -NoProfile -File $verifier `
                     -Onedir "dist/MDLogger" -BuildDirectory "build/MDLogger" `
                     -Installer $installer -Version $env:RELEASE_VERSION `
                     -InstallRoot (Join-Path $env:RUNNER_TEMP "MDLogger-installed-payload") `
@@ -283,7 +285,8 @@ jobs:
 
             - name: Independently verify signatures with native helper
               run: |
-                  pwsh -NoProfile -File scripts/release/verify_windows_update_signature.ps1 `
+                  $verifier = (Resolve-Path -LiteralPath "scripts/release/verify_windows_update_signature.ps1").Path
+                  pwsh -NoProfile -File $verifier `
                     -Helper (Join-Path $env:WINDOWS_ARTIFACTS "MDLoggerUpdate.exe") `
                     -Assets $env:RELEASE_ASSETS -Version $env:RELEASE_VERSION
                   if ($LASTEXITCODE -ne 0) { throw "Native signed-update verification failed" }
