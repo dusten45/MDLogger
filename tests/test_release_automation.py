@@ -583,6 +583,44 @@ def test_windows_workflows_reuse_the_checked_inno_setup_compiler(filename):
     assert "choco install innosetup" not in workflow
 
 
+@pytest.mark.parametrize(
+    ("platform", "directory", "asset", "record_output"),
+    [
+        (
+            "Windows",
+            "${{ env.RELEASE_SOURCE }}/dist/installer",
+            "MDLoggerSetup-${{ env.RELEASE_VERSION }}.exe",
+            "$record = Join-Path $env:RELEASE_SOURCE "
+            '"dist\\installer\\windows-verification.json"',
+        ),
+        (
+            "Flatpak",
+            "${{ runner.temp }}/linux-release",
+            "MDLogger-${{ env.RELEASE_VERSION }}.flatpak",
+            '--record "$RUNNER_TEMP/linux-release/flatpak-verification.json"',
+        ),
+    ],
+    ids=["windows", "flatpak"],
+)
+def test_release_artifacts_keep_assets_and_verification_in_one_directory(
+    platform, directory, asset, record_output
+):
+    workflow = (PROJECT_ROOT / ".github/workflows/desktop-release.yml").read_text(
+        encoding="utf-8"
+    )
+    upload = workflow.split(f"- name: Upload {platform} release artifact", 1)[1].split(
+        "- name:", 1
+    )[0]
+    paths = upload.split("path: |", 1)[1].split("if-no-files-found:", 1)[0]
+
+    assert [line.strip() for line in paths.splitlines() if line.strip()] == [
+        f"{directory}/{asset}",
+        f"{directory}/{asset}.sha256",
+        f"{directory}/{platform.lower()}-verification.json",
+    ]
+    assert record_output in workflow
+
+
 def test_workflow_keeps_release_writes_and_notes_in_the_final_draft_job():
     workflow = (PROJECT_ROOT / ".github/workflows/desktop-release.yml").read_text(
         encoding="utf-8"
