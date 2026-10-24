@@ -219,6 +219,14 @@ jobs:
                   MDLOGGER_SUPABASE_ANON_KEY: sb_publishable_test_not_a_secret_key_abcdefgh
               run: uv run python scripts/generate_build_config.py
 
+            - name: Verify standalone helper build entrypoint
+              if: steps.windows-changes.outputs.required != 'false'
+              shell: pwsh
+              run: |
+                  $builder = (Resolve-Path -LiteralPath "scripts/update/build_helper.ps1").Path
+                  powershell -NoProfile -File $builder
+                  if ($LASTEXITCODE -ne 0) { throw "Standalone helper compilation failed" }
+
             - name: Build PyInstaller onedir
               if: steps.windows-changes.outputs.required != 'false'
               run: uv run pyinstaller --noconfirm --clean MDLogger.spec

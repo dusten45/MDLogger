@@ -177,13 +177,7 @@ jobs:
                   uv run python scripts/generate_build_config.py
                   if ($LASTEXITCODE -ne 0) { throw "Bundled configuration generation failed" }
 
-            - name: Build independent native update helper
-              run: |
-                  $builder = (Resolve-Path -LiteralPath "scripts/update/build_helper.ps1").Path
-                  powershell -NoProfile -File $builder
-                  if ($LASTEXITCODE -ne 0) { throw "Native helper compilation failed" }
-
-            - name: Build PyInstaller onedir payload
+            - name: Build PyInstaller payload and independent native helper
               run: uv run pyinstaller --noconfirm --clean MDLogger.spec
 
             - name: Install Inno Setup

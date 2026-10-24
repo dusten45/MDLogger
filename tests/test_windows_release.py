@@ -391,9 +391,15 @@ def test_windows_workflow_preserves_immutable_protected_draft_boundary():
         "-VerifyUpdater",
     ):
         assert command in windows
-    assert windows.index("scripts/update/build_helper.ps1") < windows.index(
-        "uv run pyinstaller"
+    specification = (ROOT / "MDLogger.spec").read_text(encoding="utf-8")
+    assert "subprocess.run(" in specification
+    assert "scripts/update/UpdateHelper.cs" in specification
+    assert "check=True" in specification
+    assert (
+        'copy2(update_helper, distribution_root / "MDLoggerUpdate.exe")'
+        in specification
     )
+    assert windows.index("uv run pyinstaller") < windows.index("-VerifyUpdater")
     assert "MDLOGGER_UPDATE_SIGNING_KEY" not in prepare + windows
     assert "environment: desktop-release\n" in signing
     assert workflow.count("contents: write") == 1

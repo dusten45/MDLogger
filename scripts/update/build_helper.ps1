@@ -21,14 +21,17 @@ if ($keys.schema -ne 1 -or @($keys.keys).Count -eq 0) {
 }
 $outputPath = [IO.Path]::GetFullPath($Output)
 $keysPath = (Resolve-Path -LiteralPath $TrustedKeys).Path
+$scriptDirectory = Split-Path -Parent $PSCommandPath
+$sourcePath = (Resolve-Path -LiteralPath (Join-Path $scriptDirectory "UpdateHelper.cs")).Path
+$manifestPath = (Resolve-Path -LiteralPath (Join-Path $scriptDirectory "update-helper.manifest")).Path
 $parent = Split-Path -Parent $outputPath
 New-Item -ItemType Directory -Path $parent -Force | Out-Null
 & $compiler /nologo /target:winexe /platform:anycpu /optimize+ /codepage:65001 `
     "/out:$outputPath" `
     /reference:System.Web.Extensions.dll /reference:System.Windows.Forms.dll `
     "/resource:$keysPath,MDLogger.UpdateTrustedKeys.json" `
-    "/win32manifest:$PSScriptRoot/update-helper.manifest" `
-    "$PSScriptRoot/UpdateHelper.cs"
+    "/win32manifest:$manifestPath" `
+    $sourcePath
 if ($LASTEXITCODE -ne 0) {
     throw "Windows update helper compilation failed: $LASTEXITCODE"
 }
