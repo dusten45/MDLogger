@@ -73,6 +73,37 @@ function Test-PackagedStartup {
             throw "Packaged application did not open its main window: $exit"
         }
         Write-Host "Packaged application window ready: $($application.MainWindowTitle)"
+        if ($application.MainWindowTitle -match "Unhandled exception|Fatal error") {
+            if (-not ("MDLoggerSmokeWindowText" -as [type])) {
+                Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class MDLoggerSmokeWindowText {
+    private delegate bool ChildWindow(IntPtr window, IntPtr parameter);
+    [DllImport("user32.dll")]
+    private static extern bool EnumChildWindows(IntPtr parent, ChildWindow callback, IntPtr parameter);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr SendMessageTimeout(IntPtr window, uint message, UIntPtr capacity,
+        StringBuilder text, uint flags, uint timeout, out UIntPtr result);
+    public static string Read(IntPtr parent) {
+        var messages = new List<string>();
+        ChildWindow callback = delegate(IntPtr window, IntPtr parameter) {
+            var text = new StringBuilder(32768);
+            UIntPtr result;
+            SendMessageTimeout(window, 0x000D, (UIntPtr)text.Capacity, text, 2, 1000, out result);
+            if (text.Length > 0) messages.Add(text.ToString());
+            return true;
+        };
+        EnumChildWindows(parent, callback, IntPtr.Zero);
+        return String.Join(Environment.NewLine, messages);
+    }
+}
+'@
+            }
+            Write-Host ([MDLoggerSmokeWindowText]::Read($application.MainWindowHandle))
+        }
         if (-not $application.CloseMainWindow() -or -not $application.WaitForExit(30000)) {
             throw "Packaged application did not exit gracefully"
         }
