@@ -44,6 +44,8 @@ Windows 전용 v2.1.0 릴리스:
 5. 보호된 `desktop-release` job이 동일 source와 artifact의 provenance를 다시 확인하고 업데이트 manifest를 서명한다. Python 없이 별도 디렉터리에 복사한 native helper로 정상 서명, manifest 원문 변조, 설치 파일 변조, 서명 누락을 검증한다.
 6. `create_draft=true`인 경우 원격 annotated tag 객체가 그대로인지 다시 확인하고 초안만 만든다. `false`여도 승인된 서명 단계와 artifact 검증은 수행하지만 GitHub Release는 만들지 않는다.
 
+앱 소스와 실행기는 항상 입력한 태그의 archive에서 빌드한다. 동적 API의 검증용 타입 정보는 workflow 커밋에 고정된 별도 경로에서 읽을 수 있으며, 해당 커밋을 검사 로그에 남긴다. 이 방식은 태그 소스나 검사 규칙을 수정하지 않고 `pefile`처럼 실행 중 속성을 만드는 검사 도구의 타입 정보를 제공하기 위한 것이다. 이미 만든 릴리스 태그를 검증 도구 수정 때문에 이동하지 않는다.
+
 Windows 전용 공개 asset은 다음 4개다. 서명된 metadata도 설치 프로그램과 **같은 release에 함께 공개**해야 한다.
 
 ```text

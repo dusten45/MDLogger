@@ -190,7 +190,11 @@ jobs:
                   "MDLOGGER_DATA_DIR=$data" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
             - name: Run Windows regression and native updater tests
-              run: uv run pytest --ignore=tests/integration -x --tb=short
+              run: |
+                  uv run ty check
+                  if ($LASTEXITCODE -ne 0) { throw "Windows type check failed" }
+                  uv run pytest --ignore=tests/integration -x --tb=short
+                  if ($LASTEXITCODE -ne 0) { throw "Windows regression tests failed" }
 
             - name: Determine Windows packaging scope
               id: windows-changes

@@ -166,7 +166,8 @@ def test_windows_wheel_dependency_has_collectable_same_runtime_shim():
             directories=[pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_IMPORT"]]
         )
         imports = {
-            entry.dll.decode().lower() for entry in binary.DIRECTORY_ENTRY_IMPORT
+            entry.dll.decode().lower()
+            for entry in getattr(binary, "DIRECTORY_ENTRY_IMPORT")
         }
     finally:
         binary.close()

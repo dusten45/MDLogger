@@ -94,10 +94,20 @@ jobs:
             RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
             RELEASE_INPUTS: ${{ github.workspace }}/.release-work/inputs
             RELEASE_SOURCE: ${{ github.workspace }}/.release-work/source/MDLogger-${{ needs.prepare.outputs.version }}
+            VERIFICATION_TOOLS: ${{ github.workspace }}/.release-work/verification-tools
+            VERIFICATION_TOOLS_SHA: ${{ github.workflow_sha }}
             MDLOGGER_DECKS_URL: ""
             QT_QPA_PLATFORM: offscreen
             PYTHONDONTWRITEBYTECODE: "1"
         steps:
+            - name: Check out verification typing metadata
+              uses: actions/checkout@v7.0.0
+              with:
+                  ref: ${{ github.workflow_sha }}
+                  path: .release-work/verification-tools
+                  sparse-checkout: scripts/release/type_stubs
+                  persist-credentials: false
+
             - name: Set up uv
               uses: astral-sh/setup-uv@v10.3.2
               with:
@@ -133,7 +143,8 @@ jobs:
                   if ($LASTEXITCODE -ne 0) { throw "Ruff check failed" }
                   uv run ruff format --check .
                   if ($LASTEXITCODE -ne 0) { throw "Ruff format failed" }
-                  uv run ty check
+                  Write-Host "Verification typing tools: $env:VERIFICATION_TOOLS_SHA"
+                  uv run ty check --extra-search-path "$env:VERIFICATION_TOOLS/scripts/release/type_stubs"
                   if ($LASTEXITCODE -ne 0) { throw "Type check failed" }
                   uv run pytest --ignore=tests/integration -x --tb=short
                   if ($LASTEXITCODE -ne 0) { throw "Offline tests failed" }
