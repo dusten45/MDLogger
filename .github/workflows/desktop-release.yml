@@ -102,7 +102,7 @@ jobs:
 
             - name: Upload immutable build inputs
               id: upload-release-inputs
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: release-inputs-${{ github.run_id }}
                   path: ${{ runner.temp }}/release-inputs
@@ -207,7 +207,7 @@ jobs:
 
             - name: Upload Windows release artifact
               id: upload-windows-release
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: windows-release-${{ github.run_id }}
                   path: |
@@ -219,7 +219,7 @@ jobs:
                   retention-days: 30
 
             - name: Upload short-lived Windows debug artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: windows-debug-${{ github.run_id }}
                   path: |
@@ -315,7 +315,7 @@ jobs:
 
             - name: Upload Flatpak release artifact
               id: upload-flatpak-release
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: flatpak-release-${{ github.run_id }}
                   path: |
@@ -406,7 +406,7 @@ jobs:
 
             - name: Upload final draft-release asset set
               id: upload-release-assets
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: release-assets-${{ github.run_id }}
                   path: ${{ env.RELEASE_ASSETS }}
