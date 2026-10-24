@@ -320,7 +320,7 @@ def test_import_snapshot_survives_checkpoint_between_open_and_backup(
 ):
     from mdlogger import paths
 
-    guest = tmp_path / "게스트#?.db"
+    guest = tmp_path / "게스트# %.db"
     target = tmp_path / "account.db"
     _make_guest_db(guest, count=1)
     writer = db.connect(guest)

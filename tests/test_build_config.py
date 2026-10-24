@@ -226,7 +226,7 @@ def test_scan_path_scans_directory_recursively(tmp_path):
     issues = scan_path(bundle)
 
     assert any("base_library.zip" in i and "sb_secret_" in i for i in issues)
-    assert any(i.startswith("_internal/") for i in issues)
+    assert any(i.replace("\\", "/").startswith("_internal/") for i in issues)
 
 
 def test_scan_path_accepts_single_file(tmp_path):

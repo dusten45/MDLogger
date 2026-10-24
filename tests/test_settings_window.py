@@ -391,7 +391,7 @@ def test_detail_validation_messages_do_not_add_a_scrollbar(
         initial_size = main.size()
         status = main._detail_view._status
         assert status.text() == ""
-        reserved_height = status.minimumSizeHint().height()
+        reserved_height = status.minimumHeight()
         messages = (
             "승/패를 선택하세요",
             "내 덱 / 상대 덱을 후보에서 정확히 선택하세요",
@@ -403,7 +403,7 @@ def test_detail_validation_messages_do_not_add_a_scrollbar(
         for message in messages:
             status.setText(message)
             qapp.processEvents()
-            assert status.minimumSizeHint().height() == reserved_height
+            assert status.minimumHeight() == reserved_height
             assert status.height() >= status.heightForWidth(status.width())
             assert main.size() == initial_size
             assert main._detail_scroll.verticalScrollBar().maximum() == 0
