@@ -150,9 +150,10 @@ jobs:
               shell: bash
               run: |
                   set -euo pipefail
-                  site_packages="$(uv run python -c 'import sysconfig; from pathlib import Path; print(Path(sysconfig.get_path("purelib")).as_posix())')"
+                  uv sync --locked --group dev --no-install-project
+                  site_packages="$(uv run --no-sync python -c 'import sysconfig; from pathlib import Path; print(Path(sysconfig.get_path("purelib")).as_posix())')"
                   test -d "$site_packages"
-                  uvx pip-audit==2.10.1 --path "$site_packages" --skip-editable
+                  uvx pip-audit==2.10.1 --path "$site_packages" --strict
 
             - name: Generate publishable bundled configuration
               env:
