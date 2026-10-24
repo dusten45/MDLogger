@@ -477,7 +477,7 @@ notice is published as `web/public/third-party-notices.txt` and deployed at
 - **react-router-dom 7.18.2** — `MIT`; evidence: `tree-shaken-facade`; legal files: `web/public/licenses/react-router-dom/LICENSE.md`
 - **scheduler 0.23.2** — `MIT`; evidence: `main-sourcemap`; legal files: `web/public/licenses/scheduler/LICENSE`
 - **tslib 2.8.1** — `0BSD`; evidence: `main-sourcemap`; legal files: `web/public/licenses/tslib/LICENSE.txt`
-- **vite 6.4.3** — `MIT`; evidence: `vite-generated-helper`; legal files: `web/public/licenses/vite/LICENSE.md`
+- **vite 6.4.5** — `MIT`; evidence: `vite-generated-helper`; legal files: `web/public/licenses/vite/LICENSE.md`
 - **vite-plugin-pwa 1.3.0** — `MIT`; evidence: `pwa-virtual-module`; legal files: `web/public/licenses/vite-plugin-pwa/LICENSE`
 - **workbox-core 7.4.1** — `MIT`; evidence: `service-worker-sourcemap`; legal files: `web/public/licenses/workbox-core/LICENSE`
 - **workbox-precaching 7.4.1** — `MIT`; evidence: `service-worker-sourcemap`; legal files: `web/public/licenses/workbox-precaching/LICENSE`
