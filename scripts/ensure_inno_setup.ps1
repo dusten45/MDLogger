@@ -6,7 +6,14 @@ function Test-InnoSetup6 {
     if (-not (Test-Path -LiteralPath $iscc -PathType Leaf)) {
         return $false
     }
-    return (Get-Item -LiteralPath $iscc).VersionInfo.ProductMajorPart -eq 6
+    # ISCC 6 has 0.0.0.0 PE metadata and intentionally exits 1 for /?.
+    $helpText = (& $iscc /? 2>&1 | Out-String)
+    $helpExitCode = $LASTEXITCODE
+    if ($helpExitCode -eq 1 -and $helpText -match '(?m)^Inno Setup 6 Command-Line Compiler\r?$') {
+        $global:LASTEXITCODE = 0
+        return $true
+    }
+    return $false
 }
 
 if (-not (Test-InnoSetup6)) {

@@ -461,6 +461,11 @@ def test_ci_only_conditions_the_expensive_windows_steps():
     assert "if:" not in header
     assert "if:" not in steps["Verify desktop license artifacts"]
     assert "--check" in steps["Verify desktop license artifacts"]
+    assert "if:" not in steps["Test Inno Setup helper"]
+    assert "./tests/test_inno_setup.ps1" in steps["Test Inno Setup helper"]
+    assert windows.index("- name: Install Inno Setup") < windows.index(
+        "- name: Build PyInstaller onedir"
+    )
     assert "id: windows-changes" in steps["Determine Windows packaging scope"]
     for name in (
         "Generate safe bundled configuration",
