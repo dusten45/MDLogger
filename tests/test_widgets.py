@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -19,6 +23,50 @@ _DECKS = ["서브테러", "테라나이트", "신유희왕"]
 def qapp():
     application = QApplication.instance() or QApplication([])
     yield application
+
+
+def test_closed_widgets_are_deleted_between_tests(tmp_path: Path) -> None:
+    shutil.copyfile(Path(__file__).with_name("conftest.py"), tmp_path / "conftest.py")
+    (tmp_path / "test_lifecycle.py").write_text(
+        """
+from PySide6.QtWidgets import QApplication, QWidget
+from shiboken6 import isValid
+
+closed_children = []
+
+class ChildWidget(QWidget):
+    def close(self):
+        closed_children.append(True)
+        return super().close()
+
+app = QApplication([])
+window = QWidget()
+child = ChildWidget(window)
+
+def test_close_only_keeps_the_widget_alive():
+    window.show()
+    app.processEvents()
+    window.close()
+    assert isValid(window), "닫기만 해서는 위젯이 삭제되지 않아야 합니다."
+
+def test_previous_widget_has_been_deleted():
+    assert closed_children, "부모 삭제 전에 자식 위젯의 close가 호출되지 않았습니다."
+    assert not isValid(window), "이전 테스트의 위젯이 남아 있습니다."
+    assert not isValid(child), "이전 테스트의 자식 위젯이 남아 있습니다."
+""",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", str(tmp_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+    )
+    assert result.returncode == 0, (
+        f"Qt 자원 정리 또는 종료 오류: {result.stdout}{result.stderr}"
+    )
 
 
 def _make_combo(qapp: QApplication):
