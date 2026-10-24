@@ -401,6 +401,37 @@ def test_platform_scripts_keep_the_required_release_verification_boundaries():
     assert "flatpak install --user" in flatpak
 
 
+@pytest.mark.parametrize("filename", ["ci.yml", "desktop-release.yml"])
+def test_linux_quality_gates_use_headless_qt_with_korean_fonts(filename):
+    workflow = (PROJECT_ROOT / ".github/workflows" / filename).read_text(
+        encoding="utf-8"
+    )
+
+    assert "QT_QPA_PLATFORM: offscreen" in workflow
+    assert "libegl1 fonts-noto-cjk" in workflow
+    assert "QT_QPA_PLATFORM=xcb" not in workflow
+    assert "xvfb-run" not in workflow
+    assert "uv run pytest" in workflow
+
+
+@pytest.mark.parametrize(
+    ("relative_path", "install_root"),
+    [
+        (".github/workflows/ci.yml", "$installRoot"),
+        ("scripts/release/verify_windows_release.ps1", "$InstallRoot"),
+    ],
+)
+def test_windows_installation_waits_and_checks_its_own_exit_code(
+    relative_path, install_root
+):
+    script = (PROJECT_ROOT / relative_path).read_text(encoding="utf-8")
+
+    assert "$installProcess = Start-Process -FilePath" in script
+    assert "-Wait -PassThru" in script
+    assert "if ($installProcess.ExitCode -ne 0)" in script
+    assert f'/DIR=`"{install_root}`"' in script
+
+
 def test_workflow_keeps_release_writes_and_notes_in_the_final_draft_job():
     workflow = (PROJECT_ROOT / ".github/workflows/desktop-release.yml").read_text(
         encoding="utf-8"

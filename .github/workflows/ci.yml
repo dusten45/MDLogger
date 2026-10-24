@@ -14,6 +14,7 @@ jobs:
         timeout-minutes: 20
         env:
             MDLOGGER_DATA_DIR: /tmp
+            QT_QPA_PLATFORM: offscreen
 
         steps:
             - name: Check out repository
@@ -31,7 +32,7 @@ jobs:
             - name: Install Linux Qt test dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install --yes libegl1 libxcb-cursor0 libxkbcommon-x11-0 xvfb
+                  sudo apt-get install --yes libegl1 fonts-noto-cjk
 
             - name: Verify desktop license artifacts
               run: uv run python scripts/generate_desktop_licenses.py --check
@@ -54,7 +55,7 @@ jobs:
               run: uv run ty check
 
             - name: Run tests
-              run: QT_QPA_PLATFORM=xcb xvfb-run --auto-servernum uv run pytest
+              run: uv run pytest
 
             - name: Python dependency security audit
               run: uvx pip-audit
@@ -211,8 +212,8 @@ jobs:
                   $installer = Get-ChildItem dist/installer -Filter "MDLoggerSetup-*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
                   if (-not $installer) { throw "Inno Setup installer output missing" }
                   $installRoot = Join-Path $env:RUNNER_TEMP "MDLogger-inno-payload"
-                  & $installer.FullName /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installRoot"
-                  if ($LASTEXITCODE -ne 0) { throw "Inno Setup installer failed: $LASTEXITCODE" }
+                  $installProcess = Start-Process -FilePath $installer.FullName -ArgumentList "/SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$installRoot`"" -Wait -PassThru
+                  if ($installProcess.ExitCode -ne 0) { throw "Inno Setup installer failed: $($installProcess.ExitCode)" }
                   if (-not (Test-Path "$installRoot/LICENSE")) { throw "Installed LICENSE missing" }
                   if (-not (Test-Path "$installRoot/THIRD_PARTY_NOTICES.txt")) { throw "Installed third-party notice missing" }
                   if (-not (Test-Path "$installRoot/licenses/desktop")) { throw "Installed desktop licenses missing" }

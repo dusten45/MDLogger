@@ -67,9 +67,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 try {
-    & $Installer /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$InstallRoot"
-    if ($LASTEXITCODE -ne 0) {
-        throw "Inno Setup silent installation failed: $LASTEXITCODE"
+    $installProcess = Start-Process -FilePath $Installer -ArgumentList "/SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$InstallRoot`"" -Wait -PassThru
+    if ($installProcess.ExitCode -ne 0) {
+        throw "Inno Setup silent installation failed: $($installProcess.ExitCode)"
     }
 
     & uv run python scripts/release/release_validation.py windows-payload --root $InstallRoot

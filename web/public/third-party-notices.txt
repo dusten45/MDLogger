@@ -21,8 +21,8 @@ The full bundled-dependency notice is copied at /licenses/vite/LICENSE.md.
 
 Build-time evidence (not runtime packages):
 - workbox-build 7.4.1: Build-time service worker generator. Its generated runtime is represented by the Workbox runtime packages found in service worker sourcemaps.
-- sharp 0.35.3: Development-only PWA icon generator, including its optional @img/sharp-* and libvips binaries; absent from production sourcemaps.
-- @img/sharp-wasm32 0.35.3: Optional development-only Sharp backend used for icon generation; absent from production sourcemaps.
+- sharp 0.35.5: Development-only PWA icon generator, including its optional @img/sharp-* and libvips binaries; absent from production sourcemaps.
+- @img/sharp-wasm32 0.35.5: Optional development-only Sharp backend used for icon generation; absent from production sourcemaps.
 - @emnapi/runtime 1.11.3: Optional transitive dependency of the development-only Sharp WASM backend; absent from production sourcemaps.
 
 ================================================================================
@@ -484,7 +484,7 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
-vite 6.4.3
+vite 6.4.5
 License: MIT
 Author: Evan You
 Homepage: https://vite.dev

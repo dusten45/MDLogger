@@ -203,10 +203,7 @@ class MainWindow(QMainWindow):
 
     def _initial_main_window_height(self) -> int:
         screen = self.screen() or QGuiApplication.primaryScreen()
-        # 비어 있는 오류 상태줄은 검증 문구가 나타날 때 1px 더 필요하다.
-        detail_height = max(
-            scaled(680), self._detail_view.minimumSizeHint().height() + scaled(1)
-        )
+        detail_height = max(scaled(680), self._detail_view.minimumSizeHint().height())
         if screen is None:
             return detail_height
 

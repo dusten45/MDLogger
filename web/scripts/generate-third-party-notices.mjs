@@ -122,7 +122,7 @@ export const REVIEWED_PACKAGES = Object.freeze([
         "pwa-window-sourcemap",
         "LICENSE",
     ),
-    reviewed("vite", "6.4.3", "MIT", "vite-generated-helper", "LICENSE.md"),
+    reviewed("vite", "6.4.5", "MIT", "vite-generated-helper", "LICENSE.md"),
 ]);
 
 const VITE_BUNDLED_DEPENDENCY_LICENSE_EXPRESSIONS = Object.freeze([
@@ -141,12 +141,12 @@ const EXPECTED_BUILD_INPUTS = Object.freeze([
     },
     {
         name: "sharp",
-        version: "0.35.3",
+        version: "0.35.5",
         reason: "Development-only PWA icon generator, including its optional @img/sharp-* and libvips binaries; absent from production sourcemaps.",
     },
     {
         name: "@img/sharp-wasm32",
-        version: "0.35.3",
+        version: "0.35.5",
         reason: "Optional development-only Sharp backend used for icon generation; absent from production sourcemaps.",
     },
     {

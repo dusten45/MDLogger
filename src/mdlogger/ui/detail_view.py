@@ -41,10 +41,14 @@ class DetailView(QWidget):
         root.addWidget(self.form)
 
         # 오류 상태줄 (theme의 danger tone)
-        self._status = QLabel("")
+        self._status = QLabel("승/패를 선택하세요")
         self._status.setWordWrap(True)
         set_style_property(self._status, "tone", "danger")
         root.addWidget(self._status)
+        # 한글 대체 폰트까지 반영한 한 줄 높이를 빈 상태에서도 확보한다.
+        self._status.ensurePolished()
+        self._status.setMinimumHeight(self._status.minimumSizeHint().height())
+        self._status.clear()
 
         root.addStretch(1)
 

@@ -182,8 +182,9 @@ def test_ui_scale_is_saved_for_the_next_restart(qapp) -> None:
         games.close()
 
 
-def test_ui_scale_applies_to_windows_created_on_next_start(qapp) -> None:
+def test_ui_scale_applies_to_windows_created_on_next_start(qapp, monkeypatch) -> None:
     apply_ui_scale(0.75, qapp)
+    monkeypatch.setattr(MainWindow, "screen", lambda _: _Screen(1440))
     games = GameService.open(":memory:")
     try:
         main = MainWindow(games, ["테스트 덱"])
@@ -194,7 +195,8 @@ def test_ui_scale_applies_to_windows_created_on_next_start(qapp) -> None:
 
         assert result_layout is not None
         assert appearance_layout is not None
-        assert main.size() == QSize(315, 641)
+        expected_height = max(scaled(680), main._detail_view.minimumSizeHint().height())
+        assert main.size() == QSize(315, expected_height)
         assert settings.size() == QSize(510, 465)
         assert settings.minimumSize() == QSize(465, 390)
         assert settings._nav.width() == 120
@@ -259,9 +261,7 @@ def test_main_window_uses_stable_detail_height_when_screen_allows(
     games = GameService.open(":memory:")
     try:
         main = MainWindow(games, ["테스트 덱"])
-        expected_size = QSize(
-            420, main._detail_view.minimumSizeHint().height() + scaled(1)
-        )
+        expected_size = QSize(420, main._detail_view.minimumSizeHint().height())
         assert main.size() == expected_size
 
         main.show()
@@ -375,9 +375,12 @@ def test_detail_form_variants_fit_the_stable_large_screen_height(
         games.close()
 
 
-def test_detail_validation_messages_do_not_add_a_scrollbar(qapp, monkeypatch) -> None:
-    apply_ui_scale(1.0, qapp)
-    monkeypatch.setattr(MainWindow, "screen", lambda _: _Screen(1440))
+@pytest.mark.parametrize("ui_scale", (0.75, 1.0, 1.25, 1.5))
+def test_detail_validation_messages_do_not_add_a_scrollbar(
+    qapp, monkeypatch, ui_scale: float
+) -> None:
+    apply_ui_scale(ui_scale, qapp)
+    monkeypatch.setattr(MainWindow, "screen", lambda _: _Screen(1800))
     games = GameService.open(":memory:")
     try:
         main = MainWindow(games, ["테스트 덱"])
@@ -385,16 +388,24 @@ def test_detail_validation_messages_do_not_add_a_scrollbar(qapp, monkeypatch) ->
         main.show_detail()
         qapp.processEvents()
 
+        initial_size = main.size()
+        status = main._detail_view._status
+        assert status.text() == ""
+        reserved_height = status.minimumSizeHint().height()
         messages = (
             "승/패를 선택하세요",
             "내 덱 / 상대 덱을 후보에서 정확히 선택하세요",
             "경기 전/후 레이팅을 입력하세요",
             "경기 전 레이팅을 입력하세요",
             "레이팅 변동폭을 입력하세요",
+            "",
         )
         for message in messages:
-            main._detail_view._status.setText(message)
+            status.setText(message)
             qapp.processEvents()
+            assert status.minimumSizeHint().height() == reserved_height
+            assert status.height() >= status.heightForWidth(status.width())
+            assert main.size() == initial_size
             assert main._detail_scroll.verticalScrollBar().maximum() == 0
     finally:
         main.close()

@@ -326,7 +326,7 @@
     },
     {
       "name": "vite",
-      "version": "6.4.3",
+      "version": "6.4.5",
       "license": "MIT",
       "author": "Evan You",
       "homepage": "https://vite.dev",
@@ -567,12 +567,12 @@
     },
     {
       "name": "sharp",
-      "version": "0.35.3",
+      "version": "0.35.5",
       "reason": "Development-only PWA icon generator, including its optional @img/sharp-* and libvips binaries; absent from production sourcemaps."
     },
     {
       "name": "@img/sharp-wasm32",
-      "version": "0.35.3",
+      "version": "0.35.5",
       "reason": "Optional development-only Sharp backend used for icon generation; absent from production sourcemaps."
     },
     {

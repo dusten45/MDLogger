@@ -9,7 +9,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QPoint, QRect, QSize, Qt
+from PySide6.QtCore import QEventLoop, QPoint, QRect, QSize, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -94,7 +94,12 @@ def test_auth_window_allows_scrolling_on_small_screen(qapp: QApplication, monkey
     assert window.height() <= scaled(500)
     assert window.height() >= scaled(480)
     window.show_signup()
-    qapp.processEvents()
+    # 폰트와 무관하게 실제 양식 높이보다 작은 표시 영역에서 스크롤을 검사한다.
+    window.resize(
+        window.width(),
+        min(window.height(), window._form_page.minimumSizeHint().height() // 2),
+    )
+    qapp.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 1000)
 
     scroll = window._form_scroll
     assert window._stack.currentWidget() is scroll
@@ -102,10 +107,13 @@ def test_auth_window_allows_scrolling_on_small_screen(qapp: QApplication, monkey
 
     scroll.ensureWidgetVisible(window._terms_btn)
     qapp.processEvents()
+    terms_top = window._terms_btn.mapTo(scroll.viewport(), QPoint(0, 0)).y()
     terms_bottom = window._terms_btn.mapTo(
         scroll.viewport(), QPoint(0, window._terms_btn.height())
     ).y()
+    assert terms_top >= 0
     assert terms_bottom <= scroll.viewport().height()
+    assert scroll.verticalScrollBar().value() > 0
 
     window.show_login()
     qapp.processEvents()

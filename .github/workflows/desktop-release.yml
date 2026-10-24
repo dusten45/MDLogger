@@ -27,6 +27,7 @@ jobs:
         timeout-minutes: 30
         env:
             MDLOGGER_DATA_DIR: /tmp
+            QT_QPA_PLATFORM: offscreen
         outputs:
             tag: ${{ steps.release-context.outputs.tag }}
             version: ${{ steps.release-context.outputs.version }}
@@ -54,7 +55,7 @@ jobs:
             - name: Install Linux Qt test dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install --yes libegl1 libxcb-cursor0 libxkbcommon-x11-0 xvfb
+                  sudo apt-get install --yes libegl1 fonts-noto-cjk
 
             - name: Validate annotated tag and release version
               env:
@@ -73,7 +74,7 @@ jobs:
                   uv run ruff check .
                   uv run ruff format --check .
                   uv run ty check
-                  QT_QPA_PLATFORM=xcb xvfb-run --auto-servernum uv run pytest
+                  uv run pytest
 
             - name: Create immutable source archive
               run: |
