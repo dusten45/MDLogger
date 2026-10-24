@@ -8,7 +8,7 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "PySide6>=6.8,<7",
     "pyqtgraph>=0.13,<1",
-    "numpy>=2,<3",  # NumPy 1→2 ABI 경계를 넘지 않는다(하드닝 N-6)
+    "numpy>=2.5.4,<3",  # NumPy 1→2 ABI 경계를 넘지 않는다(하드닝 N-6)
     "openpyxl>=3.1,<4",
     "keyring>=25.0,<27",
 ]
@@ -19,11 +19,11 @@ mdlogger-admin = "mdlogger.admin_app:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0,<10",
-    "pyinstaller==6.21.0",  # keyring 번들링은 내장 hook-keyring.py에 의존(N-6)
-    "ruff>=0.16.1",
-    "setuptools>=84.1.0",
-    "ty>=0.0.69",
+    "pytest>=9.1.1,<10",
+    "pyinstaller==6.22.3",  # keyring 번들링은 내장 hook-keyring.py에 의존(N-6)
+    "ruff>=0.17.1",
+    "setuptools>=84.2.1",
+    "ty>=0.0.90",
 ]
 
 [build-system]
