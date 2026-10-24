@@ -15,6 +15,7 @@ import pytest
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
+from mdlogger._version import __version__
 from mdlogger.updater import verify_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +23,11 @@ NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
 with patch.object(sys, "path", [str(ROOT), *sys.path]):
     provenance = import_module("scripts.release.create_release_manifest")
     release = import_module("scripts.release.windows_release")
+
+
+def test_installer_default_version_matches_application():
+    script = (ROOT / "scripts" / "installer_windows.iss").read_text(encoding="utf-8")
+    assert f'#define MyAppVersion "{__version__}"' in script
 
 
 @pytest.fixture(scope="module")

@@ -240,7 +240,11 @@ jobs:
             - name: Compile Inno Setup installer
               if: steps.windows-changes.outputs.required != 'false'
               shell: pwsh
-              run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" scripts\installer_windows.iss'
+              run: |
+                  $version = (& uv run python -c "from mdlogger._version import __version__; print(__version__)").Trim()
+                  if ($LASTEXITCODE -ne 0) { throw "Could not read application version" }
+                  & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$version" scripts\installer_windows.iss
+                  if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed" }
 
             - name: Install and verify Inno Setup payload
               if: steps.windows-changes.outputs.required != 'false'
@@ -275,5 +279,5 @@ jobs:
                     -Installer (Join-Path (Get-Location) "dist/installer/MDLoggerSetup-$version.exe") `
                     -Version $version `
                     -InstallRoot (Join-Path $env:RUNNER_TEMP "MDLogger-update-verification") `
-                    -Record (Join-Path $env:RUNNER_TEMP "windows-update-verification.json") `
+                    -Record (Join-Path $env:RUNNER_TEMP "windows-verification.json") `
                     -VerifyUpdater
