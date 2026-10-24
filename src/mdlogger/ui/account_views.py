@@ -75,6 +75,7 @@ class AuthWindow(QWidget):
     resend_requested = Signal(str)
     password_reset_requested = Signal(str)
     flow_cancelled = Signal()
+    update_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -105,8 +106,16 @@ class AuthWindow(QWidget):
         self._stack.addWidget(self._form_scroll)
         self._stack.addWidget(self._verification_page)
         root.addWidget(self._stack)
+        update_button = QPushButton("업데이트 확인")
+        update_button.setProperty("role", "ghost")
+        update_button.clicked.connect(self.update_requested)
+        root.addWidget(update_button)
         self.resize(scaled(420), self._initial_auth_window_height())
         self.show_login()
+
+    @property
+    def has_pending_input(self) -> bool:
+        return any(field.text() for field in self.findChildren(QLineEdit))
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
@@ -736,6 +745,9 @@ class GuestRecordChoiceDialog(QDialog):
 class ConflictDialog(QDialog):
     """양쪽 값을 나란히 비교하고 충돌 해결 payload를 선택한다."""
 
+    resolution_requested = Signal()
+    resolution_received = Signal(object)
+
     _FIELD_LABELS = {
         "played_at": "플레이 시각",
         "result": "결과",
@@ -759,6 +771,10 @@ class ConflictDialog(QDialog):
         self.merged_payload: dict | None = None
         self._conflict = conflict
         self._choices: dict[str, QComboBox] = {}
+        self._draft_values: dict[str, object] = {}
+        self._busy = False
+        self._available = True
+        self._requires_confirmation = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(
@@ -777,15 +793,15 @@ class ConflictDialog(QDialog):
         help_text.setWordWrap(True)
         layout.addWidget(help_text)
 
-        fields = [*PRIVATE_GAME_FIELDS, "deleted_at"]
-        differing = [
-            field
-            for field in fields
-            if conflict.local_payload.get(field) != conflict.remote_payload.get(field)
-        ]
-        table = QTableWidget(len(differing), 4)
+        self._remote_notice = QLabel()
+        self._remote_notice.setWordWrap(True)
+        self._remote_notice.setProperty("tone", "danger")
+        layout.addWidget(self._remote_notice)
+
+        table = self._table = QTableWidget(0, 4)
         table.setHorizontalHeaderLabels(["필드", "이 장치", "서버", "적용할 값"])
         table.setAccessibleName("충돌 필드 비교")
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.ResizeToContents
@@ -795,33 +811,19 @@ class ConflictDialog(QDialog):
         table.horizontalHeader().setSectionResizeMode(
             3, QHeaderView.ResizeMode.ResizeToContents
         )
-        for row, field in enumerate(differing):
-            table.setItem(
-                row, 0, QTableWidgetItem(self._FIELD_LABELS.get(field, field))
-            )
-            table.setItem(
-                row,
-                1,
-                QTableWidgetItem(
-                    self._display_value(conflict.local_payload.get(field))
-                ),
-            )
-            table.setItem(
-                row,
-                2,
-                QTableWidgetItem(
-                    self._display_value(conflict.remote_payload.get(field))
-                ),
-            )
-            choice = QComboBox()
-            choice.addItem("이 장치", "local")
-            choice.addItem("서버", "remote")
-            choice.setAccessibleName(
-                f"{self._FIELD_LABELS.get(field, field)}에 적용할 값"
-            )
-            table.setCellWidget(row, 3, choice)
-            self._choices[field] = choice
+        self._populate_comparison()
         layout.addWidget(table, 1)
+
+        self._confirmation = QCheckBox("최신 비교와 적용할 선택 내용을 확인했습니다")
+        self._confirmation.toggled.connect(self._update_actions)
+        self._confirmation.hide()
+        layout.addWidget(self._confirmation)
+
+        self._status = QLabel()
+        self._status.setObjectName("conflictResolutionStatus")
+        self._status.setWordWrap(True)
+        self._status.setTextFormat(Qt.TextFormat.PlainText)
+        layout.addWidget(self._status)
 
         buttons = QHBoxLayout()
         remote = QPushButton("서버 버전 사용")
@@ -834,11 +836,162 @@ class ConflictDialog(QDialog):
         merged.setProperty("role", "primary")
         merged.clicked.connect(lambda: self._finish("merged"))
         buttons.addWidget(merged)
+        self._apply_buttons = (remote, local, merged)
+        for button in self._apply_buttons:
+            button.setAutoDefault(False)
         layout.addLayout(buttons)
 
-        cancel = QPushButton("나중에 해결")
-        cancel.clicked.connect(self.reject)
-        layout.addWidget(cancel)
+        self._cancel = QPushButton("나중에 해결")
+        self._cancel.setAutoDefault(False)
+        self._cancel.clicked.connect(self.reject)
+        layout.addWidget(self._cancel)
+        allow_tab_focus(self)
+
+    @property
+    def conflict(self) -> SyncConflict:
+        return self._conflict
+
+    def _populate_comparison(
+        self, draft: dict | None = None, sources: dict[str, str] | None = None
+    ) -> None:
+        conflict = self._conflict
+        self._remote_notice.setText(
+            "서버에 이 기록이 없습니다. 서버 버전을 사용하면 이 장치의 기록도 삭제됩니다."
+            if conflict.remote_payload.get("missing")
+            else ""
+        )
+        self._remote_notice.setVisible(bool(conflict.remote_payload.get("missing")))
+        fields = [*PRIVATE_GAME_FIELDS, "deleted_at"]
+        differing = [
+            field
+            for field in fields
+            if conflict.local_payload.get(field) != conflict.remote_payload.get(field)
+            or (
+                draft is not None
+                and draft.get(field) != conflict.local_payload.get(field)
+            )
+        ]
+        self._choices.clear()
+        self._draft_values.clear()
+        self._table.clearContents()
+        self._table.setRowCount(len(differing))
+        for row, field in enumerate(differing):
+            local = conflict.local_payload.get(field)
+            remote = conflict.remote_payload.get(field)
+            for column, text in enumerate(
+                (
+                    self._FIELD_LABELS.get(field, field),
+                    self._display_value(local),
+                    self._display_value(remote),
+                )
+            ):
+                item = QTableWidgetItem(text)
+                item.setToolTip(text)
+                self._table.setItem(row, column, item)
+            choice = QComboBox()
+            choice.setMinimumContentsLength(10)
+            choice.setSizeAdjustPolicy(
+                QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+            )
+            choice.addItem("이 장치", "local")
+            choice.addItem("서버", "remote")
+            choice.setAccessibleName(
+                f"{self._FIELD_LABELS.get(field, field)}에 적용할 값"
+            )
+            if draft is not None:
+                value = draft.get(field)
+                source = (sources or {}).get(field, "remote")
+                if source == "remote" and value == remote:
+                    choice.setCurrentIndex(1)
+                elif value == local:
+                    choice.setCurrentIndex(0)
+                elif value == remote:
+                    choice.setCurrentIndex(1)
+                else:
+                    choice.addItem(f"이전 선택: {self._display_value(value)}", "draft")
+                    choice.setItemData(
+                        2, self._display_value(value), Qt.ItemDataRole.ToolTipRole
+                    )
+                    choice.setCurrentIndex(2)
+                    choice.setAccessibleDescription(
+                        f"이전 선택: {self._display_value(value)}"
+                    )
+                    self._draft_values[field] = value
+            self._table.setCellWidget(row, 3, choice)
+            self._choices[field] = choice
+        allow_tab_focus(self._table)
+
+    def _selected_payload(self) -> dict:
+        payload = dict(self._conflict.remote_payload)
+        for field, choice in self._choices.items():
+            if choice.currentData() == "local":
+                payload[field] = self._conflict.local_payload.get(field)
+            elif choice.currentData() == "draft":
+                payload[field] = self._draft_values[field]
+        return payload
+
+    def reload_conflict(self, conflict: SyncConflict) -> None:
+        """초안 값을 남기고 최신 비교를 다시 확인해야만 적용할 수 있게 한다."""
+        draft = self._selected_payload()
+        sources = {
+            field: choice.currentData() for field, choice in self._choices.items()
+        }
+        self._conflict = conflict
+        self._populate_comparison(draft, sources)
+        self._requires_confirmation = True
+        self._confirmation.setChecked(False)
+        self._confirmation.show()
+        self.set_busy(False)
+        self._status.setText(
+            "서버 또는 이 장치의 기록이 변경되었습니다. 이전 선택은 보존했습니다. "
+            "최신 비교를 확인한 뒤 다시 적용해 주세요."
+        )
+        set_style_property(self._status, "tone", "danger")
+        self._confirmation.setFocus(Qt.FocusReason.OtherFocusReason)
+
+    def _update_actions(self) -> None:
+        enabled = not self._busy and self._available
+        confirmed = not self._requires_confirmation or self._confirmation.isChecked()
+        for button in self._apply_buttons:
+            button.setEnabled(enabled and confirmed)
+        for choice in self._choices.values():
+            choice.setEnabled(enabled)
+        self._confirmation.setEnabled(enabled)
+        self._cancel.setEnabled(not self._busy)
+
+    def set_busy(self, busy: bool) -> None:
+        self._busy = busy
+        self._update_actions()
+        if busy:
+            self._status.setText(
+                "최신 서버 기록을 확인하고 적용하고 있습니다. "
+                "처리가 끝날 때까지 이 창을 닫을 수 없습니다."
+            )
+            set_style_property(self._status, "tone", "muted")
+
+    def show_error(self, message: str) -> None:
+        self.set_busy(False)
+        self._status.setText(f"{message}\n선택 내용은 유지됩니다.")
+        set_style_property(self._status, "tone", "danger")
+
+    def show_unavailable(self, message: str) -> None:
+        self._available = False
+        self.show_error(message)
+        self._cancel.setText("닫기")
+
+    def reject(self) -> None:
+        if not self._busy:
+            super().reject()
+
+    def done(self, result: int) -> None:
+        if not self._busy:
+            super().done(result)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self._busy:
+            event.ignore()
+        else:
+            super().closeEvent(event)
 
     @staticmethod
     def _display_value(value: object) -> str:
@@ -849,14 +1002,16 @@ class ConflictDialog(QDialog):
         return str(value)
 
     def _finish(self, resolution: str) -> None:
+        if self._busy or not self._available:
+            return
+        if self._requires_confirmation and not self._confirmation.isChecked():
+            return
         self.resolution = resolution
-        if resolution == "merged":
-            payload = dict(self._conflict.remote_payload)
-            for field, choice in self._choices.items():
-                if choice.currentData() == "local":
-                    payload[field] = self._conflict.local_payload.get(field)
-            self.merged_payload = payload
-        self.accept()
+        self.merged_payload = (
+            self._selected_payload() if resolution == "merged" else None
+        )
+        self.set_busy(True)
+        self.resolution_requested.emit()
 
 
 class AccountDialog(QDialog):

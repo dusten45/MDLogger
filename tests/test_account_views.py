@@ -287,6 +287,8 @@ def test_conflict_dialog_compares_both_versions_and_supports_field_selection(
         base_remote_version=6,
     )
     dialog = ConflictDialog(conflict)
+    submitted: list[str | None] = []
+    dialog.resolution_requested.connect(lambda: submitted.append(dialog.resolution))
     dialog.show()
     qapp.processEvents()
 
@@ -306,6 +308,15 @@ def test_conflict_dialog_compares_both_versions_and_supports_field_selection(
 
     assert dialog.resolution == "merged"
     assert dialog.merged_payload is not None
+    assert dialog.merged_payload["note"] == "서버 메모"
+    assert submitted == ["merged"]
+    assert dialog.isVisible()
+    assert dialog.result() != QDialog.DialogCode.Accepted
+    assert not apply_button.isEnabled()
+    dialog.show_error("서버에 연결할 수 없습니다.")
+    assert dialog.isVisible()
+    assert apply_button.isEnabled()
+    assert choice.currentData() == "remote"
     assert dialog.merged_payload["note"] == "서버 메모"
     dialog.close()
 

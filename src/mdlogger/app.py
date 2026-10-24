@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import sys
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QLockFile, QTimer
+from PySide6.QtWidgets import QApplication, QMessageBox, QWidget
 
 from . import sync as deck_sync
+from ._version import __version__
 from .app_controller import AppController
 from .app_settings import SettingsRepository, effective_reduce_motion
 from .auth.credential_store import KeyringCredentialStore
@@ -19,7 +21,7 @@ from .game_sync.coordinator import SyncCoordinator
 from .game_sync.engine import SyncEngine
 from .game_sync.modes import GameModesClient
 from .paths import DATA_DIR
-from .profile_router import ProfileRouter
+from .profile_router import CONSENT_VERSION, ProfileRouter
 from .profiles import ProfileManager
 from .release_policy import resolve_policy_for_startup
 from .remote.config import get_remote_config
@@ -31,12 +33,35 @@ from .ui.icons import application_icon
 from .ui.main_window import MainWindow
 from .ui.result_view import set_result_motion_enabled
 from .ui.theme import apply_theme
+from .update_controller import UpdateController
+from .updater import (
+    acknowledge_update_startup,
+    acquire_application_mutex,
+    check_update,
+    download_update,
+    launch_update,
+)
 
 
 def main() -> None:
     app = QApplication(sys.argv)
     install_pointer_focus_only(app)
     app.setApplicationName("MDLogger")
+    if not acquire_application_mutex():
+        QMessageBox.information(
+            None, "MDLogger 실행 중", "이미 실행 중이거나 업데이트가 진행 중입니다."
+        )
+        return
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    instance_lock = QLockFile(str(DATA_DIR / "mdlogger.lock"))
+    instance_lock.setStaleLockTime(0)
+    if not instance_lock.tryLock(0):
+        QMessageBox.information(
+            None,
+            "MDLogger 실행 중",
+            "이 데이터 폴더를 사용하는 앱이 이미 실행 중입니다.",
+        )
+        return
     _app_icon = application_icon()
     if _app_icon is not None:
         app.setWindowIcon(_app_icon)  # 모든 창의 타이틀바·태스크바 아이콘
@@ -44,6 +69,7 @@ def main() -> None:
     # 설정을 창 생성 전에 로드해 테마·강조색·UI 크기를 먼저 적용한다(spec §6.4).
     settings_repo = SettingsRepository()
     settings = settings_repo.load()
+    settings_warning = settings_repo.load_warning
     _theme_controller = apply_theme(
         app,
         mode=settings.theme_mode,
@@ -95,18 +121,6 @@ def main() -> None:
             else None
         )
 
-        def access_token() -> str | None:
-            session = sessions.session if sessions is not None else None
-            if session is None or session.account.user_id != profile.remote_user_id:
-                return None
-            return session.tokens.access_token
-
-        def refresh_token() -> str | None:
-            if sessions is None or profile.remote_user_id is None:
-                return None
-            session = sessions.refresh_for_sync(profile.remote_user_id)
-            return session.tokens.access_token if session is not None else None
-
         engine = SyncEngine(
             profile,
             registered_client=registered_client,
@@ -114,8 +128,14 @@ def main() -> None:
             modes_client=(
                 GameModesClient(remote_config) if remote_config is not None else None
             ),
-            token_provider=access_token,
-            token_refresher=refresh_token,
+            session_manager=sessions,
+            can_sync=lambda: (
+                _online_allowed
+                and profiles.has_data_consent(CONSENT_VERSION)
+                and controller.current_profile is not None
+                and controller.current_profile.local_profile_id
+                == profile.local_profile_id
+            ),
         )
         return SyncCoordinator(engine)
 
@@ -140,12 +160,41 @@ def main() -> None:
         settings_store=settings_repo,
         settings_sync_client=settings_sync_client,
     )
+
+    def update_parent() -> QWidget:
+        window = controller.current_window
+        return window if isinstance(window, QWidget) else router.auth_window
+
+    updates = UpdateController(
+        __version__,
+        parent_window=update_parent,
+        ready_to_install=router.ready_for_update,
+        pause=controller.pause_for_update,
+        resume=controller.resume_after_update,
+        data_dir=DATA_DIR,
+        check=lambda: check_update(__version__),
+        download=download_update,
+        launch=launch_update,
+        parent=app,
+    )
+    router.set_update_handler(lambda: updates.check_for_updates(manual=True))
     try:
         router.start()
+        acknowledge_update_startup(__version__)
+        if settings_warning:
+            QTimer.singleShot(
+                0,
+                lambda: QMessageBox.warning(
+                    QApplication.activeWindow(), "기본 설정으로 복구", settings_warning
+                ),
+            )
+        QTimer.singleShot(1500, updates.check_for_updates)
         exit_code = app.exec()
     finally:
+        updates.close()
         router.close()
         controller.close()
+        instance_lock.unlock()
     sys.exit(exit_code)
 
 

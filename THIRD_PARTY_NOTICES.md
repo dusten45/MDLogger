@@ -21,7 +21,7 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
   license expressions are reviewed. Final Windows payload inspection
   remains a Windows release-host check.
 - Linux Flatpak resolver closure: 17 third-party distributions (Python 3.14).
-- Windows resolver closure: 13 third-party distributions (Python 3.15). This is not
+- Windows resolver closure: 16 third-party distributions (Python 3.15). This is not
   represented as an exact PyInstaller payload inventory.
 - Windows also inventories the uv-managed CPython runtime and standard library
   (python-build-standalone; exact vendor evidence is retained),
@@ -55,7 +55,7 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 ### Runtime distributions
 #### cffi 2.1.1
 
-- Platforms: Linux
+- Platforms: Linux, Windows
 - Dependency: indirect
 - Purpose: Foreign-function interface used by cryptography.
 - Selected license: `MIT-0`
@@ -81,9 +81,9 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 
 #### cryptography 50.0.2
 
-- Platforms: Linux
-- Dependency: indirect
-- Purpose: Secret Service cryptographic transport used by keyring.
+- Platforms: Linux, Windows
+- Dependency: direct
+- Purpose: RSA update-manifest signature verification on Windows and Secret Service cryptographic transport used by keyring on Linux.
 - Selected license: `BSD-3-Clause`
 - Copyright/attribution: Copyright (c) Individual contributors
 - Homepage: https://cryptography.io/
@@ -211,7 +211,7 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 
 #### pycparser 3.12
 
-- Platforms: Linux
+- Platforms: Linux, Windows
 - Dependency: indirect
 - Purpose: C parser used by cffi.
 - Selected license: `BSD-3-Clause`
@@ -349,15 +349,15 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
 - Legal files: `licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt`
 - Review note: Known limitation: The exact GCC revision is not disclosed by the wheel; the retained NumPy LICENSE.txt identifies the bundled runtime and notices.
 
-#### OpenSSL embedded in cryptography Linux wheel 4.0.3
+#### OpenSSL embedded in cryptography wheels 4.0.3
 
-- Platforms: Linux
-- Purpose: Statically built into cryptography _rust.abi3.so according to the wheel SBOM (no-shared).
+- Platforms: Linux, Windows
+- Purpose: Cryptographic primitives bundled with cryptography, including Windows update signature verification. Linux static linkage is recorded in its wheel SBOM.
 - License: `Apache-2.0`
 - Copyright: Copyright 1998-2026 The OpenSSL Project Authors. All Rights Reserved.
 - Source: https://github.com/openssl/openssl
 - Legal files: `licenses/desktop/cryptography-50.0.2/licenses/LICENSE.APACHE`
-- Review note: Exact source URL, SHA256 and build flags are validated from the wheel SBOM.
+- Review note: Exact source URL, SHA256 and build flags are validated from the Linux wheel SBOM. This is not Windows build-provenance evidence; the Windows release gate checks the loaded OpenSSL version separately.
 
 #### NumPy Windows OpenBLAS and LAPACK 2.5.4 wheel bundle
 

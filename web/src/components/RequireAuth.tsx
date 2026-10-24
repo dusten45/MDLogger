@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { AuthUnavailable } from "./AuthUnavailable";
@@ -21,5 +21,5 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     if (!session) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
-    return <>{children}</>;
+    return <Fragment key={session.user.id}>{children}</Fragment>;
 }

@@ -130,6 +130,14 @@ def test_validate_release_rejects_lightweight_tag(tmp_path):
         VALIDATE.validate_release(root, "v1.2.3")
 
 
+def test_windows_release_rejects_a_tag_without_update_build_inputs(tmp_path):
+    root = _init_release_repository(tmp_path)
+    _tag_annotated(root, "v1.2.3")
+
+    with pytest.raises(VALIDATE.ReleaseVersionError, match="windows_release.py"):
+        VALIDATE.validate_release(root, "v1.2.3", require_windows_update=True)
+
+
 @pytest.mark.parametrize("tag", ["1.2.3", "v1.2", "v1.2.3-rc1", "v1.2.3;echo bad"])
 def test_validate_tag_format_rejects_unsafe_or_unsupported_release_tags(tag):
     with pytest.raises(VALIDATE.ReleaseVersionError):

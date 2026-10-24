@@ -182,19 +182,39 @@ class SettingsRepository:
 
     def __init__(self, path: Path | None = None) -> None:
         self._path = path if path is not None else SETTINGS_PATH
+        self.load_warning: str | None = None
 
     def load(self) -> AppSettings:
+        self.load_warning = None
         try:
             raw = self._path.read_text(encoding="utf-8")
-        except OSError:
+        except FileNotFoundError:
+            return AppSettings()
+        except (OSError, UnicodeError):
+            self.load_warning = (
+                "설정 파일을 읽을 수 없어 기본 설정으로 시작합니다. "
+                "원본 파일은 변경하지 않았습니다. 점수 입력 방식을 확인해 주세요."
+            )
+            logger.warning(self.load_warning)
             return AppSettings()
         data = _parse_json(raw)
         if data is None:
+            self.load_warning = (
+                "설정 파일이 손상되어 기본 설정으로 시작합니다. "
+                "원본 파일은 변경하지 않았습니다. 점수 입력 방식을 확인해 주세요."
+            )
             logger.warning(
                 "설정 파일을 해석할 수 없어 기본값을 사용합니다: %s", self._path
             )
             return AppSettings()
-        if data.get("schema_version") != SCHEMA_VERSION:
+        if (
+            type(data.get("schema_version")) is not int
+            or data.get("schema_version") != SCHEMA_VERSION
+        ):
+            self.load_warning = (
+                "지원하지 않는 설정 형식이므로 기본 설정으로 시작합니다. "
+                "원본 파일은 변경하지 않았습니다. 점수 입력 방식을 확인해 주세요."
+            )
             logger.warning(
                 "지원하지 않는 설정 스키마(%s)라 기본값을 사용합니다.",
                 data.get("schema_version"),
@@ -213,7 +233,10 @@ class SettingsRepository:
         except OSError:
             logger.warning("설정 저장에 실패했습니다: %s", self._path, exc_info=True)
         finally:
-            temporary.unlink(missing_ok=True)
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                logger.warning("임시 설정 파일을 정리하지 못했습니다.", exc_info=True)
 
 
 class MemorySettingsStore:

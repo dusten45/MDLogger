@@ -118,6 +118,41 @@ def test_refresh_uses_refresh_grant():
     assert request["body"] == {"refresh_token": "refresh-0"}
 
 
+def test_rate_limit_keeps_longer_header_delay():
+    response = HttpResponse(
+        429,
+        b'{"retry_after_seconds":60}',
+        {"rEtRy-AfTeR": "120"},
+    )
+    service, _ = make_service(response)
+    with pytest.raises(AuthError) as raised:
+        service.refresh_session("refresh-0")
+    assert raised.value.kind is AuthErrorKind.RATE_LIMITED
+    assert raised.value.retry_after_seconds == 120
+
+
+def test_rate_limit_accepts_http_date_and_rejects_boolean_body():
+    from datetime import UTC, datetime, timedelta
+    from email.utils import format_datetime
+
+    response = HttpResponse(
+        429,
+        b'{"retry_after_seconds":true}',
+        {"Retry-After": format_datetime(datetime.now(UTC) + timedelta(seconds=120))},
+    )
+    error = SupabaseAccountService._classify_error(response)
+    assert error.retry_after_seconds is not None
+    assert 118 <= error.retry_after_seconds <= 120
+
+
+def test_rate_limit_invalid_delay_is_not_invented():
+    error = SupabaseAccountService._classify_error(
+        HttpResponse(429, b"<html>busy</html>", {"Retry-After": "invalid"})
+    )
+    assert error.kind is AuthErrorKind.RATE_LIMITED
+    assert error.retry_after_seconds is None
+
+
 def test_sign_out_sends_bearer_access_token():
     service, transport = make_service(HttpResponse(status=204))
 

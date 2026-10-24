@@ -6,6 +6,8 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
+from urllib.parse import urlencode
+from uuid import UUID
 
 from .. import __version__
 from .client import HttpResponse, JsonHttpClient
@@ -300,6 +302,42 @@ class RegisteredGamesClient:
             ) from error
         return RegisteredPullResult(tuple(games))
 
+    def fetch_game(self, sync_id: str, *, access_token: str) -> dict[str, Any] | None:
+        """충돌 해결 직전에 소유자 RLS로 한 기록의 최신 상태를 확인한다."""
+        game_id = str(UUID(sync_id))
+        query = urlencode(
+            {"select": ",".join(REMOTE_GAME_FIELDS), "id": f"eq.{game_id}", "limit": 1}
+        )
+        response = self._request(
+            "GET",
+            f"{self._config.rest_url}/games?{query}",
+            None,
+            access_token,
+            action="충돌 확인",
+        )
+        body = self._json(response)
+        if isinstance(body, list) and not body:
+            return None
+        try:
+            if not isinstance(body, list) or len(body) != 1:
+                raise ValueError
+            row = body[0]
+            if (
+                not isinstance(row, dict)
+                or str(row["id"]) != game_id
+                or int(row["change_version"]) < 1
+                or any(
+                    field not in row for field in (*PRIVATE_GAME_FIELDS, "deleted_at")
+                )
+            ):
+                raise ValueError
+        except (KeyError, TypeError, ValueError) as error:
+            raise RegisteredGamesError(
+                RegisteredGamesErrorKind.SERVER,
+                "충돌 확인 응답의 기록 또는 버전이 올바르지 않습니다.",
+            ) from error
+        return dict(row)
+
     def register_device(
         self,
         *,
@@ -355,6 +393,8 @@ class RegisteredGamesClient:
             "apikey": self._config.anon_key,
             "Authorization": f"Bearer {access_token}",
         }
+        if method == "GET":
+            headers["Cache-Control"] = "no-cache"
         try:
             response = self._client.request_json(method, url, payload, headers)
         except NetworkError as error:

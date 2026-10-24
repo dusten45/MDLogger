@@ -6,7 +6,17 @@ An unofficial match logging and analytics tool for Yu-Gi-Oh! MASTER DUEL.
 
 ---
 
-v2.0.0 is the latest release.
+v2.1.0 adds signed in-app updates for the Windows x64 installer edition.
+
+Windows v2.0.0 does not contain an updater, so installing v2.1.0 requires one manual
+installation from [GitHub Releases](https://github.com/dusten45/MDLogger/releases).
+The installed Windows app checks for later releases after startup; downloading and
+installing an update requires a user action. Windows may still require administrator
+approval or show SmartScreen warnings. The update signature does not replace Windows
+Authenticode signing.
+
+This release does not replace the Linux Flatpak bundle. Linux updates remain manual;
+an MDLogger automatic-update Flatpak remote is not configured.
 
 Visit the website at [mdlogger-web.dalimi4511-615.workers.dev](https://mdlogger-web.dalimi4511-615.workers.dev/).
 

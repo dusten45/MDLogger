@@ -148,10 +148,16 @@ def test_same_field_and_update_delete_conflicts_preserve_both_sides(tmp_path: Pa
     conflict_status = repository.status()
     assert conflict_status.conflict_count == 1
     assert conflict_status.pending_count == 0
-    assert conflict_status.phase.value == "synced"
+    assert conflict_status.phase.value == "failed"
     assert repository.pull_cursor() == 2
 
-    repository.resolve_conflict(conflicts[0].id, "local")
+    repository.resolve_conflict(
+        conflicts[0].id,
+        "local",
+        expected_remote_version=2,
+        expected_local_revision=conflicts[0].local_revision,
+        fresh_remote=conflicts[0].remote_payload,
+    )
     connection = db.connect(profile.database_path)
     try:
         row = connection.execute(
@@ -193,7 +199,13 @@ def test_remote_tombstone_conflicts_with_local_edit_and_can_be_accepted(
         initial_sync_completed=True,
     )
     conflict = repository.list_conflicts()[0]
-    repository.resolve_conflict(conflict.id, "remote")
+    repository.resolve_conflict(
+        conflict.id,
+        "remote",
+        expected_remote_version=2,
+        expected_local_revision=conflict.local_revision,
+        fresh_remote=conflict.remote_payload,
+    )
 
     connection = db.connect(profile.database_path)
     try:
@@ -244,6 +256,8 @@ def test_stale_conflict_dialog_cannot_rebase_over_newer_remote_payload(
             stale.id,
             "local",
             expected_remote_version=int(stale.remote_payload["change_version"]),
+            expected_local_revision=stale.local_revision,
+            fresh_remote=remote_game(3, note="더 최신 서버 수정"),
         )
 
     latest = repository.list_conflicts()[0]
@@ -277,3 +291,165 @@ def test_pull_batch_failure_rolls_back_rows_and_cursor(tmp_path: Path):
         connection.close()
         games.close()
         repository.close()
+
+
+def test_converged_conflict_retires_atomically_and_rejects_old_choice(tmp_path: Path):
+    _, repository, games = prepare(tmp_path)
+    repository.apply_pull_batch(
+        [remote_game(1)], completed_at=NOW, initial_sync_completed=True
+    )
+    game_id = games.get_last_game()["id"]
+    games.update_game(game_id, local_payload(note="같은 내용"))
+    repository.apply_pull_batch(
+        [remote_game(2, note="서버 내용")],
+        completed_at=NOW,
+        initial_sync_completed=True,
+    )
+    old = repository.list_conflicts()[0]
+    current = {**remote_game(3), **local_payload(note="같은 내용")}
+    repository.apply_pull_batch(
+        [current], completed_at=NOW, initial_sync_completed=True
+    )
+    assert repository.list_conflicts() == []
+    assert repository.fetch_due(limit=100, now=NOW) == []
+    with pytest.raises(ValueError, match="이미 해결"):
+        repository.resolve_conflict(
+            old.id,
+            "remote",
+            expected_remote_version=2,
+            expected_local_revision=old.local_revision,
+            fresh_remote=current,
+        )
+    assert games.get_game(game_id)["remote_version"] == 3
+    assert games.get_game(game_id)["note"] == "같은 내용"
+    assert repository.pull_cursor() == 3
+    games.close()
+    repository.close()
+
+
+def test_resolution_does_not_overwrite_local_edit_after_dialog(tmp_path: Path):
+    _, repository, games = prepare(tmp_path)
+    repository.apply_pull_batch(
+        [remote_game(1)], completed_at=NOW, initial_sync_completed=True
+    )
+    game_id = games.get_last_game()["id"]
+    games.update_game(game_id, local_payload(note="첫 수정"))
+    repository.apply_pull_batch(
+        [remote_game(2, note="서버 수정")],
+        completed_at=NOW,
+        initial_sync_completed=True,
+    )
+    old = repository.list_conflicts()[0]
+    games.update_game(game_id, local_payload(note="대화상자 이후 수정"))
+    with pytest.raises(ValueError, match="로컬 기록이 다시 변경"):
+        repository.resolve_conflict(
+            old.id,
+            "remote",
+            expected_remote_version=2,
+            expected_local_revision=old.local_revision,
+            fresh_remote=old.remote_payload,
+        )
+    assert games.get_game(game_id)["note"] == "대화상자 이후 수정"
+    assert repository.list_conflicts()[0].local_payload["note"] == "대화상자 이후 수정"
+    games.close()
+    repository.close()
+
+
+def test_late_acknowledgement_does_not_regress_accepted_version(tmp_path: Path):
+    _, repository, games = prepare(tmp_path)
+    game_id = games.insert_game(local_payload(note="기록"))
+    entries = repository.fetch_due(limit=100, now=datetime.max)
+    sync_id = entries[0].game_sync_id
+    repository.acknowledge(entries, remote_versions={sync_id: 9}, completed_at=NOW)
+    repository.acknowledge(entries, remote_versions={sync_id: 2}, completed_at=NOW)
+    assert games.get_game(game_id)["remote_version"] == 9
+    games.close()
+    repository.close()
+
+
+def test_resolution_failure_rolls_back_game_outbox_and_conflict(
+    tmp_path: Path, monkeypatch
+):
+    profile, repository, games = prepare(tmp_path)
+    repository.apply_pull_batch(
+        [remote_game(1)], completed_at=NOW, initial_sync_completed=True
+    )
+    game_id = games.get_last_game()["id"]
+    games.update_game(game_id, local_payload(note="유지할 로컬 수정"))
+    repository.apply_pull_batch(
+        [remote_game(2, note="서버 수정")],
+        completed_at=NOW,
+        initial_sync_completed=True,
+    )
+    conflict = repository.list_conflicts()[0]
+    connection = db.connect(profile.database_path)
+    before = [dict(row) for row in connection.execute("SELECT * FROM sync_outbox")]
+
+    def fail(*args):
+        raise OSError("트랜잭션 실패")
+
+    monkeypatch.setattr(repository, "_retire_conflicts", fail)
+    with pytest.raises(OSError):
+        repository.resolve_conflict(
+            conflict.id,
+            "remote",
+            expected_remote_version=2,
+            expected_local_revision=conflict.local_revision,
+            fresh_remote=conflict.remote_payload,
+        )
+    assert games.get_game(game_id)["note"] == "유지할 로컬 수정"
+    assert [
+        dict(row) for row in connection.execute("SELECT * FROM sync_outbox")
+    ] == before
+    assert repository.list_conflicts() == [conflict]
+    connection.close()
+    games.close()
+    repository.close()
+
+
+def test_late_failure_does_not_reenable_unresolved_conflict(tmp_path: Path):
+    _, repository, games = prepare(tmp_path)
+    repository.apply_pull_batch(
+        [remote_game(1)], completed_at=NOW, initial_sync_completed=True
+    )
+    game_id = games.get_last_game()["id"]
+    games.update_game(game_id, local_payload(note="로컬 수정"))
+    pending = repository.fetch_due(limit=100, now=datetime.max)
+    repository.apply_pull_batch(
+        [remote_game(2, note="서버 수정")],
+        completed_at=NOW,
+        initial_sync_completed=True,
+    )
+    repository.record_failure(
+        pending,
+        code="network",
+        detail="다운로드 실패",
+        retryable=True,
+        failed_at=NOW,
+        jitter=0,
+    )
+    assert games.get_game(game_id)["sync_status"] == "conflict"
+    assert repository.fetch_due(limit=100, now=datetime.max) == []
+    games.close()
+    repository.close()
+
+
+def test_pull_cursor_and_pending_record_survive_outdated_ack(tmp_path: Path):
+    _, repository, games = prepare(tmp_path)
+    repository.apply_pull_batch(
+        [remote_game(5)], completed_at=NOW, initial_sync_completed=True
+    )
+    game_id = games.get_last_game()["id"]
+    games.update_game(game_id, local_payload(note="새 수정"))
+    entries = repository.fetch_due(limit=100, now=datetime.max)
+    repository.acknowledge(entries, remote_versions={SYNC_ID: 3}, completed_at=NOW)
+    assert repository.fetch_due(limit=100, now=datetime.max) == entries
+    with pytest.raises(ValueError):
+        repository.apply_pull_batch(
+            [remote_game(4)], completed_at=NOW, initial_sync_completed=True
+        )
+    assert repository.pull_cursor() == 5
+    assert games.get_game(game_id)["remote_version"] == 5
+    assert games.get_game(game_id)["note"] == "새 수정"
+    games.close()
+    repository.close()

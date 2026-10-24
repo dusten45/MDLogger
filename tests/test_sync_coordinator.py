@@ -8,10 +8,12 @@ import time
 from pathlib import Path
 from typing import cast
 
+from PySide6.QtCore import Qt
+
 from mdlogger.game_service import GameService
 from mdlogger.game_sync.coordinator import SyncCoordinator
 from mdlogger.game_sync.engine import SyncEngine
-from mdlogger.game_sync.models import SyncPhase, SyncStatus
+from mdlogger.game_sync.models import StaleConflictError, SyncPhase, SyncStatus
 from mdlogger.profiles import ProfileManager
 from mdlogger.remote.client import HttpResponse, JsonHttpClient
 from mdlogger.remote.config import RemoteConfig
@@ -236,8 +238,7 @@ def test_list_conflicts_returns_engine_result():
 
 
 def test_conflict_ops_do_not_block_on_slow_network_worker():
-    """근본 수정: 충돌 조회·해결은 로컬 SQLite 연산이라 worker의 느린 네트워크
-    사이클에 블로킹되지 않고 즉시 동작한다(P1-5 회귀 근본 해결)."""
+    """충돌 조회는 로컬 SQLite 연산이므로 느린 네트워크 작업과 무관하게 반환한다."""
 
     entered = threading.Event()
     release = threading.Event()
@@ -284,11 +285,13 @@ def test_conflict_ops_do_not_block_on_slow_network_worker():
         coordinator.stop()
 
 
-def test_resolve_conflict_propagates_stale_version_error():
-    """resolve_conflict가 repository의 stale-version 가드(ValueError)를 호출자에게
-    전파해 UI가 "충돌 정보 갱신 필요"를 표시할 수 있게 한다."""
+def test_resolve_conflict_reports_stale_error_asynchronously():
+    """서버 확인과 오류 전달이 UI 스레드를 막지 않는다."""
 
     entered = threading.Event()
+    finished = threading.Event()
+    results = []
+    threads = []
 
     class EngineWithStaleGuard:
         def status(self) -> SyncStatus:
@@ -305,20 +308,92 @@ def test_resolve_conflict_propagates_stale_version_error():
             merged_payload=None,
             *,
             expected_remote_version=None,
+            expected_local_revision=None,
+            is_cancelled=None,
         ) -> None:
-            raise ValueError("충돌을 확인하는 동안 서버 기록이 다시 변경되었습니다.")
+            threads.append(threading.get_ident())
+            raise StaleConflictError(
+                "충돌을 확인하는 동안 서버 기록이 다시 변경되었습니다."
+            )
 
     coordinator = SyncCoordinator(
         cast(SyncEngine, EngineWithStaleGuard()), interval_seconds=0.05
     )
+
+    def on_finished(result):
+        results.append(result)
+        finished.set()
+
+    coordinator.resolution_finished.connect(
+        on_finished, Qt.ConnectionType.DirectConnection
+    )
     coordinator.start()
     try:
         assert entered.wait(2.0), "worker가 run_once 진입에 실패"
-        coordinator.resolve_conflict(1, "local", None, expected_remote_version=5)
-        raised = False
-    except ValueError:
-        raised = True
+        request_id = coordinator.resolve_conflict(
+            1,
+            "local",
+            None,
+            expected_remote_version=5,
+            expected_local_revision="스냅샷",
+        )
+        assert finished.wait(2.0)
     finally:
         coordinator.stop()
 
-    assert raised, "resolve_conflict는 stale-version 오류를 전파해야 한다."
+    assert results[0].request_id == request_id
+    assert results[0].stale is True
+    assert results[0].succeeded is False
+    assert len(threads) == 1
+    assert threads[0] != threading.get_ident()
+
+
+def test_resume_after_timed_out_pause_waits_for_old_worker():
+    entered, release, resumed = threading.Event(), threading.Event(), threading.Event()
+
+    class PausedEngine:
+        calls = 0
+
+        def status(self):
+            return SyncStatus(SyncPhase.SYNCED, 0, 0)
+
+        def run_once(self):
+            self.calls += 1
+            if self.calls == 1:
+                entered.set()
+                assert release.wait(5)
+            else:
+                resumed.set()
+            return self.status()
+
+    engine = PausedEngine()
+    coordinator = SyncCoordinator(cast(SyncEngine, engine), interval_seconds=10)
+    coordinator.start()
+    try:
+        assert entered.wait(2)
+        first = coordinator._thread
+        assert coordinator.stop(timeout_seconds=0.01) is False
+        coordinator.resume()
+        coordinator.resume()
+        assert coordinator._thread is first
+        assert engine.calls == 1
+        release.set()
+        assert resumed.wait(2)
+        assert coordinator._thread is not first
+    finally:
+        release.set()
+        assert coordinator.stop()
+
+
+def test_start_reuses_coordinator_after_graceful_pause():
+    engine = ConflictEngine()
+    coordinator = SyncCoordinator(cast(SyncEngine, engine), interval_seconds=10)
+    coordinator.start()
+    assert coordinator.stop()
+    coordinator.start()
+    try:
+        assert coordinator._thread is not None
+        assert coordinator._thread.is_alive()
+        assert not coordinator._stop.is_set()
+    finally:
+        assert coordinator.stop()

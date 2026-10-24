@@ -215,7 +215,7 @@ def test_import_target_paths_source_profile_kind(tmp_path: Path):
 
 
 def test_import_opens_source_read_only_without_sidecars(tmp_path: Path):
-    """P1-7: 원본을 절대 열지 않아 journal mode(WAL) 변경이나 사이드카를 만들지 않는다."""
+    """읽기 전용 백업은 원본의 DELETE 저널 모드와 기록을 변경하지 않는다."""
     guest = tmp_path / "guest.db"
     target = tmp_path / "registered.db"
     _make_guest_db(guest, count=2)
@@ -238,31 +238,29 @@ def test_import_opens_source_read_only_without_sidecars(tmp_path: Path):
     assert not (guest.with_name(guest.name + "-shm")).exists()
 
 
-def test_import_wal_source_creates_no_sidecars(tmp_path: Path):
-    """P1-7: WAL 모드 소스도 원본 옆에 -wal/-shm 사이드카를 만들지 않는다."""
+def test_import_owned_wal_source_creates_no_additional_sidecars(tmp_path: Path):
+    """소유 연결을 제공하면 원본을 추가로 열거나 사이드카를 추가하지 않는다."""
     guest = tmp_path / "guest.db"
     target = tmp_path / "registered.db"
     _make_guest_db(guest, count=2)
-    # 체크포인트해 -wal/-shm을 정리한 순수 WAL 모드 소스로 만든다.
     conn = sqlite3.connect(guest)
     conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-    conn.close()
-    assert not (guest.with_name(guest.name + "-wal")).exists()
+    before = {path.name for path in tmp_path.glob("guest.db*")}
+    try:
+        result = import_guest_records(guest, target, source_connection=conn)
+        assert result.imported_count == 2
+        assert {path.name for path in tmp_path.glob("guest.db*")} == before
+        assert conn.execute("SELECT COUNT(*) FROM games").fetchone()[0] == 2
+    finally:
+        conn.close()
 
-    result = import_guest_records(guest, target)
 
-    assert result.imported_count == 2
-    # read-only로 열어도 원본 옆에 사이드카가 생기지 않아야 한다(P1-7).
-    assert not (guest.with_name(guest.name + "-wal")).exists()
-    assert not (guest.with_name(guest.name + "-shm")).exists()
-
-
-def test_import_active_wal_source_preserves_uncommitted_data(tmp_path: Path):
-    """P1-7: 활성 -wal(미커밋)도 복사본으로 읽어 보존하고 원본은 건드리지 않는다."""
+def test_import_active_wal_source_preserves_committed_data(tmp_path: Path):
+    """커밋됐지만 체크포인트 전인 기록도 스냅숏에 보존한다."""
     guest = tmp_path / "guest.db"
     target = tmp_path / "registered.db"
     _make_guest_db(guest, count=2)
-    # -wal에 미커밋 데이터를 남긴다.
+    # insert_game은 커밋하지만 연결을 유지하면 WAL에 기록이 남는다.
     conn = db.connect(guest)
     db.insert_game(
         conn,
@@ -270,18 +268,18 @@ def test_import_active_wal_source_preserves_uncommitted_data(tmp_path: Path):
             "played_at": "2026-08-07T11:00:00",
             "result": "lose",
             "turn_order": "second",
-            "my_deck": "미커밋덱",
-            "opp_deck": "미커밋상대",
+            "my_deck": "커밋덱",
+            "opp_deck": "커밋상대",
             "turns": 3,
             "end_reason": "regular",
             "standing_kind": "event_points",
             "play_context_id": "dc_cup_2026_08",
             "event_points_before": 0,
             "event_points_after": 1400,
-            "note": "uncommitted",
+            "note": "체크포인트 전 커밋",
         },
     )
-    # 커밋하지 않고 연결을 유지한다.
+    # 연결을 유지한 상태에서 가져온다.
     try:
         result = import_guest_records(guest, target)
     finally:
@@ -289,8 +287,8 @@ def test_import_active_wal_source_preserves_uncommitted_data(tmp_path: Path):
 
     assert result.imported_count == 3
     rows = _target_rows(target)
-    assert any(row["note"] == "uncommitted" for row in rows)
-    # 원본 옆에 새 사이드카가 생기지 않는다(기존 -wal 유지).
+    assert any(row["note"] == "체크포인트 전 커밋" for row in rows)
+    # 마지막 소유 연결을 닫으면 SQLite가 사이드카를 정리한다.
     assert not (guest.with_name(guest.name + "-shm")).exists()
     games = db.connect(guest)
     try:
@@ -315,3 +313,102 @@ def test_import_pre_v2_source_raises_guest_import_error(tmp_path: Path):
 
     with pytest.raises(GuestImportError):
         import_guest_records(guest, target)
+
+
+def test_import_snapshot_survives_checkpoint_between_open_and_backup(
+    tmp_path, monkeypatch
+):
+    from mdlogger import paths
+
+    guest = tmp_path / "게스트#?.db"
+    target = tmp_path / "account.db"
+    _make_guest_db(guest, count=1)
+    writer = db.connect(guest)
+    db.insert_game(
+        writer,
+        {
+            "result": "win",
+            "turn_order": "first",
+            "opp_deck": "상대",
+            "turns": 3,
+            "end_reason": "regular",
+            "standing_kind": "event_points",
+            "event_points_after": 1500,
+            "note": "WAL 커밋",
+        },
+    )
+    real_connect = sqlite3.connect
+
+    class CheckpointConnection(sqlite3.Connection):
+        def backup(self, destination, *args, **kwargs):
+            writer.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            return super().backup(destination, *args, **kwargs)
+
+    def open_with_checkpoint(path, *args, **kwargs):
+        if str(path).startswith("file:") and "mode=ro" in str(path):
+            kwargs["factory"] = CheckpointConnection
+        return real_connect(path, *args, **kwargs)
+
+    monkeypatch.setattr(paths.sqlite3, "connect", open_with_checkpoint)
+    try:
+        result = import_guest_records(guest, target)
+        assert result.imported_count == 2
+        assert len(_target_rows(target)) == 2
+        assert db.count_games(writer) == 2
+    finally:
+        writer.close()
+
+
+def test_import_corrupt_source_leaves_target_unchanged(tmp_path):
+    guest, target = tmp_path / "bad.db", tmp_path / "target.db"
+    guest.write_bytes(b"not a database")
+    _make_guest_db(target, count=1)
+    before = [tuple(row) for row in _target_rows(target)]
+    with pytest.raises(GuestImportError):
+        import_guest_records(guest, target)
+    assert [tuple(row) for row in _target_rows(target)] == before
+    assert not list(tmp_path.glob(".mdlogger-import-*"))
+
+
+def test_import_uses_snapshot_provider_without_opening_source(tmp_path):
+    from mdlogger.paths import copy_database_via_backup
+
+    actual, nominal, target = (
+        tmp_path / "actual.db",
+        tmp_path / "absent.db",
+        tmp_path / "target.db",
+    )
+    _make_guest_db(actual, count=2)
+    source = sqlite3.connect(actual)
+    calls = []
+
+    def snapshot(destination):
+        calls.append(destination)
+        copy_database_via_backup(source, destination)
+
+    try:
+        result = import_guest_records(nominal, target, snapshot_provider=snapshot)
+        assert result.imported_count == 2
+        assert len(calls) == 1
+        assert not nominal.exists()
+        assert not calls[0].exists()
+    finally:
+        source.close()
+
+
+def test_import_excludes_uncommitted_rows_without_changing_writer_transaction(tmp_path):
+    guest, target = tmp_path / "guest.db", tmp_path / "target.db"
+    _make_guest_db(guest, count=1)
+    writer = db.connect(guest)
+    writer.execute(
+        "INSERT INTO games (sync_id, note) VALUES ('uncommitted-id', '미커밋')"
+    )
+    try:
+        result = import_guest_records(guest, target)
+        assert result.imported_count == 1
+        assert writer.in_transaction
+        assert writer.execute("SELECT COUNT(*) FROM games").fetchone()[0] == 2
+        assert len(_target_rows(target)) == 1
+    finally:
+        writer.rollback()
+        writer.close()

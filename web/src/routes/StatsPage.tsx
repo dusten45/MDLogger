@@ -1,22 +1,15 @@
-// 통계 화면 (spec §8.2). 모드별 요약·덱 매치업·시계열 차트(클라이언트 집계).
+// 통계 화면: 서버의 동일 snapshot에서 전체 집계와 모드별 차트 값을 읽는다.
 
 import { useEffect, useMemo, useState } from "react";
 import { SeriesChart, type SeriesPoint } from "../components/stats/SeriesChart";
-import { listGames } from "../games/gameApi";
+import { getGameStatistics, type GameStatistics } from "../games/gameApi";
 import { listGameModes } from "../games/modes";
 import {
     RANK_DIVISION_MAX,
     RANK_TIER_INDEX,
     RANK_TIER_LABELS,
 } from "../games/rank";
-import {
-    deckMatchups,
-    rankSeries,
-    ratingSeries,
-    scoreSeries,
-    summarizeGames,
-} from "../games/stats";
-import type { Game, GameMode } from "../games/types";
+import type { GameMode } from "../games/types";
 import "./stats.css";
 
 interface Message {
@@ -26,20 +19,24 @@ interface Message {
 
 export function StatsPage() {
     const [modes, setModes] = useState<GameMode[]>([]);
-    const [games, setGames] = useState<Game[]>([]);
+    const [stats, setStats] = useState<{ context: string | null; data: GameStatistics } | null>(null);
     const [filter, setFilter] = useState<string>("all");
     const [message, setMessage] = useState<Message | null>(null);
     const [loading, setLoading] = useState(true);
+    const [reload, setReload] = useState(0);
+    const selectedMode = modes.find((mode) => mode.id === filter) ?? null;
+    const contextId = selectedMode?.play_context_id ?? null;
 
     useEffect(() => {
         let cancelled = false;
-        Promise.all([listGameModes(), listGames({ limit: 1000 })])
-            .then(([modeRows, gameRows]) => {
+        Promise.all([listGameModes(), getGameStatistics(contextId)])
+            .then(([modeRows, data]) => {
                 if (cancelled) {
                     return;
                 }
                 setModes(modeRows);
-                setGames(gameRows);
+                setStats({ context: contextId, data });
+                setMessage(null);
             })
             .catch(() => {
                 if (!cancelled) {
@@ -57,46 +54,35 @@ export function StatsPage() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [contextId, reload]);
 
-    const selectedMode = useMemo(
-        () => modes.find((mode) => mode.id === filter) ?? null,
-        [modes, filter],
-    );
-
-    const contextId = selectedMode?.play_context_id ?? null;
-    const summary = useMemo(
-        () => summarizeGames(games, contextId),
-        [games, contextId],
-    );
-    const matchups = useMemo(
-        () => deckMatchups(games, contextId),
-        [games, contextId],
-    );
+    const data = stats?.context === contextId ? stats.data : null;
+    const summary = data?.summary;
+    const matchups = data?.matchups ?? [];
 
     const series = useMemo(() => {
-        if (selectedMode === null) {
+        if (selectedMode === null || !data) {
             return null;
         }
         if (selectedMode.standing_kind === "event_points") {
-            return scoreSeries(games, contextId).map((point): SeriesPoint => ({
-                label: `${point.played_at.slice(5, 16).replace("T", " ")} · ${point.value.toLocaleString()}`,
-                value: point.value,
+            return data.series.filter((point) => point.standing_kind === "event_points").map((point): SeriesPoint => ({
+                label: `${point.played_at.slice(5, 16).replace("T", " ")} · ${point.value!.toLocaleString()}`,
+                value: point.value!,
             }));
         }
         if (selectedMode.standing_kind === "rating") {
-            return ratingSeries(games, contextId).map((point): SeriesPoint => ({
-                label: `${point.played_at.slice(5, 16).replace("T", " ")} · ${point.value.toLocaleString()}`,
-                value: point.value,
+            return data.series.filter((point) => point.standing_kind === "rating").map((point): SeriesPoint => ({
+                label: `${point.played_at.slice(5, 16).replace("T", " ")} · ${point.value!.toLocaleString()}`,
+                value: point.value!,
             }));
         }
-        return rankSeries(games, contextId).map((point): SeriesPoint => ({
-            label: rankLabel(point.tier, point.division),
-            value: rankValue(point.tier, point.division),
+        return data.series.filter((point) => point.standing_kind === "rank").map((point): SeriesPoint => ({
+            label: rankLabel(point.tier!, point.division!),
+            value: rankValue(point.tier!, point.division!),
         }));
-    }, [selectedMode, games, contextId]);
+    }, [selectedMode, data]);
 
-    if (loading) {
+    if (loading && modes.length === 0) {
         return <p className="auth-loading">통계를 불러오는 중...</p>;
     }
 
@@ -119,7 +105,7 @@ export function StatsPage() {
                             : "segmented__button"
                     }
                     aria-pressed={filter === "all"}
-                    onClick={() => setFilter("all")}
+                    onClick={() => { setFilter("all"); setLoading(true); setReload((n) => n + 1); }}
                 >
                     전체
                 </button>
@@ -133,7 +119,7 @@ export function StatsPage() {
                                 : "segmented__button"
                         }
                         aria-pressed={filter === mode.id}
-                        onClick={() => setFilter(mode.id)}
+                        onClick={() => { setFilter(mode.id); setLoading(true); setReload((n) => n + 1); }}
                     >
                         {mode.display_name}
                     </button>
@@ -146,77 +132,82 @@ export function StatsPage() {
                 </p>
             ) : null}
 
-            <div className="stats-grid">
-                <StatCard label="전체" value={String(summary.total)} />
-                <StatCard label="승" value={String(summary.wins)} />
-                <StatCard label="패" value={String(summary.losses)} />
-                <StatCard
-                    label="승률"
-                    value={`${summary.winrate.toFixed(1)}%`}
-                />
-                <StatCard
-                    label="선공 승률"
-                    value={`${summary.first_winrate.toFixed(1)}%`}
-                />
-                <StatCard
-                    label="후공 승률"
-                    value={`${summary.second_winrate.toFixed(1)}%`}
-                />
-                <StatCard
-                    label="평균 턴"
-                    value={summary.avg_turns.toFixed(1)}
-                />
-            </div>
+            <button type="button" onClick={() => { setLoading(true); setReload((n) => n + 1); }} disabled={loading}>새로고침</button>
+            {loading ? <p role="status">통계를 불러오는 중...</p> : null}
 
-            {series !== null ? (
+            {summary ? <>
+                <div className="stats-grid">
+                    <StatCard label="전체" value={String(summary.total)} />
+                    <StatCard label="승" value={String(summary.wins)} />
+                    <StatCard label="패" value={String(summary.losses)} />
+                    <StatCard
+                        label="승률"
+                        value={`${summary.winrate.toFixed(1)}%`}
+                    />
+                    <StatCard
+                        label="선공 승률"
+                        value={`${summary.first_winrate.toFixed(1)}%`}
+                    />
+                    <StatCard
+                        label="후공 승률"
+                        value={`${summary.second_winrate.toFixed(1)}%`}
+                    />
+                    <StatCard
+                        label="평균 턴"
+                        value={summary.avg_turns.toFixed(1)}
+                    />
+                </div>
+
+                {series !== null ? (
+                    <section
+                        className="section-surface"
+                        aria-labelledby="series-title"
+                    >
+                        <h2 id="series-title" className="section-surface__title">
+                            시계열
+                        </h2>
+                        <SeriesChart
+                            points={series}
+                            step={selectedMode?.standing_kind === "rank"}
+                        />
+                    </section>
+                ) : null}
+
                 <section
                     className="section-surface"
-                    aria-labelledby="series-title"
+                    aria-labelledby="matchups-title"
                 >
-                    <h2 id="series-title" className="section-surface__title">
-                        시계열
+                    <h2 id="matchups-title" className="section-surface__title">
+                        덱 매치업
                     </h2>
-                    <SeriesChart
-                        points={series}
-                        step={selectedMode?.standing_kind === "rank"}
-                    />
-                </section>
-            ) : null}
-
-            <section
-                className="section-surface"
-                aria-labelledby="matchups-title"
-            >
-                <h2 id="matchups-title" className="section-surface__title">
-                    덱 매치업
-                </h2>
-                {matchups.length === 0 ? (
-                    <p className="page-description">기록이 없습니다.</p>
-                ) : (
-                    <table className="matchup-table">
-                        <thead>
-                            <tr>
-                                <th scope="col">상대 덱</th>
-                                <th scope="col">경기</th>
-                                <th scope="col">승</th>
-                                <th scope="col">패</th>
-                                <th scope="col">승률</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {matchups.map((row) => (
-                                <tr key={row.deck}>
-                                    <th scope="row">{row.deck}</th>
-                                    <td>{row.games}</td>
-                                    <td>{row.wins}</td>
-                                    <td>{row.losses}</td>
-                                    <td>{row.winrate.toFixed(1)}%</td>
+                    {matchups.length === 0 ? (
+                        <p className="page-description">기록이 없습니다.</p>
+                    ) : (
+                        <table className="matchup-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">상대 덱</th>
+                                    <th scope="col">경기</th>
+                                    <th scope="col">승</th>
+                                    <th scope="col">패</th>
+                                    <th scope="col">승률</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </section>
+                            </thead>
+                            <tbody>
+                                {matchups.map((row) => (
+                                    <tr key={row.deck}>
+                                        <th scope="row">{row.deck}</th>
+                                        <td>{row.games}</td>
+                                        <td>{row.wins}</td>
+                                        <td>{row.losses}</td>
+                                        <td>{row.winrate.toFixed(1)}%</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </section>
+            </> : null}
         </section>
     );
 }

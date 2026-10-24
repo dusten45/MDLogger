@@ -12,6 +12,11 @@ WINDOWS_REQUIRED_FILES = (
     "LICENSE",
     "THIRD_PARTY_NOTICES.txt",
     "licenses/desktop/qt-6.12.0/LICENSES/GPL-3.0-only.txt",
+    "licenses/desktop/cryptography-50.0.2/licenses/LICENSE",
+    "licenses/desktop/cryptography-50.0.2/licenses/LICENSE.APACHE",
+    "licenses/desktop/cryptography-50.0.2/licenses/LICENSE.BSD",
+    "licenses/desktop/cffi-2.1.1/licenses/LICENSE",
+    "licenses/desktop/pycparser-3.12/licenses/LICENSE",
 )
 WINDOWS_FORBIDDEN_FILES = (
     "PAL-relaxed.hex",
@@ -28,11 +33,9 @@ WINDOWS_FORBIDDEN_FILES = (
 WINDOWS_FORBIDDEN_PATHS = (
     "licenses/inventory",
     "licenses/sources",
-    "licenses/desktop/cffi-2.1.1",
-    "licenses/desktop/cryptography-50.0.2",
+    "licenses/desktop/cryptography-50.0.2/sboms",
     "licenses/desktop/icu-73.2",
     "licenses/desktop/jeepney-0.9.0",
-    "licenses/desktop/pycparser-3.12",
     "licenses/desktop/secretstorage-3.5.0",
     "licenses/desktop/qt-6.12.0/qtwebengine",
     "licenses/desktop/qt-6.12.0/qtmultimedia",

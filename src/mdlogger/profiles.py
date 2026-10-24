@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -15,6 +14,13 @@ from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
 from . import db
+from .local_reset import (
+    MANAGED_RESET_FILES,
+    ResetRecoveryError,
+    recover_pending_resets,
+    reset_data,
+    sync_directory,
+)
 from .paths import (
     DATA_DIR,
     copy_database_via_backup,
@@ -84,8 +90,15 @@ class ProfileManager:
         self.accounts_dir = data_dir / "accounts"
         self._state_path = self.global_dir / "profiles.json"
         self._legacy_db_path = data_dir / "games.db"
+        self.recover_local_data()
 
-        if data_dir == DATA_DIR:
+    def recover_local_data(self) -> None:
+        """초기화 실패 후 프로필을 다시 열기 전에 저널과 상태를 복구한다."""
+        try:
+            recover_pending_resets(self.data_dir)
+        except ResetRecoveryError as error:
+            raise ProfileError(str(error)) from error
+        if self.data_dir == DATA_DIR:
             ensure_data_dir()
         self._ensure_directories()
         self._state = self._load_or_create_state()
@@ -99,86 +112,37 @@ class ProfileManager:
         표식은 보존해 초기화 뒤 이전 데이터가 다시 가져와지지 않게 한다.
         """
         try:
-            self._remove_stale_reset_staging()
+            reset_data(
+                self.data_dir, self._managed_reset_paths(), self._prepare_reset_state
+            )
         except OSError as error:
-            raise ProfileError("이전 초기화 데이터를 제거할 수 없습니다.") from error
+            if (
+                isinstance(error, ResetRecoveryError)
+                and error.committed
+                and self._state_path.is_file()
+            ):
+                self._state = self._load_or_create_state()
+            raise ProfileError(str(error)) from error
+        self._state = self._load_or_create_state()
 
-        staging_dir = self.data_dir / f".mdlogger-reset-{uuid.uuid4().hex}"
-        staging_marker = staging_dir / ".managed-by-mdlogger"
-        moved_paths: list[tuple[Path, Path]] = []
-        try:
-            self._ensure_private_directory(staging_dir)
-            staging_marker.touch(mode=_PRIVATE_FILE_MODE)
-            secure_data_file(staging_marker)
-            for path in self._managed_reset_paths():
-                if not (path.exists() or path.is_symlink()):
-                    continue
-                staged_path = staging_dir / path.name
-                os.replace(path, staged_path)
-                moved_paths.append((path, staged_path))
-
-            self._ensure_directories()
-            state = self._load_or_create_state()
-        except (OSError, ProfileError) as error:
-            try:
-                for path in (self.global_dir, self.guest_dir, self.accounts_dir):
-                    if path.exists() or path.is_symlink():
-                        self._remove_path(path)
-                for original_path, staged_path in reversed(moved_paths):
-                    if staged_path.exists() or staged_path.is_symlink():
-                        os.replace(staged_path, original_path)
-                if staging_dir.exists():
-                    shutil.rmtree(staging_dir)
-            except OSError as rollback_error:
-                raise ProfileError(
-                    "앱 데이터를 초기화하지 못했고 이전 데이터를 복원할 수 없습니다."
-                ) from rollback_error
-            raise ProfileError("앱 데이터를 초기화할 수 없습니다.") from error
-
-        self._state = state
-        try:
-            shutil.rmtree(staging_dir)
-        except OSError as error:
-            raise ProfileError(
-                "초기화 전 앱 데이터를 완전히 제거할 수 없습니다."
-            ) from error
-
-    def _remove_stale_reset_staging(self) -> None:
-        """이전 초기화가 남긴 앱 소유 격리 디렉터리를 정리한다."""
-        for path in self.data_dir.glob(".mdlogger-reset-*"):
-            marker = path / ".managed-by-mdlogger"
-            if path.is_dir() and not path.is_symlink() and marker.is_file():
-                shutil.rmtree(path)
+    def _prepare_reset_state(self, directory: Path) -> None:
+        """이전 데이터와 분리된 위치에 새 프로필 상태를 완성한다."""
+        prepared = ProfileManager(directory)
+        for path in (
+            prepared.global_dir,
+            prepared.guest_dir,
+            prepared.accounts_dir,
+            directory,
+        ):
+            sync_directory(path)
 
     def _managed_reset_paths(self) -> list[Path]:
         """공유 데이터 디렉터리에서도 안전하게 지울 수 있는 앱 소유 경로를 반환한다."""
         paths = [self.global_dir, self.guest_dir, self.accounts_dir]
-        file_names = (
-            "games.db",
-            "games.db-wal",
-            "games.db-shm",
-            "games.db-journal",
-            "settings.json",
-            "decks.json",
-            "decks.json.tmp",
-            "decks_sync.json",
-            "decks_sync.json.tmp",
-            "environment_version_cache.json",
-            "environment_version_cache.json.tmp",
-            "release_policy_cache.json",
-            "release_policy_cache.json.tmp",
-        )
-        paths.extend(self.data_dir / name for name in file_names)
+        paths.extend(self.data_dir / name for name in MANAGED_RESET_FILES)
         paths.extend(self.data_dir.glob(".settings.json.*.tmp"))
         paths.extend(self.data_dir.glob("games.db.pre-migration-v*.bak*"))
         return paths
-
-    @staticmethod
-    def _remove_path(path: Path) -> None:
-        if path.is_dir() and not path.is_symlink():
-            shutil.rmtree(path)
-        else:
-            path.unlink()
 
     def guest(self) -> ProfileContext:
         return ProfileContext(

@@ -39,6 +39,23 @@ class SyncConflict:
     local_payload: dict[str, Any]
     remote_payload: dict[str, Any]
     base_remote_version: int | None
+    local_revision: str = ""
+
+
+class StaleConflictError(ValueError):
+    """확인 이후 내용이 변경되어 충돌을 다시 읽어야 한다."""
+
+
+@dataclass(frozen=True, slots=True)
+class ConflictResolutionResult:
+    """작업 스레드에서 완료된 충돌 해결 요청의 결과."""
+
+    request_id: str
+    conflict_id: int
+    succeeded: bool
+    error: str | None = None
+    retryable: bool = False
+    stale: bool = False
 
 
 @dataclass(frozen=True, slots=True)

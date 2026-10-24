@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import urllib.parse
 from pathlib import Path
 from typing import Any
@@ -19,13 +20,14 @@ from .remote.config import RemoteConfig
 from .remote.errors import NetworkError, ResponseFormatError
 
 ENVIRONMENT_VERSION_CACHE_PATH = DATA_DIR / "environment_version_cache.json"
+logger = logging.getLogger(__name__)
 
 
 def load_env_id(path: Path) -> str | None:
     """캐시 파일에서 현재 환경 version id를 읽는다. 없으면 None."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return None
     value = data.get("environment_version_id") if isinstance(data, dict) else None
     return str(value).strip() if isinstance(value, str) and value.strip() else None
@@ -66,11 +68,11 @@ class EnvironmentVersionClient:
         }
         try:
             response = self._client.request_json("GET", url, None, headers)
+            if response.status != 200:
+                return None
+            body = response.json()
         except (NetworkError, ResponseFormatError):
             return None
-        if response.status != 200:
-            return None
-        body = response.json()
         if isinstance(body, list) and body:
             item = body[0]
             env_id = item.get("id") if isinstance(item, dict) else None
@@ -86,7 +88,7 @@ class EnvironmentVersionClient:
             {
                 "select": "id",
                 "effective_from": "lte.now",
-                "effective_to": "gte.now",
+                "or": "(effective_to.is.null,effective_to.gte.now)",
                 "order": "effective_from.desc",
                 "limit": "1",
             }
@@ -95,7 +97,8 @@ class EnvironmentVersionClient:
 
 
 def _load_current(cache_path: Path) -> str | None:
-    return load_env_id(cache_path)
+    # ID만 저장한 캐시는 유효 기간을 증명하지 못하므로 새 실행에서 재사용하지 않는다.
+    return None
 
 
 class EnvironmentVersionProvider:
@@ -111,14 +114,21 @@ class EnvironmentVersionProvider:
         self._cache_path = cache_path
         self._load = load or _load_current
         self._save = save or save_env_id
-        self._current = self._load(self._cache_path)
+        try:
+            self._current = self._load(self._cache_path)
+        except (OSError, UnicodeError, ValueError):
+            logger.warning("환경 캐시를 읽을 수 없어 미확인 상태로 시작합니다.")
+            self._current = None
 
     def current(self) -> str | None:
         return self._current
 
     def set_current(self, env_id: str | None) -> None:
         self._current = None if not env_id else str(env_id).strip()
-        self._save(self._cache_path, self._current)
+        try:
+            self._save(self._cache_path, self._current)
+        except OSError:
+            logger.warning("환경 정보를 캐시에 저장하지 못했습니다.", exc_info=True)
 
     def reset(self) -> None:
         """데이터 파일을 다시 만들지 않고 메모리의 캐시 값을 비운다."""
@@ -142,6 +152,5 @@ def refresh_from_server(remote_config: RemoteConfig | None) -> str | None:
     """온라인일 때 현재 환경 id를 조회해 캐시에 반영한다."""
     if remote_config is not None:
         env_id = EnvironmentVersionClient(remote_config).fetch_current()
-        if env_id is not None:
-            _PROVIDER.set_current(env_id)
+        _PROVIDER.set_current(env_id)
     return _PROVIDER.current()

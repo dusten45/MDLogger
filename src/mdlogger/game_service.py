@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Protocol
 
 from . import db, export, portable
-from .paths import DB_PATH
+from .paths import DB_PATH, copy_database_via_backup
 from .profiles import ProfileKind
 
 
@@ -15,6 +15,8 @@ class GameRepository(Protocol):
     """현재 프로필의 게임 기록 저장소 계약."""
 
     def close(self) -> None: ...
+
+    def backup_to(self, destination: Path) -> None: ...
 
     def insert_game(self, data: dict) -> int: ...
 
@@ -93,6 +95,9 @@ class SqliteGameRepository:
 
     def close(self) -> None:
         self._connection.close()
+
+    def backup_to(self, destination: Path) -> None:
+        copy_database_via_backup(self._connection, destination)
 
     def insert_game(self, data: dict) -> int:
         return db.insert_game(self._connection, data)
@@ -193,6 +198,9 @@ class GameService:
 
     def close(self) -> None:
         self._repository.close()
+
+    def backup_to(self, destination: Path) -> None:
+        self._repository.backup_to(destination)
 
     def insert_game(self, data: dict) -> int:
         return self._repository.insert_game(data)

@@ -130,6 +130,25 @@
       "version": "2.5.4 wheel bundle"
     },
     {
+      "copyright": "Copyright 1998-2026 The OpenSSL Project Authors. All Rights Reserved.",
+      "license_files": [
+        {
+          "path": "licenses/desktop/cryptography-50.0.2/licenses/LICENSE.APACHE",
+          "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe"
+        }
+      ],
+      "name": "OpenSSL embedded in cryptography wheels",
+      "platforms": [
+        "linux",
+        "windows"
+      ],
+      "purpose": "Cryptographic primitives bundled with cryptography, including Windows update signature verification. Linux static linkage is recorded in its wheel SBOM.",
+      "review_notes": "Exact source URL, SHA256 and build flags are validated from the Linux wheel SBOM. This is not Windows build-provenance evidence; the Windows release gate checks the loaded OpenSSL version separately.",
+      "selected_license_expression": "Apache-2.0",
+      "source_repository": "https://github.com/openssl/openssl",
+      "version": "4.0.3"
+    },
+    {
       "copyright": "Copyright (c) 2010-2023 PyInstaller Development Team; prior authors listed in COPYING.txt",
       "homepage": "https://pyinstaller.org/",
       "license_files": [
@@ -206,10 +225,32 @@
       "version": "6.12.0"
     }
   ],
-  "distribution_count": 13,
+  "distribution_count": 16,
   "generated_by": "scripts/generate_desktop_licenses.py",
-  "lockfile_sha256": "d4aefa1c40be37e3072a5fcc462292dcebd0c0d5766066aefd9c6d1a0e3cb9dc",
+  "lockfile_sha256": "d124ee8cd11366f21863c97687ab0de39c196f52a1478e4c3125067ac91d59e3",
   "packages": [
+    {
+      "copyright": "Armin Rigo, Maciej Fijalkowski and contributors",
+      "dependency": "indirect",
+      "homepage": "https://cffi.readthedocs.io/",
+      "license_files": [
+        {
+          "path": "licenses/desktop/cffi-2.1.1/licenses/LICENSE",
+          "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63"
+        }
+      ],
+      "local_modifications": "None",
+      "metadata_license": {
+        "source": "License-Expression",
+        "value": "MIT-0"
+      },
+      "name": "cffi",
+      "purpose": "Foreign-function interface used by cryptography.",
+      "review_notes": "",
+      "selected_license_expression": "MIT-0",
+      "source_repository": "https://github.com/python-cffi/cffi",
+      "version": "2.1.1"
+    },
     {
       "copyright": "Copyright (c) 2010 Jonathan Hartley",
       "dependency": "indirect",
@@ -231,6 +272,36 @@
       "selected_license_expression": "BSD-3-Clause",
       "source_repository": "https://github.com/tartley/colorama",
       "version": "0.4.6"
+    },
+    {
+      "copyright": "Copyright (c) Individual contributors",
+      "dependency": "direct",
+      "homepage": "https://cryptography.io/",
+      "license_files": [
+        {
+          "path": "licenses/desktop/cryptography-50.0.2/licenses/LICENSE",
+          "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb"
+        },
+        {
+          "path": "licenses/desktop/cryptography-50.0.2/licenses/LICENSE.APACHE",
+          "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe"
+        },
+        {
+          "path": "licenses/desktop/cryptography-50.0.2/licenses/LICENSE.BSD",
+          "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb"
+        }
+      ],
+      "local_modifications": "None",
+      "metadata_license": {
+        "source": "License-Expression",
+        "value": "Apache-2.0 OR BSD-3-Clause"
+      },
+      "name": "cryptography",
+      "purpose": "RSA update-manifest signature verification on Windows and Secret Service cryptographic transport used by keyring on Linux.",
+      "review_notes": "The BSD-3-Clause alternative is explicitly selected; LICENSE and both upstream alternative texts are preserved.",
+      "selected_license_expression": "BSD-3-Clause",
+      "source_repository": "https://github.com/pyca/cryptography",
+      "version": "50.0.2"
     },
     {
       "copyright": "Copyright (c) 2010 openpyxl; Python Software Foundation contributors",
@@ -499,6 +570,28 @@
       "selected_license_expression": "MIT",
       "source_repository": "https://foss.heptapod.net/openpyxl/openpyxl",
       "version": "3.1.5"
+    },
+    {
+      "copyright": "Copyright (c) 2008-2022 Eli Bendersky",
+      "dependency": "indirect",
+      "homepage": "https://github.com/eliben/pycparser",
+      "license_files": [
+        {
+          "path": "licenses/desktop/pycparser-3.12/licenses/LICENSE",
+          "sha256": "0a9e78156ae8b96caf1b4f11ac2df424b83de29736f9e757630548a6272fdf90"
+        }
+      ],
+      "local_modifications": "None",
+      "metadata_license": {
+        "source": "License-Expression",
+        "value": "BSD-3-Clause"
+      },
+      "name": "pycparser",
+      "purpose": "C parser used by cffi.",
+      "review_notes": "",
+      "selected_license_expression": "BSD-3-Clause",
+      "source_repository": "https://github.com/eliben/pycparser",
+      "version": "3.12"
     },
     {
       "copyright": "Copyright (c) 2012 University of North Carolina at Chapel Hill and Luke Campagnola; Peter Kovesi/ColorCET; Anton Mikhailov et al.",

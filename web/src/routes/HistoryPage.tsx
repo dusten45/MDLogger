@@ -1,12 +1,13 @@
 // 기록 목록 화면 (spec §8.1). 전체/모드 필터, 수정·삭제(낙관적 동시성).
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GameDetailForm } from "../components/record/GameDetailForm";
 import { fetchDecks } from "../decks/deckCatalog";
 import {
     deleteGame,
     GameConflictError,
-    listGames,
+    getHistoryPage,
+    type HistoryPageResult,
     updateGame,
 } from "../games/gameApi";
 import {
@@ -43,30 +44,49 @@ export function HistoryPage() {
     const [message, setMessage] = useState<Message | null>(null);
     const [busy, setBusy] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState<HistoryPageResult | null>(null);
+    const [moreLoading, setMoreLoading] = useState(false);
+    const [stale, setStale] = useState(false);
+    const [reload, setReload] = useState(0);
+    const generation = useRef(0);
+    const active = useRef(true);
+    const contextId = modes.find((mode) => mode.id === filter)?.play_context_id ?? null;
+
+    useEffect(() => {
+        active.current = true;
+        return () => { active.current = false; generation.current += 1; };
+    }, []);
 
     const refresh = useCallback(async () => {
-        const rows = await listGames({ limit: 1000 });
-        setGames(rows);
-        return rows;
-    }, []);
+        const ticket = ++generation.current;
+        const result = await getHistoryPage(contextId);
+        if (!active.current || ticket !== generation.current) return;
+        setGames(result.games);
+        setPage(result);
+        setStale(false);
+    }, [contextId]);
 
     useEffect(() => {
         let cancelled = false;
+        const ticket = ++generation.current;
         Promise.all([
             listGameModes(),
             fetchDecks().catch(() => ["기타"]),
-            listGames({ limit: 1000 }),
+            getHistoryPage(contextId),
         ])
-            .then(([modeRows, deckRows, gameRows]) => {
-                if (cancelled) {
+            .then(([modeRows, deckRows, result]) => {
+                if (cancelled || ticket !== generation.current) {
                     return;
                 }
                 setModes(modeRows);
                 setDecks(deckRows);
-                setGames(gameRows);
+                setMessage(null);
+                setGames(result.games);
+                setPage(result);
+                setStale(false);
             })
             .catch(() => {
-                if (!cancelled) {
+                if (!cancelled && ticket === generation.current) {
                     setMessage({
                         kind: "error",
                         text: "기록 목록을 불러오지 못했습니다.",
@@ -74,27 +94,62 @@ export function HistoryPage() {
                 }
             })
             .finally(() => {
-                if (!cancelled) {
+                if (!cancelled && ticket === generation.current) {
                     setLoading(false);
                 }
             });
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [contextId, reload]);
 
-    const filteredGames = useMemo(() => {
-        if (filter === "all") {
-            return games;
+    function selectFilter(value: string) {
+        if (value === filter) return;
+        generation.current += 1;
+        setFilter(value);
+        setGames([]);
+        setPage(null);
+        setLoading(true);
+        setEditingGame(null);
+        setEditForm(null);
+        setMessage(null);
+    }
+
+    async function loadMore() {
+        if (!page?.has_more || !page.next_cursor || moreLoading) return;
+        setMoreLoading(true);
+        const ticket = ++generation.current;
+        try {
+            const result = await getHistoryPage(contextId, page.next_cursor, page.snapshot_version);
+            if (!active.current || ticket !== generation.current) return;
+            if (result.stale) {
+                setStale(true);
+                try {
+                    await refresh();
+                    if (active.current) setMessage({ kind: "error", text: "다른 기기의 변경이 있어 첫 페이지부터 다시 불러왔습니다." });
+                } catch {
+                    if (active.current) setMessage({ kind: "error", text: "기록이 변경되었습니다. 최신 목록을 불러오지 못했으니 새로고침하세요." });
+                }
+            } else {
+                setGames((previous) => [...previous, ...result.games]);
+                setPage(result);
+            }
+        } catch {
+            if (active.current && ticket === generation.current) setMessage({ kind: "error", text: "다음 기록을 불러오지 못했습니다. 다시 시도하세요." });
+        } finally {
+            if (active.current) setMoreLoading(false);
         }
-        const mode = modes.find((candidate) => candidate.id === filter);
-        if (!mode) {
-            return games;
+    }
+
+    async function refreshAfterWrite(success: string) {
+        setStale(true);
+        setMessage({ kind: "success", text: success });
+        try {
+            await refresh();
+        } catch {
+            if (active.current) setMessage({ kind: "success", text: `${success} 목록 갱신에 실패했습니다. 새로고침하세요.` });
         }
-        return games.filter(
-            (game) => game.play_context_id === mode.play_context_id,
-        );
-    }, [games, modes, filter]);
+    }
 
     function startEdit(game: Game) {
         const mode = findModeForGame(modes, game) ?? syntheticModeForGame(game);
@@ -110,7 +165,7 @@ export function HistoryPage() {
     }
 
     async function saveEdit() {
-        if (!editingGame || !editForm) {
+        if (!editingGame || !editForm || busy) {
             return;
         }
         const result = buildGamePayload({
@@ -133,31 +188,32 @@ export function HistoryPage() {
                 editingGame.change_version,
                 result.payload,
             );
-            setMessage({ kind: "success", text: "기록을 수정했습니다." });
+            if (!active.current) return;
             setEditingGame(null);
             setEditForm(null);
-            await refresh();
+            await refreshAfterWrite("기록을 수정했습니다.");
         } catch (error) {
+            if (!active.current) return;
             setMessage({
                 kind: "error",
                 text:
                     error instanceof GameConflictError
-                        ? "다른 기기에서 수정된 기록입니다. 최신 내용을 다시 불러왔습니다."
+                        ? "다른 기기에서 수정된 기록입니다. 새로고침 후 다시 수정하세요."
                         : error instanceof Error
-                          ? error.message
-                          : "기록 수정에 실패했습니다.",
+                            ? error.message
+                            : "기록 수정에 실패했습니다.",
             });
             if (error instanceof GameConflictError) {
-                await refresh();
                 setEditingGame(null);
                 setEditForm(null);
             }
         } finally {
-            setBusy(false);
+            if (active.current) setBusy(false);
         }
     }
 
     async function handleDelete(game: Game) {
+        if (busy) return;
         if (!window.confirm("이 기록을 삭제할까요?")) {
             return;
         }
@@ -165,27 +221,26 @@ export function HistoryPage() {
         setMessage(null);
         try {
             await deleteGame(game.id, game.change_version);
-            setMessage({ kind: "success", text: "기록을 삭제했습니다." });
-            await refresh();
+            if (!active.current) return;
+            setGames((previous) => previous.filter((row) => row.id !== game.id));
+            await refreshAfterWrite("기록을 삭제했습니다.");
         } catch (error) {
+            if (!active.current) return;
             setMessage({
                 kind: "error",
                 text:
                     error instanceof GameConflictError
-                        ? "다른 기기에서 수정된 기록입니다. 최신 내용을 다시 불러왔습니다."
+                        ? "다른 기기에서 수정된 기록입니다. 새로고침 후 다시 확인하세요."
                         : error instanceof Error
-                          ? error.message
-                          : "기록 삭제에 실패했습니다.",
+                            ? error.message
+                            : "기록 삭제에 실패했습니다.",
             });
-            if (error instanceof GameConflictError) {
-                await refresh();
-            }
         } finally {
-            setBusy(false);
+            if (active.current) setBusy(false);
         }
     }
 
-    if (loading) {
+    if (loading && modes.length === 0) {
         return <p className="auth-loading">기록 목록을 불러오는 중...</p>;
     }
 
@@ -208,7 +263,8 @@ export function HistoryPage() {
                             : "segmented__button"
                     }
                     aria-pressed={filter === "all"}
-                    onClick={() => setFilter("all")}
+                    disabled={busy || moreLoading}
+                    onClick={() => selectFilter("all")}
                 >
                     전체
                 </button>
@@ -222,7 +278,8 @@ export function HistoryPage() {
                                 : "segmented__button"
                         }
                         aria-pressed={filter === mode.id}
-                        onClick={() => setFilter(mode.id)}
+                        disabled={busy || moreLoading}
+                        onClick={() => selectFilter(mode.id)}
                     >
                         {mode.display_name}
                     </button>
@@ -241,6 +298,14 @@ export function HistoryPage() {
                     {message.text}
                 </p>
             ) : null}
+            <button type="button" disabled={busy || moreLoading || loading} onClick={async () => {
+                setLoading(true);
+                if (modes.length === 0) { setReload((value) => value + 1); return; }
+                try { await refresh(); if (active.current) setMessage(null); }
+                catch { if (active.current) setMessage({ kind: "error", text: "기록 목록을 불러오지 못했습니다." }); }
+                finally { if (active.current) setLoading(false); }
+            }}>새로고침</button>
+            {loading ? <p role="status">기록 목록을 불러오는 중...</p> : null}
 
             {editingGame && editForm ? (
                 <section
@@ -254,10 +319,10 @@ export function HistoryPage() {
                         모드:{" "}
                         {editingGame
                             ? (modes.find(
-                                  (mode) =>
-                                      mode.play_context_id ===
-                                      editingGame.play_context_id,
-                              )?.display_name ?? "기록")
+                                (mode) =>
+                                    mode.play_context_id ===
+                                    editingGame.play_context_id,
+                            )?.display_name ?? "기록")
                             : ""}
                     </p>
                     <div className="field">
@@ -319,19 +384,19 @@ export function HistoryPage() {
                 </section>
             ) : null}
 
-            {filteredGames.length === 0 ? (
+            {games.length === 0 ? (page ? (
                 <p className="page-description">기록이 없습니다.</p>
-            ) : (
+            ) : null) : (
                 <>
                     <ul className="history-list">
-                        {filteredGames.map((game) => (
+                        {games.map((game) => (
                             <li key={game.id} className="history-item">
                                 <GameRow
                                     game={game}
                                     modes={modes}
                                     onEdit={() => startEdit(game)}
                                     onDelete={() => handleDelete(game)}
-                                    busy={busy}
+                                    busy={busy || moreLoading || stale}
                                 />
                             </li>
                         ))}
@@ -349,20 +414,23 @@ export function HistoryPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredGames.map((game) => (
+                            {games.map((game) => (
                                 <GameTableRow
                                     key={game.id}
                                     game={game}
                                     modes={modes}
                                     onEdit={() => startEdit(game)}
                                     onDelete={() => handleDelete(game)}
-                                    busy={busy}
+                                    busy={busy || moreLoading || stale}
                                 />
                             ))}
                         </tbody>
                     </table>
                 </>
             )}
+            {page?.has_more ? <button type="button" disabled={busy || moreLoading || loading || stale} onClick={loadMore}>
+                {moreLoading ? "불러오는 중..." : "더 보기"}
+            </button> : null}
         </section>
     );
 }

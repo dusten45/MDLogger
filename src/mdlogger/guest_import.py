@@ -2,7 +2,7 @@
 
 게스트가 신규 회원가입하거나 기존 계정으로 로그인할 때, 현재 게스트 DB의 기록을
 등록 계정 DB에 옮기고 private games 동기화 outbox에 등록한다. 원본 게스트 DB는
-절대 수정하거나 삭제하지 않는다(SQLite ``query_only`` 읽기 전용 연결 사용).
+수정하거나 삭제하지 않는다(SQLite Online Backup으로 일관된 스냅숏 사용).
 
 재실행 안전성:
 - 같은 게스트 DB(안정 checksum)를 대상 계정에 이미 완료한 import가 있으면 다시
@@ -16,15 +16,16 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 import sqlite3
 import tempfile
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from . import db
+from .paths import copy_database_via_backup
 from .profiles import ProfileKind
 
 # import 시 대상 games에 보존하는 값 필드(서버 private payload + 기록 생성 시각).
@@ -110,23 +111,47 @@ def _completed_batch_matches(
     ).fetchone()
     if row is None:
         return False
-    return int(row["imported_count"]) + int(row["skipped_count"]) == expected_count
+    return (
+        row["failed_count"] == 0
+        and int(row["imported_count"]) + int(row["skipped_count"]) == expected_count
+    )
 
 
-def _open_source_copy(source_path: Path, temp_dir: Path) -> sqlite3.Connection:
-    """원본을 절대 열지 않고 임시 복사본(main + wal)을 read-only로 연다.
+def _open_source_copy(
+    source_path: Path,
+    temp_dir: Path,
+    *,
+    source_connection: sqlite3.Connection | None = None,
+    snapshot_provider: Callable[[Path], None] | None = None,
+) -> sqlite3.Connection:
+    """소유 연결 또는 읽기 전용 원본에서 검증된 스냅숏을 만든다.
 
-    SQLite는 WAL 모드 DB를 열 때 -wal/-shm 사이드카를 만들 수 있어 read-only로
-    열어도 원본 옆에 부수 파일이 생길 수 있다(P1-7). 원본 파일을 건드리지 않도록
-    main과 wal(-wal)을 temp 디렉터리로 복사한 뒤 그 복사본을 읽는다. 활성
-    -wal이 있으면 함께 복사해 미커밋 데이터도 보존된다.
+    소유 연결을 제공하면 원본을 추가로 열지 않는다. 경로만 제공한 경우 SQLite가
+    읽기에 필요한 사이드카를 만들 수 있지만 원본의 기록·스키마는 수정하지 않는다.
     """
-    temp_db = temp_dir / source_path.name
-    shutil.copy2(source_path, temp_db)
-    wal = source_path.with_name(source_path.name + "-wal")
-    if wal.exists():
-        shutil.copy2(wal, temp_dir / (source_path.name + "-wal"))
-    conn = sqlite3.connect(f"file:{temp_db}?mode=ro", uri=True, timeout=5.0)
+    if snapshot_provider is not None and source_connection is not None:
+        raise ValueError("스냅숏 공급자와 원본 연결은 함께 지정할 수 없습니다.")
+    if source_connection is not None:
+        actual = next(
+            (
+                row[2]
+                for row in source_connection.execute("PRAGMA database_list")
+                if row[1] == "main"
+            ),
+            None,
+        )
+        if not actual or Path(actual).resolve() != source_path.resolve():
+            raise GuestImportError("게스트 원본 경로와 연결이 일치하지 않습니다.")
+    temp_db = temp_dir / "source.db"
+    if snapshot_provider is not None:
+        snapshot_provider(temp_db)
+    else:
+        copy_database_via_backup(
+            source_connection if source_connection is not None else source_path, temp_db
+        )
+    conn = sqlite3.connect(
+        f"{temp_db.resolve().as_uri()}?mode=ro", uri=True, timeout=5.0
+    )
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -136,27 +161,36 @@ def import_guest_records(
     target_path: Path,
     *,
     source_profile_kind: ProfileKind = ProfileKind.GUEST,
+    source_connection: sqlite3.Connection | None = None,
+    snapshot_provider: Callable[[Path], None] | None = None,
 ) -> GuestImportResult:
     """게스트 DB 기록을 대상 계정 DB로 원자적으로 import한다."""
-    with tempfile.TemporaryDirectory(prefix="mdlogger-import-") as temp_dir:
-        source_conn = _open_source_copy(source_path, Path(temp_dir))
-        try:
-            checksum = _core_fields_signature(source_conn)
-            rows = source_conn.execute(
-                "SELECT * FROM games WHERE deleted_at IS NULL ORDER BY id"
-            ).fetchall()
-        except sqlite3.DatabaseError as error:
-            # 구버전(pre-v2) 게스트 DB는 games 테이블이 없어 raw sqlite 오류가
-            # 나므로 import 전용 예외로 감싸 호출자가 안전하게 처리하게 한다(P1-8).
-            raise GuestImportError(
-                f"게스트 DB를 읽을 수 없습니다: {source_path}"
-            ) from error
-        finally:
-            source_conn.close()
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix=".mdlogger-import-", dir=target_path.parent
+        ) as temp_dir:
+            source_conn = _open_source_copy(
+                source_path,
+                Path(temp_dir),
+                source_connection=source_connection,
+                snapshot_provider=snapshot_provider,
+            )
+            try:
+                checksum = _core_fields_signature(source_conn)
+                rows = source_conn.execute(
+                    "SELECT * FROM games WHERE deleted_at IS NULL ORDER BY id"
+                ).fetchall()
+            finally:
+                source_conn.close()
+    except (sqlite3.Error, OSError) as error:
+        raise GuestImportError(
+            f"게스트 DB를 읽을 수 없습니다: {source_path}"
+        ) from error
 
     target_conn = db.connect(target_path)
     try:
         db.init_db(target_conn)
+        target_conn.execute("BEGIN IMMEDIATE")
         if _completed_batch_matches(
             target_conn, source_profile_kind, checksum, len(rows)
         ):

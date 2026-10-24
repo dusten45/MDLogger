@@ -36,6 +36,7 @@ from .ui.account_views import (
 )
 from .ui.main_window import MainWindow
 from .ui.settings_window import SettingsWindow
+from .ui.update_dialog import UpdateDialog
 
 CONSENT_VERSION = "duel-data-v1"
 ConsentPrompt = Callable[[bool, QWidget | None], bool]
@@ -111,11 +112,34 @@ class ProfileRouter:
         self._pending: set[Future[Any]] = set()
         self._auth_generation = 0
         self._closing = False
+        self._update_handler: Callable[[], None] | None = None
         self._connect_auth_window()
 
     @property
     def auth_window(self) -> AuthWindow:
         return self._auth
+
+    def set_update_handler(self, handler: Callable[[], None]) -> None:
+        self._update_handler = handler
+
+    def request_update(self) -> None:
+        if self._update_handler is not None:
+            self._update_handler()
+
+    def ready_for_update(self) -> bool:
+        if self._closing or self._pending:
+            return False
+        window = self._main_window()
+        if window is not None and window.has_pending_record:
+            return False
+        if self._auth.isVisible() and self._auth.has_pending_input:
+            return False
+        return not any(
+            widget.isVisible()
+            and isinstance(widget, QDialog)
+            and not isinstance(widget, (SettingsWindow, UpdateDialog))
+            for widget in QApplication.topLevelWidgets()
+        )
 
     def start(self) -> None:
         """마지막 프로필을 복원하고 필요한 경우에만 시작 UI를 표시한다."""
@@ -266,6 +290,7 @@ class ProfileRouter:
         )
         window.delete_account_requested.connect(lambda: self._delete_account(window))
         window.app_reset_requested.connect(lambda: self._reset_application(window))
+        window.update_requested.connect(self.request_update)
         window.memo_enabled_changed.connect(self._apply_memo_enabled)
         window.score_input_mode_changed.connect(self._apply_score_input_mode)
         window.exec()
@@ -291,32 +316,172 @@ class ProfileRouter:
             window.set_score_input_mode(ScoreInputMode(mode))
 
     def _open_conflicts(self, account_dialog: QDialog) -> None:
+        from PySide6.QtCore import QObject, Qt
+        from shiboken6 import isValid
+
+        from .game_sync.models import ConflictResolutionResult
+
+        profile = self._app.current_profile
+        result_signal = self._app.resolution_finished
+        if self._closing or profile is None or result_signal is None:
+            return
+        try:
+            remaining = [conflict.id for conflict in self._app.list_conflicts()]
+        except Exception:
+            QMessageBox.information(
+                account_dialog,
+                "충돌 조회 실패",
+                "충돌 정보를 불러오지 못했습니다. 잠시 후 다시 열어 주세요.",
+            )
+            return
         account_dialog.hide()
         parent = self._main_window()
-        try:
-            for conflict in self._app.list_conflicts():
-                dialog = ConflictDialog(conflict, parent)
-                if dialog.exec() != QDialog.DialogCode.Accepted:
-                    break
-                if dialog.resolution is not None:
+
+        def finish_flow() -> None:
+            if isValid(account_dialog):
+                account_dialog.accept()
+
+        def scope_active() -> bool:
+            return not self._closing and self._app.current_profile is profile
+
+        def open_next() -> None:
+            if not remaining or not scope_active() or not isValid(account_dialog):
+                finish_flow()
+                return
+            try:
+                latest = {item.id: item for item in self._app.list_conflicts()}
+            except Exception:
+                QMessageBox.information(
+                    parent,
+                    "충돌 조회 실패",
+                    "최신 충돌 정보를 불러오지 못했습니다. 잠시 후 다시 열어 주세요.",
+                )
+                finish_flow()
+                return
+            conflict = None
+            while remaining and conflict is None:
+                conflict = latest.get(remaining.pop(0))
+            if conflict is None:
+                finish_flow()
+                return
+
+            dialog = ConflictDialog(conflict, parent or account_dialog)
+            request_id: str | None = None
+            active = True
+            connections = []
+
+            def disconnect(*_args: object) -> None:
+                nonlocal active
+                active = False
+                for connection in connections:
+                    QObject.disconnect(connection)
+                connections.clear()
+
+            def close_for_profile() -> None:
+                if not active:
+                    return
+                disconnect()
+                dialog.set_busy(False)
+                dialog.reject()
+
+            def router_closed() -> None:
+                if self._closing:
+                    close_for_profile()
+
+            def finished(code: int) -> None:
+                disconnect()
+                dialog.deleteLater()
+                if code == QDialog.DialogCode.Accepted and scope_active():
+                    QTimer.singleShot(0, open_next)
+                else:
+                    finish_flow()
+
+            def submit() -> None:
+                nonlocal request_id
+                if not active or not scope_active():
+                    close_for_profile()
+                    return
+                if request_id is not None or dialog.resolution is None:
+                    return
+                current = dialog.conflict
+                version = current.remote_payload.get("change_version")
+                try:
+                    request_id = self._app.resolve_conflict(
+                        current.id,
+                        dialog.resolution,
+                        dialog.merged_payload,
+                        expected_remote_version=int(version)
+                        if version is not None
+                        else None,
+                        expected_local_revision=current.local_revision,
+                    )
+                except Exception:
+                    dialog.show_error(
+                        "충돌 해결 요청을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요."
+                    )
+
+            def completed(result: ConflictResolutionResult) -> None:
+                nonlocal request_id
+                if not active:
+                    return
+                if not scope_active():
+                    close_for_profile()
+                    return
+                if (
+                    result.request_id != request_id
+                    or result.conflict_id != dialog.conflict.id
+                ):
+                    return
+                request_id = None
+                if result.succeeded:
+                    dialog.set_busy(False)
+                    dialog.accept()
+                elif result.stale:
                     try:
-                        self._app.resolve_conflict(
-                            conflict.id,
-                            dialog.resolution,
-                            dialog.merged_payload,
-                            expected_remote_version=int(
-                                conflict.remote_payload["change_version"]
+                        current = next(
+                            (
+                                item
+                                for item in self._app.list_conflicts()
+                                if item.id == dialog.conflict.id
                             ),
+                            None,
                         )
-                    except (KeyError, TypeError, ValueError) as error:
-                        QMessageBox.information(
-                            parent,
-                            "충돌 정보 갱신 필요",
-                            f"{error}\n최신 충돌 내용을 다시 확인해 주세요.",
+                    except Exception:
+                        dialog.show_unavailable(
+                            "최신 충돌 정보를 불러오지 못했습니다. 창을 닫고 다시 열어 주세요."
                         )
-                        break
-        finally:
-            account_dialog.accept()
+                        return
+                    if current is None:
+                        dialog.show_unavailable(
+                            "이 충돌은 이미 해결되었거나 더 이상 존재하지 않습니다. 창을 닫아 주세요."
+                        )
+                    else:
+                        dialog.reload_conflict(current)
+                else:
+                    message = result.error or "충돌을 해결하지 못했습니다."
+                    if result.retryable:
+                        message += " 잠시 후 다시 적용해 주세요."
+                    dialog.show_error(message)
+
+            # 작업이 즉시 끝나도 요청 ID를 받은 뒤 GUI 스레드에서 결과를 처리한다.
+            connections.append(
+                result_signal.connect(
+                    dialog.resolution_received, Qt.ConnectionType.QueuedConnection
+                )
+            )
+            connections.append(self._app.profile_closing.connect(close_for_profile))
+            connections.append(self._auth.flow_cancelled.connect(router_closed))
+            connections.append(account_dialog.destroyed.connect(close_for_profile))
+            application = QApplication.instance()
+            if application is not None:
+                connections.append(application.aboutToQuit.connect(close_for_profile))
+            dialog.resolution_requested.connect(submit)
+            dialog.resolution_received.connect(completed)
+            dialog.finished.connect(finished)
+            dialog.destroyed.connect(disconnect)
+            dialog.open()
+
+        open_next()
 
     def close(self) -> None:
         self._closing = True
@@ -330,6 +495,7 @@ class ProfileRouter:
         self._auth.resend_requested.connect(self._start_resend_verification)
         self._auth.password_reset_requested.connect(self._start_password_reset)
         self._auth.flow_cancelled.connect(self._cancel_auth_flow)
+        self._auth.update_requested.connect(self.request_update)
 
     def _start_sign_in(self, email: str, password: str) -> None:
         sessions = self._sessions
@@ -566,7 +732,11 @@ class ProfileRouter:
         """게스트 기록을 등록 계정 DB로 비파괴 import하고 결과를 알린다."""
         try:
             self._profiles.prepare_database(registered)
-            result = import_guest_records(guest.database_path, registered.database_path)
+            result = import_guest_records(
+                guest.database_path,
+                registered.database_path,
+                snapshot_provider=self._app.backup_guest_to,
+            )
         except (GuestImportError, ProfileError, OSError) as error:
             return self._import_result_prompt(None, error, self._main_window())
         return self._import_result_prompt(result, None, self._main_window())
@@ -652,6 +822,7 @@ class ProfileRouter:
             return
 
         try:
+            self._auth_generation += 1
             self._clear_known_credentials(profile, credential_account_ids)
         except CredentialStoreError as error:
             QMessageBox.warning(
@@ -671,10 +842,24 @@ class ProfileRouter:
             else:
                 self._settings_store.save(AppSettings())
         except (OSError, ProfileError) as error:
+            try:
+                self._profiles.recover_local_data()
+            except (OSError, ProfileError) as recovery_error:
+                QMessageBox.critical(
+                    self._auth,
+                    "앱 데이터 복구 필요",
+                    "초기화 복구를 완료하지 못해 데이터 사용을 중지했습니다. "
+                    "복구 자료는 보존되어 있습니다. 저장 공간과 파일 접근 권한을 "
+                    f"확인한 뒤 앱을 다시 실행해 주세요.\n{recovery_error}",
+                )
+                self.show_auth("데이터 복구가 완료되기 전에는 프로필을 열 수 없습니다.")
+                self._auth.set_busy(True)
+                return
             QMessageBox.critical(
                 self._auth,
                 "앱 초기화 실패",
-                f"이 기기의 앱 데이터를 초기화하지 못했습니다.\n{error}",
+                f"초기화 중 오류가 발생했습니다. 복구 절차를 수행했습니다.\n{error}\n"
+                "로그인 정보는 다시 입력해야 할 수 있습니다.",
             )
             self.show_auth()
             return

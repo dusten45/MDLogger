@@ -22,6 +22,15 @@ REQUIRED_RELEASE_FILES = (
     "scripts/release/verify_flatpak_release.sh",
     "scripts/release/third_party_source_delivery.json",
 )
+WINDOWS_UPDATE_RELEASE_FILES = (
+    ".github/workflows/windows-release.yml",
+    "scripts/release/windows_release.py",
+    "scripts/release/verify_windows_update_signature.ps1",
+    "scripts/update/build_helper.ps1",
+    "scripts/update/UpdateHelper.cs",
+    "scripts/update/update-helper.manifest",
+    "src/mdlogger/data/update-trusted-keys.json",
+)
 
 
 class ReleaseVersionError(RuntimeError):
@@ -129,6 +138,7 @@ def validate_release(
     tag: str,
     *,
     run_git: Callable[..., str] = git_output,
+    require_windows_update: bool = False,
 ) -> ReleaseContext:
     """Validate that this clean checkout is exactly the requested annotated release tag."""
 
@@ -140,9 +150,12 @@ def validate_release(
             f"Tag {tag} does not match src/mdlogger/_version.py ({tracked_version})"
         )
 
+    required_files = REQUIRED_RELEASE_FILES + (
+        WINDOWS_UPDATE_RELEASE_FILES if require_windows_update else ()
+    )
     missing_files = [
         relative
-        for relative in REQUIRED_RELEASE_FILES
+        for relative in required_files
         if not (project_root / relative).is_file()
     ]
     if missing_files:
@@ -197,6 +210,7 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
         description="Validate a desktop release tag and version"
     )
     parser.add_argument("--tag", required=True, help="Existing annotated vX.Y.Z tag")
+    parser.add_argument("--windows-update", action="store_true")
     parser.add_argument(
         "--project-root",
         type=Path,
@@ -214,7 +228,9 @@ def main(arguments: list[str] | None = None) -> int:
 
     args = parse_args(arguments)
     try:
-        context = validate_release(args.project_root, args.tag)
+        context = validate_release(
+            args.project_root, args.tag, require_windows_update=args.windows_update
+        )
         write_context(context, args.output)
     except ReleaseVersionError as error:
         print(f"ERROR: {error}")

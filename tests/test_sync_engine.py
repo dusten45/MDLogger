@@ -6,16 +6,19 @@ import json
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
+
+import pytest
 
 from mdlogger import db
 from mdlogger.game_service import GameService
 from mdlogger.game_sync.engine import SyncEngine
-from mdlogger.game_sync.models import SyncPhase
+from mdlogger.game_sync.models import StaleConflictError, SyncPhase
 from mdlogger.profiles import ProfileContext, ProfileManager
 from mdlogger.remote.client import HttpResponse, JsonHttpClient
 from mdlogger.remote.config import RemoteConfig
 from mdlogger.remote.errors import NetworkError
-from mdlogger.remote.games import RegisteredGamesClient
+from mdlogger.remote.games import RegisteredGamesClient, RegisteredGamesError
 from mdlogger.remote.guest_ingest import GuestIngestClient
 
 CONFIG = RemoteConfig(base_url="https://example.supabase.co", anon_key="anon-key")
@@ -59,6 +62,7 @@ class RegisteredTransport:
         self.reject_first_request = False
         self.rate_limit_first_request = None
         self.on_apply = None
+        self.on_fetch = None
 
     def request(self, method, url, headers, body, timeout):
         payload = json.loads(body.decode()) if body else None
@@ -91,6 +95,15 @@ class RegisteredTransport:
                 status=200, body=json.dumps({"results": results}).encode()
             )
         if "/games?" in url:
+            query = parse_qs(urlsplit(url).query)
+            if "id" in query:
+                if self.on_fetch is not None:
+                    callback, self.on_fetch = self.on_fetch, None
+                    callback()
+                row = self.remote_games.get(query["id"][0].removeprefix("eq."))
+                return HttpResponse(
+                    status=200, body=json.dumps([row] if row else []).encode()
+                )
             match = re.search(r"change_version=gt\.(\d+)", url)
             cursor = int(match.group(1)) if match else 0
             rows = sorted(
@@ -609,7 +622,12 @@ def test_two_device_concurrent_update_and_update_delete_conflicts_are_resolvable
     conflict = engine_b.list_conflicts()[0]
     assert conflict.local_payload["note"] == "B 수정"
     assert conflict.remote_payload["note"] == "A 수정"
-    engine_b.resolve_conflict(conflict.id, "remote")
+    engine_b.resolve_conflict(
+        conflict.id,
+        "remote",
+        expected_remote_version=conflict.remote_payload["change_version"],
+        expected_local_revision=conflict.local_revision,
+    )
     resolved_b = games_b.get_game(game_b_id)
     assert resolved_b is not None
     assert resolved_b["note"] == "A 수정"
@@ -620,7 +638,12 @@ def test_two_device_concurrent_update_and_update_delete_conflicts_are_resolvable
     delete_conflict_status = engine_b.run_once()
     assert delete_conflict_status.conflict_count == 1
     delete_conflict = engine_b.list_conflicts()[0]
-    engine_b.resolve_conflict(delete_conflict.id, "local")
+    engine_b.resolve_conflict(
+        delete_conflict.id,
+        "local",
+        expected_remote_version=delete_conflict.remote_payload["change_version"],
+        expected_local_revision=delete_conflict.local_revision,
+    )
     assert engine_b.run_once().conflict_count == 0
     assert engine_a.run_once().phase is SyncPhase.SYNCED
     assert games_a.count_games() == 0
@@ -770,4 +793,414 @@ def test_initial_sync_completed_not_downgraded_by_exact_batch(tmp_path: Path):
     second = engine.run_once()
     assert second.initial_sync_completed is True
     assert second.last_pulled_version == 105
+    games.close()
+
+
+def conflicted_engine(tmp_path: Path):
+    profile, games = prepare_registered(tmp_path)
+    transport = RegisteredTransport()
+    engine = SyncEngine(
+        profile,
+        registered_client=RegisteredGamesClient(
+            CONFIG, client=JsonHttpClient(transport)
+        ),
+        token_provider=lambda: "token",
+    )
+    game_id = games.insert_game(sample("기준"))
+    engine.run_once()
+    row = games.get_game(game_id)
+    assert row is not None
+    sync_id = row["sync_id"]
+    transport._apply(
+        {
+            "op": "update",
+            "id": sync_id,
+            "expected_change_version": 1,
+            "payload": sample("서버 수정"),
+        }
+    )
+    games.update_game(game_id, sample("로컬 수정"))
+    engine.run_once()
+    return profile, games, transport, engine, game_id
+
+
+def test_resolution_fetches_fresh_server_and_refuses_newer_payload(tmp_path: Path):
+    profile, games, transport, engine, game_id = conflicted_engine(tmp_path)
+    old = engine.list_conflicts()[0]
+    transport._apply(
+        {
+            "op": "update",
+            "id": old.game_sync_id,
+            "expected_change_version": 2,
+            "payload": sample("새 서버 수정"),
+        }
+    )
+    with pytest.raises(StaleConflictError):
+        engine.resolve_conflict(
+            old.id,
+            "remote",
+            expected_remote_version=2,
+            expected_local_revision=old.local_revision,
+        )
+    latest = engine.list_conflicts()[0]
+    assert latest.remote_payload["change_version"] == 3
+    assert games.get_game(game_id)["note"] == "로컬 수정"
+    assert engine.status().last_pulled_version == 2
+    assert len(outbox_rows(profile)) == 1
+    assert parse_qs(urlsplit(transport.requests[-1]["url"]).query)["id"] == [
+        f"eq.{old.game_sync_id}"
+    ]
+    games.close()
+
+
+def test_resolution_offline_keeps_outbox_conflict_and_draft(tmp_path: Path):
+    profile, games, transport, engine, game_id = conflicted_engine(tmp_path)
+    conflict = engine.list_conflicts()[0]
+    original = [dict(row) for row in outbox_rows(profile)]
+    draft = sample("작성 중인 병합 초안")
+
+    def fail():
+        raise NetworkError("오프라인")
+
+    transport.on_fetch = fail
+    with pytest.raises(RegisteredGamesError):
+        engine.resolve_conflict(
+            conflict.id,
+            "merged",
+            draft,
+            expected_remote_version=2,
+            expected_local_revision=conflict.local_revision,
+        )
+    assert [dict(row) for row in outbox_rows(profile)] == original
+    assert draft["note"] == "작성 중인 병합 초안"
+    assert engine.list_conflicts()[0] == conflict
+    assert games.get_game(game_id)["note"] == "로컬 수정"
+    games.close()
+
+
+def test_local_edit_during_fresh_fetch_is_not_overwritten(tmp_path: Path):
+    _, games, transport, engine, game_id = conflicted_engine(tmp_path)
+    conflict = engine.list_conflicts()[0]
+    transport.on_fetch = lambda: games.update_game(game_id, sample("확인 도중 새 수정"))
+    with pytest.raises(StaleConflictError):
+        engine.resolve_conflict(
+            conflict.id,
+            "remote",
+            expected_remote_version=2,
+            expected_local_revision=conflict.local_revision,
+        )
+    assert games.get_game(game_id)["note"] == "확인 도중 새 수정"
+    games.close()
+
+
+def test_server_change_after_resolution_fetch_is_guarded_by_existing_cas(
+    tmp_path: Path,
+):
+    _, games, transport, engine, game_id = conflicted_engine(tmp_path)
+    conflict = engine.list_conflicts()[0]
+    engine.resolve_conflict(
+        conflict.id,
+        "local",
+        expected_remote_version=2,
+        expected_local_revision=conflict.local_revision,
+    )
+    transport._apply(
+        {
+            "op": "update",
+            "id": conflict.game_sync_id,
+            "expected_change_version": 2,
+            "payload": sample("확인 이후 서버 수정"),
+        }
+    )
+    status = engine.run_once()
+    assert status.conflict_count == 1
+    assert games.get_game(game_id)["note"] == "로컬 수정"
+    assert engine.list_conflicts()[0].remote_payload["note"] == "확인 이후 서버 수정"
+    games.close()
+
+
+@pytest.mark.parametrize("resolution", ["remote", "local"])
+def test_missing_remote_conflict_can_be_resolved_after_verified_absence(
+    tmp_path: Path, resolution: str
+):
+    profile, games, transport, engine, game_id = conflicted_engine(tmp_path)
+    conflict = engine.list_conflicts()[0]
+    transport.remote_games.clear()
+    with pytest.raises(StaleConflictError):
+        engine.resolve_conflict(
+            conflict.id,
+            resolution,
+            expected_remote_version=2,
+            expected_local_revision=conflict.local_revision,
+        )
+    missing = engine.list_conflicts()[0]
+    assert missing.remote_payload["missing"] is True
+    engine.resolve_conflict(
+        missing.id, resolution, expected_local_revision=missing.local_revision
+    )
+    assert engine.list_conflicts() == []
+    if resolution == "remote":
+        assert games.count_games() == 0
+        assert outbox_rows(profile) == []
+    else:
+        assert engine.run_once().phase is SyncPhase.SYNCED
+        assert transport.remote_games[missing.game_sync_id]["note"] == "로컬 수정"
+    games.close()
+
+
+def test_engine_recovers_after_401_and_temporary_refresh_failure(tmp_path: Path):
+    from test_session_manager import FakeAccountService, make_session
+
+    from mdlogger.auth.credential_store import InMemoryCredentialStore
+    from mdlogger.auth.models import AuthError, AuthErrorKind
+    from mdlogger.auth.session_manager import SessionManager
+
+    profile, games = prepare_registered(tmp_path)
+    games.insert_game(sample())
+    ids = [row["id"] for row in outbox_rows(profile)]
+    clock = [0.0]
+    service = FakeAccountService()
+    manager = SessionManager(
+        service, InMemoryCredentialStore(), now=lambda: clock[0], jitter=lambda _: 0
+    )
+    manager.activate(make_session())
+    transport = RegisteredTransport()
+    transport.reject_first_request = True
+    service.refresh_result = AuthError(AuthErrorKind.NETWORK, "일시적인 연결 실패")
+    engine = SyncEngine(
+        profile,
+        registered_client=RegisteredGamesClient(
+            CONFIG, client=JsonHttpClient(transport)
+        ),
+        session_manager=manager,
+    )
+    assert engine.run_once().phase is SyncPhase.OFFLINE
+    assert [row["id"] for row in outbox_rows(profile)] == ids
+    assert outbox_rows(profile)[0]["attempt_count"] == 0
+    service.refresh_result = make_session("refresh-2")
+    assert engine.run_once().phase is SyncPhase.OFFLINE
+    assert len(service.refresh_calls) == 1
+    clock[0] = 3
+    assert engine.run_once().phase is SyncPhase.SYNCED
+    assert outbox_rows(profile) == []
+    games.close()
+
+
+def test_online_gate_prevents_refresh_and_network(tmp_path: Path):
+    from test_session_manager import FakeAccountService, make_session
+
+    from mdlogger.auth.credential_store import InMemoryCredentialStore
+    from mdlogger.auth.session_manager import SessionManager
+
+    profile, games = prepare_registered(tmp_path)
+    service = FakeAccountService()
+    manager = SessionManager(service, InMemoryCredentialStore())
+    manager.activate(make_session())
+    transport = RegisteredTransport()
+    engine = SyncEngine(
+        profile,
+        registered_client=RegisteredGamesClient(
+            CONFIG, client=JsonHttpClient(transport)
+        ),
+        session_manager=manager,
+        can_sync=lambda: False,
+    )
+    assert engine.run_once().phase is SyncPhase.OFFLINE
+    assert service.refresh_calls == []
+    assert transport.requests == []
+    games.close()
+
+
+def test_offline_start_reconnects_without_access_token(tmp_path: Path):
+    from test_session_manager import FakeAccountService, make_session
+
+    from mdlogger.auth.credential_store import InMemoryCredentialStore
+    from mdlogger.auth.models import AuthError, AuthErrorKind
+    from mdlogger.auth.session_manager import SessionManager
+
+    profile, games = prepare_registered(tmp_path)
+    games.insert_game(sample())
+    clock = [0.0]
+    service = FakeAccountService()
+    service.refresh_result = AuthError(AuthErrorKind.NETWORK, "오프라인 시작")
+    store = InMemoryCredentialStore()
+    store.save_refresh_token(ACCOUNT_ID, "refresh-1")
+    manager = SessionManager(service, store, now=lambda: clock[0], jitter=lambda _: 0)
+    manager.restore(ACCOUNT_ID)
+    transport = RegisteredTransport()
+    engine = SyncEngine(
+        profile,
+        registered_client=RegisteredGamesClient(
+            CONFIG, client=JsonHttpClient(transport)
+        ),
+        session_manager=manager,
+    )
+    assert engine.run_once().phase is SyncPhase.OFFLINE
+    assert transport.requests == []
+    service.refresh_result = make_session("refresh-2")
+    clock[0] = 3
+    assert engine.run_once().phase is SyncPhase.SYNCED
+    assert outbox_rows(profile) == []
+    games.close()
+
+
+@pytest.mark.parametrize("revoked", [False, True])
+def test_resolution_distinguishes_refresh_outage_and_revoked_session(
+    tmp_path: Path, revoked: bool
+):
+    from test_session_manager import FakeAccountService, make_session
+
+    from mdlogger.auth.credential_store import InMemoryCredentialStore
+    from mdlogger.auth.models import AuthError, AuthErrorKind
+    from mdlogger.auth.session_manager import SessionManager
+    from mdlogger.remote.games import RegisteredGamesErrorKind
+
+    profile, games, transport, previous, _ = conflicted_engine(tmp_path)
+    conflict = previous.list_conflicts()[0]
+    service = FakeAccountService()
+    service.refresh_result = AuthError(
+        AuthErrorKind.TOKEN_EXPIRED if revoked else AuthErrorKind.NETWORK, "갱신 실패"
+    )
+    manager = SessionManager(service, InMemoryCredentialStore())
+    manager.activate(make_session())
+    engine = SyncEngine(
+        profile,
+        registered_client=RegisteredGamesClient(
+            CONFIG, client=JsonHttpClient(transport)
+        ),
+        session_manager=manager,
+    )
+    transport.reject_first_request = True
+    with pytest.raises(RegisteredGamesError) as error:
+        engine.resolve_conflict(
+            conflict.id,
+            "remote",
+            expected_remote_version=2,
+            expected_local_revision=conflict.local_revision,
+        )
+    assert error.value.kind is (
+        RegisteredGamesErrorKind.AUTH_REQUIRED
+        if revoked
+        else RegisteredGamesErrorKind.NETWORK
+    )
+    assert engine.list_conflicts() == [conflict]
+    games.close()
+
+
+def test_online_permission_revoked_during_fresh_fetch_preserves_conflict(
+    tmp_path: Path,
+):
+    profile, games, transport, previous, game_id = conflicted_engine(tmp_path)
+    conflict = previous.list_conflicts()[0]
+    allowed = [True]
+    engine = SyncEngine(
+        profile,
+        registered_client=RegisteredGamesClient(
+            CONFIG, client=JsonHttpClient(transport)
+        ),
+        token_provider=lambda: "token",
+        can_sync=lambda: allowed[0],
+    )
+    transport.on_fetch = lambda: allowed.__setitem__(0, False)
+    with pytest.raises(RegisteredGamesError):
+        engine.resolve_conflict(
+            conflict.id,
+            "remote",
+            expected_remote_version=2,
+            expected_local_revision=conflict.local_revision,
+        )
+    assert engine.list_conflicts() == [conflict]
+    assert games.get_game(game_id)["note"] == "로컬 수정"
+    games.close()
+
+
+@pytest.mark.parametrize(
+    ("resolution", "selected_note", "accept_convergence"),
+    [
+        ("local", None, True),
+        ("remote", None, False),
+        ("merged", "로컬 수정", True),
+        ("merged", "서버 수정", False),
+        ("merged", "새 병합 메모", False),
+    ],
+)
+def test_fresh_convergence_respects_selected_payload_and_requires_reconfirmation(
+    tmp_path: Path,
+    resolution: str,
+    selected_note: str | None,
+    accept_convergence: bool,
+):
+    profile, games, transport, engine, game_id = conflicted_engine(tmp_path)
+    conflict = engine.list_conflicts()[0]
+    pending_before = [dict(row) for row in outbox_rows(profile)]
+    local_before = games.get_game(game_id)
+    assert local_before is not None
+    draft = {"note": selected_note} if resolution == "merged" else None
+    original_draft = dict(draft) if draft is not None else None
+    transport._apply(
+        {
+            "op": "update",
+            "id": conflict.game_sync_id,
+            "expected_change_version": 2,
+            "payload": sample("로컬 수정"),
+        }
+    )
+    if accept_convergence:
+        engine.resolve_conflict(
+            conflict.id,
+            resolution,
+            draft,
+            expected_remote_version=2,
+            expected_local_revision=conflict.local_revision,
+        )
+        assert engine.list_conflicts() == []
+        assert outbox_rows(profile) == []
+        assert games.get_game(game_id)["remote_version"] == 3
+    else:
+        with pytest.raises(StaleConflictError, match="최신 내용을 확인"):
+            engine.resolve_conflict(
+                conflict.id,
+                resolution,
+                draft,
+                expected_remote_version=2,
+                expected_local_revision=conflict.local_revision,
+            )
+        latest = engine.list_conflicts()[0]
+        assert latest.id == conflict.id
+        assert latest.local_revision == conflict.local_revision
+        assert latest.remote_payload["change_version"] == 3
+        assert latest.remote_payload["note"] == "로컬 수정"
+        assert [dict(row) for row in outbox_rows(profile)] == pending_before
+        assert (
+            games.get_game(game_id)["remote_version"] == local_before["remote_version"]
+        )
+        assert engine.status().phase is SyncPhase.FAILED
+        assert engine.status().conflict_count == 1
+    assert draft == original_draft
+    assert games.get_game(game_id)["note"] == "로컬 수정"
+    assert engine.status().last_pulled_version == 2
+
+    if accept_convergence:
+        assert engine.run_once().last_pulled_version == 3
+    else:
+        # 새 비교 화면에서 이전 선택을 명시적으로 재확인한 뒤에만 반영한다.
+        intended_note = (
+            conflict.remote_payload["note"] if resolution == "remote" else selected_note
+        )
+        latest = engine.list_conflicts()[0]
+        engine.resolve_conflict(
+            latest.id,
+            "merged",
+            {"note": intended_note},
+            expected_remote_version=3,
+            expected_local_revision=latest.local_revision,
+        )
+        assert engine.list_conflicts() == []
+        assert len(outbox_rows(profile)) == 1
+        assert games.get_game(game_id)["note"] == intended_note
+        assert games.get_game(game_id)["remote_version"] == 3
+        assert engine.status().last_pulled_version == 2
+        assert engine.run_once().last_pulled_version == 4
+        assert transport.remote_games[conflict.game_sync_id]["note"] == intended_note
+        assert outbox_rows(profile) == []
     games.close()

@@ -123,6 +123,33 @@ def test_repository_corrupt_file_returns_defaults(tmp_path: Path) -> None:
     assert SettingsRepository(path).load() == AppSettings()
 
 
+def test_repository_invalid_utf8_preserves_original_and_warns(tmp_path: Path) -> None:
+    path = tmp_path / "settings.json"
+    original = b"\xff\xfe{\x00}\x00"
+    path.write_bytes(original)
+    repository = SettingsRepository(path)
+    assert repository.load() == AppSettings()
+    assert repository.load_warning is not None
+    assert "점수 입력 방식" in repository.load_warning
+    assert path.read_bytes() == original
+
+
+def test_repository_future_schema_preserves_original_and_warns(tmp_path: Path) -> None:
+    path = tmp_path / "settings.json"
+    original = '{"schema_version":99,"memo_enabled":false}'
+    path.write_text(original, encoding="utf-8")
+    repository = SettingsRepository(path)
+    assert repository.load() == AppSettings()
+    assert repository.load_warning is not None
+    assert path.read_text(encoding="utf-8") == original
+
+
+def test_repository_first_launch_does_not_warn(tmp_path: Path) -> None:
+    repository = SettingsRepository(tmp_path / "settings.json")
+    assert repository.load() == AppSettings()
+    assert repository.load_warning is None
+
+
 def test_repository_non_object_returns_defaults(tmp_path: Path) -> None:
     path = tmp_path / "settings.json"
     path.write_text("[1, 2, 3]", encoding="utf-8")

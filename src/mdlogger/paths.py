@@ -16,9 +16,12 @@ import os
 import shutil
 import sqlite3
 import sys
+import time
 import uuid
 from collections.abc import Mapping
 from pathlib import Path
+
+from .local_reset import recover_pending_resets, sync_directory
 
 
 def _base_dir() -> Path:
@@ -119,37 +122,77 @@ def secure_sidecars(db_path: Path) -> None:
             sidecar.chmod(_PRIVATE_FILE_MODE)
 
 
-def copy_database_via_backup(source: Path, destination: Path) -> None:
+def copy_database_via_backup(
+    source: Path | sqlite3.Connection,
+    destination: Path,
+    *,
+    timeout: float = 5.0,
+) -> None:
     """SQLite DB를 WAL 포함 일관 스냅숏으로 안전하게 복사한다.
 
     WAL 모드 DB를 체크포인트 없이 ``shutil.copy2``로 복사하면 ``-wal``에 남은
     페이지가 복사본에서 유실되어 전체 데이터가 사라질 수 있다(P0-5).
-    ``sqlite3.Connection.backup()``은 원본을 읽기 잠금으로 잠그고 메인 DB+WAL을
-    포함한 일관 스냅숏을 임시 파일에 만든 뒤 원자적으로 ``destination``으로 옮긴다.
+    같은 파일시스템의 비공개 임시 DB를 검증한 뒤 새 경로에 게시한다. 기존 대상은
+    덮어쓰지 않으며 운영 오류를 원시 파일 복사로 숨기지 않는다. 전달한 연결은
+    호출자 소유이고, 경로로 연 읽기 전용 연결은 이 함수가 닫는다.
     """
     temporary_path = destination.with_name(
         f".{destination.name}.{uuid.uuid4().hex}.copy.tmp"
     )
-    source_conn = sqlite3.connect(source)
+    if timeout <= 0:
+        raise ValueError("백업 제한 시간은 양수여야 합니다.")
+    if destination.exists() or destination.is_symlink():
+        raise FileExistsError(destination)
+    owns_connection = not isinstance(source, sqlite3.Connection)
+    source_conn = (
+        sqlite3.connect(
+            f"{source.resolve().as_uri()}?mode=ro", uri=True, timeout=timeout
+        )
+        if isinstance(source, Path)
+        else source
+    )
+    deadline = time.monotonic() + timeout
+
+    def progress(status: int, remaining: int, total: int) -> None:
+        if status != sqlite3.SQLITE_DONE and time.monotonic() >= deadline:
+            raise sqlite3.OperationalError("SQLite 스냅숏의 제한 시간을 초과했습니다.")
+
     try:
+        if source_conn.in_transaction:
+            raise sqlite3.OperationalError(
+                "진행 중인 트랜잭션의 연결은 백업할 수 없습니다."
+            )
         try:
+            with temporary_path.open("xb"):
+                secure_data_file(temporary_path)
             backup_conn = sqlite3.connect(temporary_path)
             try:
-                source_conn.backup(backup_conn)
+                source_conn.backup(
+                    backup_conn, pages=128, progress=progress, sleep=0.05
+                )
+                if backup_conn.execute("PRAGMA integrity_check").fetchall() != [
+                    ("ok",)
+                ]:
+                    raise sqlite3.DatabaseError(
+                        "SQLite 스냅숏의 무결성 검증에 실패했습니다."
+                    )
+                backup_conn.execute("PRAGMA journal_mode=DELETE")
             finally:
                 backup_conn.close()
-            if os.name != "nt":
-                temporary_path.chmod(_PRIVATE_FILE_MODE)
-            os.replace(temporary_path, destination)
-        except sqlite3.DatabaseError:
-            # 유효한 SQLite DB가 아닌(빈/손상) legacy 파일은 바이트 단위로 복사해
-            # 기존 동작을 유지한다. 유효한 DB의 WAL 유실 문제는 위 backup 경로가 해결한다.
-            temporary_path.unlink(missing_ok=True)
-            shutil.copy2(source, destination)
+            with temporary_path.open("r+b") as file:
+                os.fsync(file.fileno())
+            # 하드 링크 게시로 동시에 만들어진 목적지도 덮어쓰지 않는다.
+            os.link(temporary_path, destination)
+            sync_directory(destination.parent)
         finally:
             temporary_path.unlink(missing_ok=True)
+            for suffix in ("-wal", "-shm", "-journal"):
+                temporary_path.with_name(temporary_path.name + suffix).unlink(
+                    missing_ok=True
+                )
     finally:
-        source_conn.close()
+        if owns_connection:
+            source_conn.close()
 
 
 def _secure_data_permissions() -> None:
@@ -190,5 +233,6 @@ def ensure_data_dir() -> None:
     DATA_DIR.mkdir(mode=_PRIVATE_DIR_MODE, parents=True, exist_ok=True)
     if os.name != "nt":
         DATA_DIR.chmod(_PRIVATE_DIR_MODE)
+    recover_pending_resets(DATA_DIR)
     _migrate_legacy_data()
     _secure_data_permissions()

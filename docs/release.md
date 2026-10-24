@@ -7,7 +7,7 @@
 
 ## GitHub Actions 데스크톱 릴리스 초안
 
-데스크톱 릴리스는 `.github/workflows/desktop-release.yml`의 수동 workflow만 사용한다. 지원 대상은 Windows x64 Inno Setup 설치 프로그램과 Linux Flatpak bundle이며, 웹 배포와 Flathub 제출은 이 workflow에 포함하지 않는다. workflow는 GitHub Release를 **draft**로만 만들며, 공개 publish 또는 기존 release·asset 덮어쓰기를 자동으로 수행하지 않는다.
+Windows 전용 릴리스는 `.github/workflows/windows-release.yml`의 **Windows release** 수동 workflow를 사용한다. 기존 `.github/workflows/desktop-release.yml`의 **Desktop release draft**는 Windows·Linux 동시 빌드용으로 그대로 유지한다. Windows 전용 workflow는 Flatpak이나 웹을 빌드·배포하지 않는다. 두 workflow 모두 GitHub Release를 **draft**로만 만들며, 공개 publish 또는 기존 release·asset 덮어쓰기를 자동으로 수행하지 않는다.
 
 ### 최초 설정: GitHub Environment
 
@@ -16,9 +16,11 @@
 | Environment             | 용도                                                                | 필요한 설정                                                                                                                                                                                 |
 | ----------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `desktop-release-build` | Windows·Flatpak 빌드에서 앱에 포함할 publishable Supabase 설정 제공 | Variables에 `MDLOGGER_SUPABASE_URL`, `MDLOGGER_SUPABASE_ANON_KEY`를 설정한다. 둘 다 앱에 포함 가능한 publishable 값이어야 하며 service-role/secret key는 금지한다. 승인 규칙은 두지 않는다. |
-| `desktop-release`       | 검증된 asset으로 GitHub Release draft를 만드는 마지막 job           | repository owner를 승인자로 설정한다. Variables와 Secrets는 필요 없다. 이 job만 `contents: write` 권한을 가진다.                                                                            |
+| `desktop-release`       | Windows 업데이트 서명 및 검증된 asset으로 GitHub Release draft 생성 | repository owner를 승인자로 설정한다. `MDLOGGER_UPDATE_SIGNING_KEY` Secret에 전용 RSA 개인 키의 PEM을 보관한다. 마지막 job만 `contents: write` 권한을 가진다. |
 
 첫 릴리스 범위에서는 Windows installer에 코드 서명을 하지 않는다. 인증서를 구매하거나 GitHub에 보관하지 않는다. 따라서 사용자는 Windows SmartScreen 경고를 볼 수 있으며, 이 상태를 release 검토 시 확인한다. 코드 서명 도입은 인증서 공급자·보관 방법·SmartScreen 운영 정책이 정해진 별도 작업으로 진행한다.
+
+업데이트 manifest 서명은 Authenticode 코드 서명과 별개다. RSA 3072비트, SHA-256, PKCS#1 v1.5로 **파일에 기록한 UTF-8 원문 바이트**를 서명한다. 개인 키는 위 보호된 Environment의 서명 단계에만 주입하며 파일, 명령행 인수, 로그, artifact에 기록하지 않는다. 번들에는 `src/mdlogger/data/update-trusted-keys.json`의 공개 키만 포함한다. 개인 키가 없거나 공개 키와 일치하지 않으면 릴리스를 중단한다. 공개 키 교체는 새 키를 신뢰하는 앱을 기존 키로 먼저 배포해야 하며, 네트워크로 받은 키를 자동 신뢰하지 않는다.
 
 ### 실행 전 tag 계약
 
@@ -33,6 +35,30 @@ git push origin v1.2.3
 
 ### 수동 workflow 실행
 
+Windows 전용 v2.1.0 릴리스:
+
+1. **Windows release**를 선택하고 existing annotated `v2.1.0` tag와 `create_draft`를 입력한다.
+2. `prepare`는 깨끗한 tag checkout의 버전·tag 객체를 확인하고 정확한 commit으로 source archive를 만든다.
+3. Windows job은 artifact ID로 받은 archive의 checksum을 검증한 뒤 새 환경에서 `uv sync --locked --group dev`, Ruff, ty, 전체 로컬 pytest, 라이선스 검사와 의존성 감사를 실행한다. 실제 원격 서비스를 호출하는 `tests/integration`은 제외한다.
+4. 독립 .NET Framework helper를 빌드하고 PyInstaller와 Inno Setup을 실행한다. 관리자 권한 설치, HKLM 설치 등록, 설치된 helper 동일성, 무인 재설치, 실제 설치된 앱의 오프라인 시작·정상 종료, 법률 문서·secret scan·checksum을 검사한다.
+5. 보호된 `desktop-release` job이 동일 source와 artifact의 provenance를 다시 확인하고 업데이트 manifest를 서명한다. Python 없이 별도 디렉터리에 복사한 native helper로 정상 서명, manifest 원문 변조, 설치 파일 변조, 서명 누락을 검증한다.
+6. `create_draft=true`인 경우 원격 annotated tag 객체가 그대로인지 다시 확인하고 초안만 만든다. `false`여도 승인된 서명 단계와 artifact 검증은 수행하지만 GitHub Release는 만들지 않는다.
+
+Windows 전용 공개 asset은 다음 4개다. 서명된 metadata도 설치 프로그램과 **같은 release에 함께 공개**해야 한다.
+
+```text
+MDLoggerSetup-<version>.exe
+MDLoggerSetup-<version>.exe.sha256
+MDLogger-<version>-update.json
+MDLogger-<version>-update.json.sig
+```
+
+Manifest는 `schema`, `key_id`, `version`, `platform: windows-x64`, `issued_at`, `expires_at`와 설치 파일의 `name`, 고정 GitHub 저장소 URL, `size`, `sha256`을 포함한다. `.sig`는 `schema`, `key_id`, base64 `signature`를 담은 JSON이다. 시간은 UTC 초 단위이며 기본 유효기간은 서명부터 90일, 최대 366일이다. 만료되거나 서명이 없으면 앱은 설치를 거부한다. 초안 검토가 길어져 유효기간이 부족하면 기존 asset을 덮어쓰지 말고 새 버전으로 다시 빌드한다. SHA-256 sidecar만으로 서명을 대신하지 않는다.
+
+`windows-signed-release-<run_id>` artifact의 `windows-release-provenance.json`에는 source/tag identity, installer/helper hash, 공개 키 hash, 설치 검증 기록이 남는다. private key와 사용자 데이터는 포함하지 않는다. 자동화의 재설치 검사는 실행 중 앱의 전체 업데이트 인계와 다르다. 공개 전 별도 Windows 테스트 계정에서 앱 종료 대기, UAC 취소, 실제 업데이트 후 원래 사용자 권한 재실행, 시작 확인 실패·복구 안내, 기록 보존을 확인한다.
+
+기존 Windows·Linux 동시 빌드 절차:
+
 1. GitHub Actions에서 **Desktop release draft**를 선택하고 **Run workflow**를 누른다.
 2. `tag`에 검증할 existing annotated tag를 입력한다.
 3. 처음에는 `create_draft=false`로 실행해 Windows installer·Flatpak bundle·source archive artifact만 검토할 수 있다. 이 경우 GitHub Release는 만들지 않는다.
@@ -44,7 +70,7 @@ git push origin v1.2.3
 
 자동 생성되는 release body에는 `변경 사항` 섹션만 들어 있다. `변경 사항` 섹션에는 **직전 릴리스 대비 사용자에게 보이는 변경 사항만** 작성한다. 그 밖의 기술 정보, 플랫폼별 checksum, source 상태, 검증 결과와 체크리스트는 release manifest와 이 문서에만 유지한다. 소유자는 AI 에이전트가 준비한 tag 비교 요약을 참고할 수 있지만, 공개할 문구와 publish 결정은 소유자가 최종 승인한다.
 
-workflow가 GitHub Release draft에 업로드하는 사용자 배포용 asset은 다음 4개다.
+기존 **Desktop release draft** workflow가 GitHub Release draft에 업로드하는 사용자 배포용 asset은 다음 4개다. 이 경로는 서명된 업데이트 metadata를 만들지 않으므로 Windows 앱 내 업데이트 배포에는 사용하지 않는다.
 
 ```text
 MDLoggerSetup-<version>.exe
@@ -57,12 +83,19 @@ MDLogger 자체의 소스 아카이브는 GitHub Release가 자동으로 첨부�
 
 공개 전에는 다음을 확인한다.
 
-- installer, Flatpak bundle, source archive의 `.sha256`이 manifest와 일치하는지
-- Windows와 Linux 환경에서 설치·실행·법률 문서 열기가 가능한지
+- 해당 릴리스의 installer, source archive 및 Flatpak이 있는 경우 bundle의 `.sha256`이 manifest와 일치하는지
+- 배포 대상 환경에서 설치·실행·법률 문서 열기가 가능한지
+- Windows 전용 릴리스의 업데이트 manifest·서명과 실제 installer가 일치하고 만료되지 않았는지
 - Windows installer가 unsigned임과 SmartScreen 안내가 현재 정책에 맞는지
 - `변경 사항` 섹션이 사용자용 변경 사항만 포함하는지
 
 모든 항목을 확인한 뒤에만 GitHub Release 화면에서 draft를 publish한다. draft 생성이나 asset upload가 실패하면 workflow는 자동으로 재시도하거나 asset을 교체하지 않는다. 소유자가 draft를 유지 또는 삭제하고 원인을 고친 뒤, **새 commit과 새 annotated tag**로 다시 시작한다.
+
+v2.0.0에는 업데이트 기능이 없어 v2.1.0으로 처음 전환할 때는 수동 설치가 필요하다. 이후 Windows 설치판은 시작 후 비차단 방식으로 한 번 자동 확인하며, 사용자가 직접 확인할 수도 있다. 다운로드·설치는 사용자 요청 후 진행한다. 공개된 정식 릴리스만 확인하며 초안·사전 릴리스는 설치 대상으로 삼지 않는다. Program Files 관리자 설치를 유지하므로 UAC 동의가 필요할 수 있고, 앱 재시작과 PC 재부팅은 별개다. 이 배포는 기존 클라이언트의 최소 허용 버전을 올리지 않는다. Linux는 기존 수동 Flatpak 설치를 유지하며, GitHub bundle 배포만으로 자동 업데이트용 MDLogger remote가 생기지는 않는다.
+
+### v2.1.0 서버 호환성
+
+웹 저장 재시도와 전체 기록 조회는 `0030_idempotent_game_creates.sql`, `0031_web_read_models.sql`을 먼저 적용한다. 기존 schema 1 / payload 2 요청과 응답 상태는 유지한다. 최소 지원 버전을 변경하는 별도 정책 migration을 함께 적용하지 않는다. 이번 운영 반영에서는 기존에 미적용 상태였던 `0029_release_policy_v100.sql`을 제외하고 0030·0031만 실행한 뒤 실제 적용한 두 버전의 이력을 등록했다. 이 번호 공백을 해소한다는 이유로 0029를 실행하거나 실행하지 않은 migration을 적용된 것으로 표시하지 않는다. 다음 배포에서도 `supabase migration list --linked`와 `supabase db push --linked --dry-run`으로 대상과 정책 영향을 먼저 확인한다.
 
 ## 제3자 라이선스 산출물 갱신
 
@@ -213,6 +246,7 @@ Windows에서 PowerShell을 열고 프로젝트 루트에서 실행한다. 배�
 uv run python scripts/generate_build_config.py
 uv run python scripts/generate_desktop_licenses.py --check
 
+pwsh -NoProfile -File scripts/update/build_helper.ps1
 uv run pyinstaller --noconfirm --clean MDLogger.spec
 ```
 
@@ -220,6 +254,7 @@ uv run pyinstaller --noconfirm --clean MDLogger.spec
 
 ```text
 dist\MDLogger\MDLogger.exe
+dist\MDLogger\MDLoggerUpdate.exe
 dist\MDLogger\_internal\
 ```
 
@@ -246,7 +281,7 @@ $palettes = Get-ChildItem dist\MDLogger -Recurse -File |
 if ($palettes) { throw "라이선스 미확인 palette가 포함되었습니다." }
 ```
 
-`build\MDLogger\Analysis-00.toc`, `build\MDLogger\COLLECT-00.toc`와 `dist\MDLogger`의 Qt DLL·plugin 목록도 확인한다. Windows 배포 폴더에는 Linux 전용 런타임·고지(`qtwebengine`, `qtmultimedia`, `cryptography` 등)와 내부 CI 인벤토리(`licenses/inventory/`)를 포함하지 않는다.
+`build\MDLogger\Analysis-00.toc`, `build\MDLogger\COLLECT-00.toc`와 `dist\MDLogger`의 Qt DLL·plugin 목록도 확인한다. Windows 배포 폴더에는 사용하지 않는 `qtwebengine`, `qtmultimedia`, Linux 전용 SecretStorage·jeepney·ICU 고지와 내부 CI 인벤토리(`licenses/inventory/`)를 포함하지 않는다. 업데이트 서명 검증에 쓰는 `cryptography`, `cffi`, `pycparser`의 법률 원문은 포함한다. 기존 `cryptography` SBOM은 Linux Python 3.14 wheel 증거이므로 Windows 배포에는 넣지 않는다.
 
 ### 설치 프로그램 생성 (Inno Setup)
 

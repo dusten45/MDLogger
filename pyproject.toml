@@ -11,6 +11,7 @@ dependencies = [
     "numpy>=2.5.4,<3",  # NumPy 1→2 ABI 경계를 넘지 않는다(하드닝 N-6)
     "openpyxl>=3.1.5,<4",
     "keyring>=25.7.0,<27",
+    "cryptography>=50.0.2",
 ]
 
 [project.scripts]

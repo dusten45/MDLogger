@@ -1,0 +1,305 @@
+name: Windows release
+
+on:
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: "빌드할 기존 annotated tag (예: v2.1.0)"
+                required: true
+                type: string
+            create_draft:
+                description: "검증 및 서명 후 GitHub Release 초안 생성"
+                required: true
+                default: true
+                type: boolean
+
+permissions:
+    contents: read
+
+concurrency:
+    group: desktop-release-${{ inputs.tag }}
+    cancel-in-progress: false
+
+jobs:
+    prepare:
+        name: Validate immutable Windows release source
+        if: github.repository == 'dusten45/MDLogger'
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        outputs:
+            tag: ${{ steps.context.outputs.tag }}
+            version: ${{ steps.context.outputs.version }}
+            tag_object_sha: ${{ steps.context.outputs.tag_object_sha }}
+            commit_sha: ${{ steps.context.outputs.commit_sha }}
+            artifact_id: ${{ steps.inputs.outputs.artifact-id }}
+        steps:
+            - name: Check out existing annotated tag
+              uses: actions/checkout@v7.0.1
+              with:
+                  ref: ${{ inputs.tag }}
+                  fetch-depth: 0
+                  persist-credentials: false
+
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v10.3.2
+              with:
+                  version: "0.13.5"
+                  python-version: "3.15.1"
+
+            - name: Validate tag and create immutable source archive
+              env:
+                  RELEASE_TAG: ${{ inputs.tag }}
+              run: |
+                  python scripts/release/validate_release_version.py \
+                    --tag "$RELEASE_TAG" --windows-update --output "$RUNNER_TEMP/release-inputs/release-context.json"
+                  python scripts/release/create_source_archive.py \
+                    --context "$RUNNER_TEMP/release-inputs/release-context.json" \
+                    --output-dir "$RUNNER_TEMP/release-inputs"
+
+            - name: Export validated release identity
+              id: context
+              run: |
+                  python - "$RUNNER_TEMP/release-inputs/release-context.json" >> "$GITHUB_OUTPUT" <<'PY'
+                  import json
+                  import sys
+                  from pathlib import Path
+
+                  context = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+                  for name in ("tag", "version", "tag_object_sha", "commit_sha"):
+                      print(f"{name}={context[name]}")
+                  PY
+
+            - name: Upload immutable build inputs
+              id: inputs
+              uses: actions/upload-artifact@v7.0.2
+              with:
+                  name: windows-inputs-${{ github.run_id }}
+                  path: ${{ runner.temp }}/release-inputs
+                  if-no-files-found: error
+                  retention-days: 30
+
+    windows:
+        name: Build and verify Windows x64 installer
+        needs: prepare
+        runs-on: windows-latest
+        timeout-minutes: 60
+        environment: desktop-release-build
+        outputs:
+            artifact_id: ${{ steps.artifacts.outputs.artifact-id }}
+        defaults:
+            run:
+                shell: pwsh
+                working-directory: ${{ github.workspace }}/.release-work/source/MDLogger-${{ needs.prepare.outputs.version }}
+        env:
+            RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+            RELEASE_INPUTS: ${{ github.workspace }}/.release-work/inputs
+            RELEASE_SOURCE: ${{ github.workspace }}/.release-work/source/MDLogger-${{ needs.prepare.outputs.version }}
+            MDLOGGER_DATA_DIR: ${{ runner.temp }}/mdlogger-release-tests
+            MDLOGGER_DECKS_URL: ""
+            QT_QPA_PLATFORM: offscreen
+            PYTHONDONTWRITEBYTECODE: "1"
+        steps:
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v10.3.2
+              with:
+                  version: "0.13.5"
+                  python-version: "3.15.1"
+
+            - name: Download immutable build inputs
+              uses: actions/download-artifact@v8.0.2
+              with:
+                  artifact-ids: ${{ needs.prepare.outputs.artifact_id }}
+                  path: ${{ env.RELEASE_INPUTS }}
+
+            - name: Verify and extract immutable source archive
+              working-directory: ${{ github.workspace }}
+              run: |
+                  $archive = Join-Path $env:RELEASE_INPUTS "MDLogger-$env:RELEASE_VERSION-source.tar.gz"
+                  $digest = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+                  $sidecar = [IO.File]::ReadAllText("$archive.sha256").Replace("`r`n", "`n")
+                  if ($sidecar -cne "$digest  $([IO.Path]::GetFileName($archive))`n") { throw "Source archive checksum mismatch" }
+                  $parent = Split-Path -Parent $env:RELEASE_SOURCE
+                  New-Item -ItemType Directory -Force -Path $parent, $env:MDLOGGER_DATA_DIR | Out-Null
+                  tar -xzf $archive -C $parent
+                  if ($LASTEXITCODE -ne 0) { throw "Source extraction failed" }
+
+            - name: Install fresh locked development dependencies
+              run: uv sync --locked --group dev
+
+            - name: Run source quality and offline regression gates
+              run: |
+                  uv run ruff check .
+                  if ($LASTEXITCODE -ne 0) { throw "Ruff check failed" }
+                  uv run ruff format --check .
+                  if ($LASTEXITCODE -ne 0) { throw "Ruff format failed" }
+                  uv run ty check
+                  if ($LASTEXITCODE -ne 0) { throw "Type check failed" }
+                  uv run pytest --ignore=tests/integration
+                  if ($LASTEXITCODE -ne 0) { throw "Offline tests failed" }
+                  ./tests/test_inno_setup.ps1
+
+            - name: Verify committed desktop license artifacts
+              run: |
+                  uv run python scripts/generate_desktop_licenses.py --check
+                  if ($LASTEXITCODE -ne 0) { throw "License verification failed" }
+                  uv run python -c "from cryptography.hazmat.backends.openssl.backend import backend; assert backend.openssl_version_text().split()[1] == '4.0.3', 'Review the Windows cryptography OpenSSL license inventory'"
+                  if ($LASTEXITCODE -ne 0) { throw "Windows OpenSSL evidence changed" }
+
+            - name: Audit locked Windows dependencies
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  site_packages="$(uv run python -c 'import sysconfig; from pathlib import Path; print(Path(sysconfig.get_path("purelib")).as_posix())')"
+                  test -d "$site_packages"
+                  uvx pip-audit==2.10.1 --path "$site_packages" --skip-editable
+
+            - name: Generate publishable bundled configuration
+              env:
+                  MDLOGGER_SUPABASE_URL: ${{ vars.MDLOGGER_SUPABASE_URL }}
+                  MDLOGGER_SUPABASE_ANON_KEY: ${{ vars.MDLOGGER_SUPABASE_ANON_KEY }}
+              run: |
+                  if ([string]::IsNullOrWhiteSpace($env:MDLOGGER_SUPABASE_URL) -or [string]::IsNullOrWhiteSpace($env:MDLOGGER_SUPABASE_ANON_KEY)) {
+                    throw "desktop-release-build requires publishable Supabase variables"
+                  }
+                  uv run python scripts/generate_build_config.py
+                  if ($LASTEXITCODE -ne 0) { throw "Bundled configuration generation failed" }
+
+            - name: Build independent native update helper
+              run: |
+                  pwsh -NoProfile -File scripts/update/build_helper.ps1
+                  if ($LASTEXITCODE -ne 0) { throw "Native helper compilation failed" }
+
+            - name: Build PyInstaller onedir payload
+              run: uv run pyinstaller --noconfirm --clean MDLogger.spec
+
+            - name: Install Inno Setup
+              run: ./scripts/ensure_inno_setup.ps1
+
+            - name: Compile versioned administrator installer
+              run: |
+                  & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$env:RELEASE_VERSION" scripts\installer_windows.iss
+                  if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed" }
+
+            - name: Verify administrator installation and standalone helper
+              run: |
+                  $installer = Join-Path $env:RELEASE_SOURCE "dist\installer\MDLoggerSetup-$env:RELEASE_VERSION.exe"
+                  $record = Join-Path $env:RELEASE_SOURCE "dist\installer\windows-verification.json"
+                  pwsh -NoProfile -File scripts/release/verify_windows_release.ps1 `
+                    -Onedir "dist/MDLogger" -BuildDirectory "build/MDLogger" `
+                    -Installer $installer -Version $env:RELEASE_VERSION `
+                    -InstallRoot (Join-Path $env:RUNNER_TEMP "MDLogger-installed-payload") `
+                    -Record $record -VerifyUpdater
+                  if ($LASTEXITCODE -ne 0) { throw "Windows release verification failed" }
+                  Copy-Item -LiteralPath "dist/MDLogger/MDLoggerUpdate.exe" -Destination "dist/installer/MDLoggerUpdate.exe"
+
+            - name: Upload verified Windows build artifacts
+              id: artifacts
+              uses: actions/upload-artifact@v7.0.2
+              with:
+                  name: windows-build-${{ github.run_id }}
+                  path: |
+                      ${{ env.RELEASE_SOURCE }}/dist/installer/MDLoggerSetup-${{ env.RELEASE_VERSION }}.exe
+                      ${{ env.RELEASE_SOURCE }}/dist/installer/MDLoggerSetup-${{ env.RELEASE_VERSION }}.exe.sha256
+                      ${{ env.RELEASE_SOURCE }}/dist/installer/windows-verification.json
+                      ${{ env.RELEASE_SOURCE }}/dist/installer/windows-update-verification.json
+                      ${{ env.RELEASE_SOURCE }}/dist/installer/MDLoggerUpdate.exe
+                  if-no-files-found: error
+                  retention-days: 30
+
+    sign-and-draft:
+        name: Sign verified Windows assets and create draft
+        needs: [prepare, windows]
+        runs-on: windows-latest
+        timeout-minutes: 30
+        environment: desktop-release
+        permissions:
+            contents: write
+        defaults:
+            run:
+                shell: pwsh
+                working-directory: ${{ github.workspace }}/.release-work/source/MDLogger-${{ needs.prepare.outputs.version }}
+        env:
+            RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+            RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+            TAG_OBJECT_SHA: ${{ needs.prepare.outputs.tag_object_sha }}
+            RELEASE_INPUTS: ${{ github.workspace }}/.release-work/inputs
+            RELEASE_SOURCE: ${{ github.workspace }}/.release-work/source/MDLogger-${{ needs.prepare.outputs.version }}
+            WINDOWS_ARTIFACTS: ${{ github.workspace }}/.release-work/windows
+            RELEASE_ASSETS: ${{ github.workspace }}/.release-work/assets
+        steps:
+            - name: Set up uv
+              uses: astral-sh/setup-uv@v10.3.2
+              with:
+                  version: "0.13.5"
+                  python-version: "3.15.1"
+
+            - name: Download immutable build inputs
+              uses: actions/download-artifact@v8.0.2
+              with:
+                  artifact-ids: ${{ needs.prepare.outputs.artifact_id }}
+                  path: ${{ env.RELEASE_INPUTS }}
+
+            - name: Download verified Windows artifacts
+              uses: actions/download-artifact@v8.0.2
+              with:
+                  artifact-ids: ${{ needs.windows.outputs.artifact_id }}
+                  path: ${{ env.WINDOWS_ARTIFACTS }}
+
+            - name: Verify and extract immutable source archive
+              working-directory: ${{ github.workspace }}
+              run: |
+                  $archive = Join-Path $env:RELEASE_INPUTS "MDLogger-$env:RELEASE_VERSION-source.tar.gz"
+                  $digest = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+                  $sidecar = [IO.File]::ReadAllText("$archive.sha256").Replace("`r`n", "`n")
+                  if ($sidecar -cne "$digest  $([IO.Path]::GetFileName($archive))`n") { throw "Source archive checksum mismatch" }
+                  $parent = Split-Path -Parent $env:RELEASE_SOURCE
+                  New-Item -ItemType Directory -Force -Path $parent | Out-Null
+                  tar -xzf $archive -C $parent
+                  if ($LASTEXITCODE -ne 0) { throw "Source extraction failed" }
+
+            - name: Install source-locked signing dependencies
+              run: uv sync --locked --no-dev
+
+            - name: Recheck provenance and sign update manifest
+              env:
+                  MDLOGGER_UPDATE_SIGNING_KEY: ${{ secrets.MDLOGGER_UPDATE_SIGNING_KEY }}
+              run: |
+                  uv run --no-sync --no-dev python -m scripts.release.windows_release assemble `
+                    --inputs $env:RELEASE_INPUTS --artifacts $env:WINDOWS_ARTIFACTS --output $env:RELEASE_ASSETS
+                  if ($LASTEXITCODE -ne 0) { throw "Signed release assembly failed" }
+
+            - name: Independently verify signatures with native helper
+              run: |
+                  pwsh -NoProfile -File scripts/release/verify_windows_update_signature.ps1 `
+                    -Helper (Join-Path $env:WINDOWS_ARTIFACTS "MDLoggerUpdate.exe") `
+                    -Assets $env:RELEASE_ASSETS -Version $env:RELEASE_VERSION
+                  if ($LASTEXITCODE -ne 0) { throw "Native signed-update verification failed" }
+
+            - name: Upload signed release assets and provenance
+              uses: actions/upload-artifact@v7.0.2
+              with:
+                  name: windows-signed-release-${{ github.run_id }}
+                  path: ${{ env.RELEASE_ASSETS }}
+                  if-no-files-found: error
+                  retention-days: 30
+
+            - name: Recheck remote annotated tag and create draft only
+              if: ${{ inputs.create_draft }}
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  $remote = gh api "repos/$env:GITHUB_REPOSITORY/git/ref/tags/$env:RELEASE_TAG" | ConvertFrom-Json
+                  if ($LASTEXITCODE -ne 0 -or $remote.object.type -cne "tag" -or $remote.object.sha -cne $env:TAG_OBJECT_SHA) {
+                    throw "Remote annotated tag changed after validation"
+                  }
+                  gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json id 2>$null
+                  if ($LASTEXITCODE -eq 0) { throw "Release already exists; refusing to overwrite it" }
+                  $notes = Join-Path $env:RUNNER_TEMP "windows-release-notes.txt"
+                  [IO.File]::WriteAllText($notes, "## 변경 사항`n`n<!-- 공개 전에 사용자용 변경 사항을 작성합니다. -->`n")
+                  gh release create $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --verify-tag --draft `
+                    --title "MDLogger v$env:RELEASE_VERSION" --notes-file $notes `
+                    "$env:RELEASE_ASSETS/MDLoggerSetup-$env:RELEASE_VERSION.exe" `
+                    "$env:RELEASE_ASSETS/MDLoggerSetup-$env:RELEASE_VERSION.exe.sha256" `
+                    "$env:RELEASE_ASSETS/MDLogger-$env:RELEASE_VERSION-update.json" `
+                    "$env:RELEASE_ASSETS/MDLogger-$env:RELEASE_VERSION-update.json.sig"
+                  if ($LASTEXITCODE -ne 0) { throw "Draft release creation failed" }

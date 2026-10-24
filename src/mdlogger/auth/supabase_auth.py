@@ -7,6 +7,9 @@ token 만료, 요청 제한(rate limit), 서버 거부로 분류한다(로드맵
 
 from __future__ import annotations
 
+import math
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 from ..remote.client import HttpResponse, JsonHttpClient
@@ -147,10 +150,7 @@ class SupabaseAccountService(AccountService):
                 code="target_mismatch",
             )
         if response.status == 429:
-            raise AuthError(
-                AuthErrorKind.RATE_LIMITED,
-                "요청이 너무 잦아 잠시 제한됐습니다. 잠시 후 다시 시도해 주세요.",
-            )
+            raise self._classify_error(response)
         if response.status >= 400:
             raise AuthError(
                 AuthErrorKind.SERVER_REJECTED,
@@ -200,10 +200,7 @@ class SupabaseAccountService(AccountService):
                 code="target_mismatch",
             )
         if response.status == 429:
-            raise AuthError(
-                AuthErrorKind.RATE_LIMITED,
-                "요청이 너무 잦아 잠시 제한됐습니다. 잠시 후 다시 시도해 주세요.",
-            )
+            raise self._classify_error(response)
         if response.status >= 400:
             raise AuthError(
                 AuthErrorKind.SERVER_REJECTED,
@@ -362,6 +359,7 @@ class SupabaseAccountService(AccountService):
                 AuthErrorKind.RATE_LIMITED,
                 "요청이 너무 잦아 잠시 제한됐습니다. 잠시 후 다시 시도해 주세요.",
                 code=code,
+                retry_after_seconds=_retry_after_seconds(response, body),
             )
         if code in _EMAIL_UNVERIFIED_CODES:
             return AuthError(
@@ -427,3 +425,33 @@ class SupabaseAccountService(AccountService):
             raise AuthError(
                 AuthErrorKind.SERVER_REJECTED, "사용자 응답 형식이 올바르지 않습니다."
             ) from error
+
+
+def _retry_after_seconds(response: HttpResponse, body: dict) -> int | None:
+    """본문과 Retry-After가 함께 있으면 더 긴 서버 대기 시간을 지킨다."""
+    delays: list[int] = []
+    value = body.get("retry_after_seconds")
+    if type(value) is int and value >= 0:
+        delays.append(value)
+    header = next(
+        (
+            value
+            for name, value in response.headers.items()
+            if name.lower() == "retry-after"
+        ),
+        None,
+    )
+    if header is not None:
+        try:
+            seconds = int(header)
+        except (ValueError, TypeError):
+            try:
+                until = parsedate_to_datetime(header)
+                if until.tzinfo is None:
+                    until = until.replace(tzinfo=UTC)
+                seconds = math.ceil((until - datetime.now(UTC)).total_seconds())
+            except (ValueError, TypeError, OverflowError):
+                seconds = -1
+        if seconds >= 0:
+            delays.append(seconds)
+    return max(delays) if delays else None

@@ -93,6 +93,11 @@ class MainWindow(QMainWindow):
     def profile(self) -> ProfileContext | None:
         return self._profile
 
+    @property
+    def has_pending_record(self) -> bool:
+        """업데이트나 프로필 정리 중 입력 화면을 조용히 버리지 않는다."""
+        return self._stack.currentWidget() is self._detail_scroll
+
     def set_sync_coordinator(self, coordinator: SyncCoordinator) -> None:
         self._sync = coordinator
         self._sync_status = coordinator.status

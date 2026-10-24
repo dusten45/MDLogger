@@ -68,12 +68,17 @@ class FakeSync:
         merged_payload: dict | None = None,
         *,
         expected_remote_version: int | None = None,
-    ) -> None:
-        pass
+        expected_local_revision: str,
+    ) -> str:
+        return "resolution-request"
 
     def stop(self, *, timeout_seconds: float = 5.0) -> bool:
         self.stopped = True
         return True
+
+    def resume(self) -> None:
+        self.stopped = False
+        self.start()
 
 
 class TrackingWindow:

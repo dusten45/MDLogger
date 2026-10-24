@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .. import __version__
+from ..auth.session_manager import SessionManager, SessionState
 from ..profiles import ProfileContext, ProfileKind
 from ..remote.games import (
     RegisteredGamesClient,
@@ -22,7 +23,7 @@ from ..remote.guest_ingest import (
     build_observation,
     build_withdrawal,
 )
-from .models import OutboxEntry, SyncConflict, SyncPhase, SyncStatus
+from .models import OutboxEntry, StaleConflictError, SyncConflict, SyncPhase, SyncStatus
 from .modes import GameModesClient, GameModesError
 from .repository import SyncRepository
 
@@ -43,6 +44,8 @@ class SyncEngine:
         modes_client: GameModesClient | None = None,
         token_provider: TokenProvider | None = None,
         token_refresher: TokenRefresher | None = None,
+        session_manager: SessionManager | None = None,
+        can_sync: Callable[[], bool] | None = None,
         repository_factory: Callable[[Path], SyncRepository] = SyncRepository.open,
         now: Callable[[], datetime] = datetime.now,
     ) -> None:
@@ -52,6 +55,8 @@ class SyncEngine:
         self._modes_client = modes_client
         self._token_provider = token_provider
         self._token_refresher = token_refresher
+        self._session_manager = session_manager
+        self._can_sync = can_sync or (lambda: True)
         self._repository_factory = repository_factory
         self._now = now
 
@@ -86,14 +91,55 @@ class SyncEngine:
         merged_payload: dict | None = None,
         *,
         expected_remote_version: int | None = None,
+        expected_local_revision: str,
+        is_cancelled: Callable[[], bool] | None = None,
     ) -> None:
         repository = self._repository_factory(self._profile.database_path)
         try:
+            self._require_online()
+            client = self._registered_client
+            if client is None:
+                raise RegisteredGamesError(
+                    RegisteredGamesErrorKind.NETWORK,
+                    "서버를 확인할 수 없어 충돌 해결을 보류했습니다.",
+                )
+            conflict = next(
+                (
+                    item
+                    for item in repository.list_conflicts()
+                    if item.id == conflict_id
+                ),
+                None,
+            )
+            if conflict is None or conflict.local_revision != expected_local_revision:
+                raise StaleConflictError(
+                    "충돌 내용이 변경되었습니다. 최신 내용을 확인해 주세요."
+                )
+            token = self._access_token()
+            if not token:
+                raise self._missing_session_error()
+            try:
+                remote = client.fetch_game(conflict.game_sync_id, access_token=token)
+            except RegisteredGamesError as error:
+                if error.kind is not RegisteredGamesErrorKind.AUTH_REQUIRED:
+                    raise
+                token = self._access_token(rejected_access_token=token)
+                if not token:
+                    raise self._missing_session_error() from error
+                remote = client.fetch_game(conflict.game_sync_id, access_token=token)
+            self._require_online()
+            if is_cancelled is not None and is_cancelled():
+                raise RegisteredGamesError(
+                    RegisteredGamesErrorKind.NETWORK,
+                    "프로필을 닫아 충돌 해결을 취소했습니다.",
+                )
             repository.resolve_conflict(
                 conflict_id,
                 resolution,
                 merged_payload,
                 expected_remote_version=expected_remote_version,
+                expected_local_revision=expected_local_revision,
+                fresh_remote=remote,
             )
         finally:
             repository.close()
@@ -101,6 +147,8 @@ class SyncEngine:
     def run_once(self) -> SyncStatus:
         repository = self._repository_factory(self._profile.database_path)
         try:
+            if not self._can_sync():
+                return repository.status(phase=SyncPhase.OFFLINE)
             entries = repository.fetch_due(limit=BATCH_SIZE, now=self._now())
             if self._profile.kind is ProfileKind.GUEST:
                 if not entries:
@@ -191,31 +239,84 @@ class SyncEngine:
         self, repository: SyncRepository, entries: list[OutboxEntry]
     ) -> SyncStatus:
         client = self._registered_client
-        if client is None or self._token_provider is None:
+        if client is None or (
+            self._token_provider is None and self._session_manager is None
+        ):
             return repository.status(phase=SyncPhase.OFFLINE)
-        token = self._token_provider()
+        token = self._access_token()
         if not token:
-            return repository.status(phase=SyncPhase.REAUTH_REQUIRED)
+            return repository.status(phase=self._authentication_phase())
         try:
             self._registered_cycle(repository, entries, token)
         except RegisteredGamesError as error:
-            if (
-                error.kind is RegisteredGamesErrorKind.AUTH_REQUIRED
-                and self._token_refresher is not None
+            if error.kind is RegisteredGamesErrorKind.AUTH_REQUIRED and (
+                self._token_refresher is not None or self._session_manager is not None
             ):
-                refreshed = self._token_refresher()
+                refreshed = self._access_token(rejected_access_token=token)
                 if refreshed:
                     try:
-                        self._registered_cycle(repository, entries, refreshed)
+                        remaining = repository.fetch_due(
+                            limit=BATCH_SIZE, now=self._now()
+                        )
+                        self._registered_cycle(repository, remaining, refreshed)
                     except RegisteredGamesError as retry_error:
                         return self._record_registered_failure(
                             repository, entries, retry_error
                         )
                 else:
-                    return repository.status(phase=SyncPhase.REAUTH_REQUIRED)
+                    return repository.status(phase=self._authentication_phase())
             else:
                 return self._record_registered_failure(repository, entries, error)
         return repository.status(require_initial_sync=True)
+
+    def _access_token(self, *, rejected_access_token: str | None = None) -> str | None:
+        self._require_online()
+        if self._session_manager is not None:
+            account_id = self._profile.remote_user_id
+            if account_id is None:
+                return None
+            snapshot = self._session_manager.session_for_sync(
+                account_id, rejected_access_token=rejected_access_token
+            )
+            if (
+                snapshot.state is SessionState.AUTHENTICATED
+                and snapshot.session is not None
+            ):
+                return snapshot.session.tokens.access_token
+            return None
+        token = self._token_provider() if self._token_provider is not None else None
+        if (
+            not token or rejected_access_token is not None
+        ) and self._token_refresher is not None:
+            return self._token_refresher()
+        return token
+
+    def _authentication_phase(self) -> SyncPhase:
+        if (
+            self._session_manager is not None
+            and self._session_manager.state is SessionState.OFFLINE
+        ):
+            return SyncPhase.OFFLINE
+        return SyncPhase.REAUTH_REQUIRED
+
+    def _missing_session_error(self) -> RegisteredGamesError:
+        if self._authentication_phase() is SyncPhase.OFFLINE:
+            return RegisteredGamesError(
+                RegisteredGamesErrorKind.NETWORK,
+                "세션을 확인할 수 없어 충돌 해결을 보류했습니다.",
+            )
+        return RegisteredGamesError(
+            RegisteredGamesErrorKind.AUTH_REQUIRED,
+            "다시 로그인한 뒤 충돌을 해결해 주세요.",
+        )
+
+    def _require_online(self) -> None:
+        if not self._can_sync():
+            raise RegisteredGamesError(
+                RegisteredGamesErrorKind.NETWORK,
+                "현재 프로필에서는 온라인 동기화를 사용할 수 없습니다.",
+                code="online_disabled",
+            )
 
     def _registered_cycle(
         self,
@@ -226,6 +327,7 @@ class SyncEngine:
         client = self._registered_client
         if client is None:
             return
+        self._require_online()
         client.register_device(
             installation_id=self._profile.installation_id,
             display_name=self._profile.display_name,
@@ -233,6 +335,7 @@ class SyncEngine:
             access_token=access_token,
         )
         if entries:
+            self._require_online()
             changes = [
                 build_game_change(
                     entry.payload,
@@ -252,6 +355,7 @@ class SyncEngine:
             )
 
         cursor = repository.pull_cursor()
+        self._require_online()
         pull = client.pull_changes(
             after_version=cursor,
             limit=BATCH_SIZE,
@@ -262,6 +366,7 @@ class SyncEngine:
             completed_at=self._now(),
             initial_sync_completed=len(pull.games) < BATCH_SIZE,
         )
+        self._require_online()
         client.acknowledge_device_version(
             installation_id=self._profile.installation_id,
             acknowledged_version=new_cursor,
@@ -279,7 +384,7 @@ class SyncEngine:
             RegisteredGamesErrorKind.RATE_LIMITED,
             RegisteredGamesErrorKind.SERVER,
         )
-        if entries:
+        if entries and error.kind is not RegisteredGamesErrorKind.AUTH_REQUIRED:
             repository.record_failure(
                 entries,
                 code=error.code or error.kind.value,

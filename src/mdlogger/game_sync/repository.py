@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import sqlite3
@@ -12,7 +13,7 @@ from typing import Any
 
 from .. import db
 from ..remote.games import PRIVATE_GAME_FIELDS, MutationResult, private_game_payload
-from .models import OutboxEntry, SyncConflict, SyncPhase, SyncStatus
+from .models import OutboxEntry, StaleConflictError, SyncConflict, SyncPhase, SyncStatus
 
 _MAX_RETRY_SECONDS = 300
 _REMOTE_COMPARE_FIELDS = (*PRIVATE_GAME_FIELDS, "deleted_at")
@@ -39,6 +40,11 @@ class SyncRepository:
             FROM sync_outbox AS current
             JOIN games ON games.sync_id = current.game_sync_id
             WHERE games.sync_status <> 'conflict'
+              AND NOT EXISTS (
+                SELECT 1 FROM sync_conflicts AS conflict
+                WHERE conflict.game_sync_id = current.game_sync_id
+                  AND conflict.resolved_at IS NULL
+              )
               AND current.id = (
                 SELECT MAX(candidate.id)
                 FROM sync_outbox AS candidate
@@ -77,6 +83,7 @@ class SyncRepository:
         """응답 대상까지만 지워 요청 중 생긴 새 변경을 보존한다."""
         versions = remote_versions or {}
         with self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
             for entry in entries:
                 self._acknowledge_entry(entry, versions.get(entry.game_sync_id))
             self._mark_success(completed_at)
@@ -93,6 +100,7 @@ class SyncRepository:
         if set(by_id) != {result.game_id for result in results}:
             raise ValueError("서버 mutation 결과가 outbox batch와 일치하지 않습니다.")
         with self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
             for result in results:
                 entry = by_id[result.game_id]
                 if result.status == "applied":
@@ -123,9 +131,9 @@ class SyncRepository:
     ) -> int:
         """remote batch와 cursor를 원자적으로 반영하고 새 cursor를 반환한다."""
         rows = [dict(game) for game in remote_games]
-        cursor = self.pull_cursor()
-        previous = cursor
         with self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
+            previous = self.pull_cursor()
             for remote in rows:
                 version = int(remote["change_version"])
                 if version <= previous:
@@ -198,11 +206,15 @@ class SyncRepository:
                 self._connection.execute(
                     """
                     UPDATE games SET sync_status=?, last_sync_error=? WHERE sync_id=?
+                      AND sync_status <> 'conflict'
+                      AND EXISTS (SELECT 1 FROM sync_outbox
+                                  WHERE id=? AND game_sync_id=games.sync_id)
                     """,
                     (
                         "pending" if retryable else "failed",
                         safe_detail,
                         entry.game_sync_id,
+                        entry.id,
                     ),
                 )
 
@@ -229,27 +241,45 @@ class SyncRepository:
         return sync_play_modes(self._connection, list(remote_modes))
 
     def list_conflicts(self) -> list[SyncConflict]:
-        rows = self._connection.execute(
-            """
-            SELECT * FROM sync_conflicts
-            WHERE resolved_at IS NULL
-            ORDER BY detected_at, id
-            """
-        ).fetchall()
-        return [
-            SyncConflict(
-                id=int(row["id"]),
-                game_sync_id=str(row["game_sync_id"]),
-                local_payload=self._json_object(row["local_payload"]),
-                remote_payload=self._json_object(row["remote_payload"]),
-                base_remote_version=(
-                    int(row["base_remote_version"])
-                    if row["base_remote_version"] is not None
-                    else None
-                ),
-            )
-            for row in rows
-        ]
+        with self._connection:
+            self._connection.execute("BEGIN")
+            rows = self._connection.execute(
+                """
+                SELECT * FROM sync_conflicts
+                WHERE resolved_at IS NULL ORDER BY detected_at, id
+                """
+            ).fetchall()
+            conflicts = []
+            for row in rows:
+                sync_id = str(row["game_sync_id"])
+                local, revision = self._local_snapshot(sync_id)
+                conflicts.append(
+                    SyncConflict(
+                        id=int(row["id"]),
+                        game_sync_id=sync_id,
+                        local_payload=local,
+                        remote_payload=self._json_object(row["remote_payload"]),
+                        base_remote_version=row["base_remote_version"],
+                        local_revision=revision,
+                    )
+                )
+            return conflicts
+
+    def _local_snapshot(self, sync_id: str) -> tuple[dict[str, Any], str]:
+        row = self._connection.execute(
+            "SELECT * FROM games WHERE sync_id=?", (sync_id,)
+        ).fetchone()
+        if row is None:
+            raise StaleConflictError("충돌의 로컬 기록이 더 이상 존재하지 않습니다.")
+        local = dict(row)
+        latest = self._connection.execute(
+            "SELECT MAX(id) FROM sync_outbox WHERE game_sync_id=?", (sync_id,)
+        ).fetchone()[0]
+        state = (self._comparable_payload(local), local["remote_version"], latest)
+        revision = hashlib.sha256(
+            json.dumps(state, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        ).hexdigest()
+        return local, revision
 
     def resolve_conflict(
         self,
@@ -258,47 +288,118 @@ class SyncRepository:
         merged_payload: Mapping[str, Any] | None = None,
         *,
         expected_remote_version: int | None = None,
+        expected_local_revision: str,
+        fresh_remote: Mapping[str, Any] | None,
     ) -> None:
+        """서버 확인 결과와 화면의 로컬 표식을 한 쓰기 트랜잭션에서 검증한다."""
+        if resolution not in ("remote", "local", "merged"):
+            raise ValueError("지원하지 않는 충돌 해결 방식입니다.")
         resolved_at = datetime.now().isoformat(timespec="seconds")
+        stale = False
         with self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
             row = self._connection.execute(
                 "SELECT * FROM sync_conflicts WHERE id=? AND resolved_at IS NULL",
                 (conflict_id,),
             ).fetchone()
             if row is None:
-                raise KeyError(f"Conflict {conflict_id} does not exist")
-            local = self._json_object(row["local_payload"])
-            remote = self._json_object(row["remote_payload"])
+                raise StaleConflictError(
+                    "이미 해결된 충돌입니다. 목록을 새로 확인해 주세요."
+                )
             sync_id = str(row["game_sync_id"])
-            remote_version = remote.get("change_version")
-            if remote_version is None:
-                raise ValueError("충돌의 서버 version이 없습니다.")
-            if (
-                expected_remote_version is not None
-                and int(remote_version) != expected_remote_version
-            ):
-                raise ValueError(
+            local, revision = self._local_snapshot(sync_id)
+            if not expected_local_revision or revision != expected_local_revision:
+                raise StaleConflictError(
+                    "충돌을 확인하는 동안 로컬 기록이 다시 변경되었습니다."
+                )
+            saved_remote = self._json_object(row["remote_payload"])
+            if saved_remote.get("change_version") != expected_remote_version:
+                raise StaleConflictError(
                     "충돌을 확인하는 동안 서버 기록이 다시 변경되었습니다."
                 )
-
+            selected = (
+                {**local, **dict(merged_payload or {})}
+                if resolution == "merged"
+                else local
+            )
             if resolution == "remote":
+                selected = saved_remote
+            remote = (
+                dict(fresh_remote)
+                if fresh_remote is not None
+                else {"id": sync_id, "missing": True}
+            )
+            if str(remote.get("id")) != sync_id:
+                raise ValueError("다른 기록의 서버 응답으로 충돌을 해결할 수 없습니다.")
+            remote_version = remote.get("change_version")
+            if remote_version is not None and int(remote_version) < int(
+                local.get("remote_version") or 0
+            ):
+                raise StaleConflictError(
+                    "서버 확인 결과가 이미 반영한 버전보다 오래되었습니다."
+                )
+            # 기록끼리 수렴했어도 화면에서 선택한 내용이 다르면 자동 해결하지 않는다.
+            if fresh_remote is not None and self._comparable_payload(
+                local
+            ) == self._comparable_payload(remote) == self._comparable_payload(selected):
                 self._apply_remote_row(remote, sync_status="synced")
                 self._connection.execute(
                     "DELETE FROM sync_outbox WHERE game_sync_id=?", (sync_id,)
                 )
-            elif resolution in ("local", "merged"):
-                selected = (
-                    local if resolution == "local" else dict(merged_payload or {})
+                self._retire_conflicts(sync_id, "converged")
+                return
+            if (
+                remote_version != saved_remote.get("change_version")
+                or bool(remote.get("missing")) != bool(saved_remote.get("missing"))
+                or self._comparable_payload(remote)
+                != self._comparable_payload(saved_remote)
+            ):
+                self._store_conflict(
+                    sync_id, local, remote, local.get("remote_version")
                 )
+                stale = True
+            elif fresh_remote is None:
+                # 실제 부재를 확인한 뒤에만 삭제 수용 또는 새 create로 복구한다.
+                if resolution == "remote" or (
+                    resolution == "local" and local.get("deleted_at")
+                ):
+                    self._connection.execute(
+                        "UPDATE games SET deleted_at=COALESCE(deleted_at, ?), "
+                        "remote_version=NULL, base_remote_payload=NULL, "
+                        "sync_status='synced', last_sync_error=NULL WHERE sync_id=?",
+                        (resolved_at, sync_id),
+                    )
+                    self._connection.execute(
+                        "DELETE FROM sync_outbox WHERE game_sync_id=?", (sync_id,)
+                    )
+                else:
+                    self._update_local_payload(
+                        sync_id,
+                        self._comparable_payload(selected),
+                        remote_version=None,
+                        base_remote={},
+                        sync_status="pending",
+                    )
+                    self._connection.execute(
+                        "UPDATE games SET base_remote_payload=NULL WHERE sync_id=?",
+                        (sync_id,),
+                    )
+                    self._replace_outbox(
+                        sync_id, "delete" if selected.get("deleted_at") else "upsert"
+                    )
+            elif resolution == "remote":
+                self._apply_remote_row(remote, sync_status="synced")
+                self._connection.execute(
+                    "DELETE FROM sync_outbox WHERE game_sync_id=?", (sync_id,)
+                )
+            else:
                 selected["sync_id"] = sync_id
                 self._apply_selected_resolution(selected, remote)
-            else:
-                raise ValueError("지원하지 않는 충돌 해결 방식입니다.")
-            self._connection.execute(
-                """
-                UPDATE sync_conflicts SET resolution=?, resolved_at=? WHERE id=?
-                """,
-                (resolution, resolved_at, conflict_id),
+            if not stale:
+                self._retire_conflicts(sync_id, resolution)
+        if stale:
+            raise StaleConflictError(
+                "서버 기록이 다시 변경되었습니다. 최신 내용을 확인해 주세요."
             )
 
     def status(
@@ -336,7 +437,7 @@ class SyncRepository:
         failed_count = int(row["failed_count"])
         initial_completed = bool(state["initial_sync_completed"])
         if phase is None:
-            if failed_count:
+            if failed_count or conflict_count:
                 phase = SyncPhase.FAILED
             elif pending_count or (require_initial_sync and not initial_completed):
                 phase = SyncPhase.PENDING
@@ -355,6 +456,21 @@ class SyncRepository:
     def _acknowledge_entry(
         self, entry: OutboxEntry, remote_version: int | None
     ) -> None:
+        current = self._connection.execute(
+            "SELECT remote_version FROM games WHERE sync_id=?", (entry.game_sync_id,)
+        ).fetchone()
+        queued = self._connection.execute(
+            "SELECT payload FROM sync_outbox WHERE id=? AND game_sync_id=?",
+            (entry.id, entry.game_sync_id),
+        ).fetchone()
+        if queued is None or self._json_object(queued["payload"]) != entry.payload:
+            return
+        if (
+            remote_version is not None
+            and current is not None
+            and int(current[0] or 0) > remote_version
+        ):
+            return
         self._connection.execute(
             "DELETE FROM sync_outbox WHERE game_sync_id=? AND id<=?",
             (entry.game_sync_id, entry.id),
@@ -398,6 +514,16 @@ class SyncRepository:
             self._insert_remote_row(remote)
             return
         local = dict(local_row)
+        if remote_version < int(local.get("remote_version") or 0):
+            return
+        conflict = self._connection.execute(
+            "SELECT remote_payload FROM sync_conflicts WHERE game_sync_id=? AND resolved_at IS NULL",
+            (sync_id,),
+        ).fetchone()
+        if conflict is not None and remote_version < int(
+            self._json_object(conflict[0]).get("change_version") or 0
+        ):
+            return
         has_pending = (
             outbox_entry is not None
             or self._connection.execute(
@@ -407,6 +533,7 @@ class SyncRepository:
         )
         if not has_pending:
             self._apply_remote_row(remote, sync_status="synced")
+            self._retire_conflicts(sync_id, "remote")
             return
 
         base_raw = local.get("base_remote_payload")
@@ -419,11 +546,10 @@ class SyncRepository:
                 for field in _REMOTE_COMPARE_FIELDS
             ):
                 self._apply_remote_row(remote, sync_status="synced")
-                if outbox_entry is not None:
-                    self._connection.execute(
-                        "DELETE FROM sync_outbox WHERE game_sync_id=? AND id<=?",
-                        (sync_id, outbox_entry.id),
-                    )
+                self._connection.execute(
+                    "DELETE FROM sync_outbox WHERE game_sync_id=?", (sync_id,)
+                )
+                self._retire_conflicts(sync_id, "converged")
                 return
             self._store_conflict(sync_id, local, remote, local.get("remote_version"))
             return
@@ -450,11 +576,10 @@ class SyncRepository:
             for field in _REMOTE_COMPARE_FIELDS
         ):
             self._apply_remote_row(remote, sync_status="synced")
-            if outbox_entry is not None:
-                self._connection.execute(
-                    "DELETE FROM sync_outbox WHERE game_sync_id=? AND id<=?",
-                    (sync_id, outbox_entry.id),
-                )
+            self._connection.execute(
+                "DELETE FROM sync_outbox WHERE game_sync_id=?", (sync_id,)
+            )
+            self._retire_conflicts(sync_id, "converged")
             return
 
         merged["sync_id"] = sync_id
@@ -468,6 +593,14 @@ class SyncRepository:
         )
         operation = self._resolution_operation(local_payload, remote_payload)
         self._replace_outbox(sync_id, operation)
+        self._retire_conflicts(sync_id, "merged")
+
+    def _retire_conflicts(self, sync_id: str, resolution: str) -> None:
+        self._connection.execute(
+            "UPDATE sync_conflicts SET resolution=?, resolved_at=? "
+            "WHERE game_sync_id=? AND resolved_at IS NULL",
+            (resolution, datetime.now().isoformat(timespec="seconds"), sync_id),
+        )
 
     def _store_conflict(
         self,
@@ -551,7 +684,7 @@ class SyncRepository:
         sync_id: str,
         payload: Mapping[str, Any],
         *,
-        remote_version: int,
+        remote_version: int | None,
         base_remote: Mapping[str, Any],
         sync_status: str,
     ) -> None:
@@ -583,9 +716,6 @@ class SyncRepository:
             base_remote=remote_payload,
             sync_status="pending",
         )
-        self._connection.execute(
-            "DELETE FROM sync_outbox WHERE game_sync_id=?", (sync_id,)
-        )
         self._replace_outbox(
             sync_id, self._resolution_operation(selected_payload, remote_payload)
         )
@@ -596,10 +726,8 @@ class SyncRepository:
         ).fetchone()
         if row is None:
             raise KeyError(sync_id)
-        self._connection.execute(
-            "DELETE FROM sync_outbox WHERE game_sync_id=?", (sync_id,)
-        )
-        self._connection.execute(
+        # 새 항목을 먼저 추가해 처리 중인 이전 outbox ID가 재사용되지 않게 한다.
+        cursor = self._connection.execute(
             """
             INSERT INTO sync_outbox
                 (game_sync_id, operation, payload_version, payload, created_at)
@@ -612,6 +740,10 @@ class SyncRepository:
                 json.dumps(dict(row), ensure_ascii=False, separators=(",", ":")),
                 datetime.now().isoformat(timespec="seconds"),
             ),
+        )
+        self._connection.execute(
+            "DELETE FROM sync_outbox WHERE game_sync_id=? AND id<?",
+            (sync_id, cursor.lastrowid),
         )
 
     def _mark_success(self, completed_at: datetime) -> None:

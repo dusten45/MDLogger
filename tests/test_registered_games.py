@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
 from mdlogger.remote.client import HttpResponse, JsonHttpClient
 from mdlogger.remote.config import RemoteConfig
 from mdlogger.remote.games import (
+    PRIVATE_GAME_FIELDS,
     RegisteredGamesClient,
     RegisteredGamesError,
     RegisteredGamesErrorKind,
@@ -19,6 +21,47 @@ from mdlogger.remote.games import (
 CONFIG = RemoteConfig(base_url="https://example.supabase.co", anon_key="anon-key")
 SYNC_ID = "33333333-3333-4333-8333-333333333333"
 USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+
+
+def test_fresh_game_read_is_owner_scoped_and_does_not_use_cursor():
+    row = {field: None for field in PRIVATE_GAME_FIELDS}
+    row.update(
+        id=SYNC_ID,
+        played_at="2026-08-07T12:00:00",
+        result="win",
+        turn_order="first",
+        deleted_at=None,
+        change_version=9,
+    )
+    transport = FakeTransport(
+        [HttpResponse(status=200, body=json.dumps([row]).encode())]
+    )
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+    assert client.fetch_game(SYNC_ID, access_token="등록 계정 토큰") == row
+    request = transport.requests[0]
+    assert request["method"] == "GET"
+    assert request["headers"]["Authorization"] == "Bearer 등록 계정 토큰"
+    assert request["headers"]["Cache-Control"] == "no-cache"
+    query = parse_qs(urlsplit(request["url"]).query)
+    assert query["id"] == [f"eq.{SYNC_ID}"]
+    assert "change_version" not in query
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        [{"id": SYNC_ID, "change_version": 9}],
+        [{"id": "다른 기록", "change_version": 9}],
+    ],
+)
+def test_fresh_game_read_rejects_malformed_or_partial_payload(body):
+    transport = FakeTransport(
+        [HttpResponse(status=200, body=json.dumps(body).encode())]
+    )
+    client = RegisteredGamesClient(CONFIG, client=JsonHttpClient(transport))
+    with pytest.raises(RegisteredGamesError):
+        client.fetch_game(SYNC_ID, access_token="등록 계정 토큰")
 
 
 class FakeTransport:

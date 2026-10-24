@@ -38,6 +38,8 @@
 ; 세계적으로 고유한 AppId. 최초 생성 후엔 바꾸지 않고 유지해야 갱신 시
 ; "같은 프로그램"으로 인식된다. (분산 배포 전엔 한번 생성해 상수로 고정)
 AppId={{F0987F41-0A8B-4B2E-9C61-9CDD4F8E7C00}
+; 앱이 완전히 종료될 때까지 유지하는 잠금. 업데이트 도우미는 강제 종료하지 않는다.
+AppMutex=Global\MDLogger.Application.F0987F41-0A8B-4B2E-9C61-9CDD4F8E7C00
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -94,6 +96,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 Name: "{group}\{#MyAppName} 제거"; Filename: "{uninstallexe}"
 
 [Run]
+; 무인 업데이트의 재실행은 일반 사용자 helper가 맡는다. 일반 설치 동작은 유지한다.
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]

@@ -15,6 +15,10 @@ run.py 진입점 + 패키지 데이터를 번들한다. 데이터 파일은 ``co
 무시되고 `config.py`는 ImportError를 흡수해 오프라인으로 동작한다.
 """
 
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 from shutil import copy2, copytree, ignore_patterns, rmtree
 
@@ -46,11 +50,8 @@ excluded_binaries = {
 
 # Linux 전용 런타임 패키지의 고지 파일은 Windows 배포 폴더에서 제외한다.
 excluded_windows_license_dirs = (
-    "cffi-2.1.1",
-    "cryptography-50.0.2",
     "icu-73.2",
     "jeepney-0.9.0",
-    "pycparser-3.12",
     "secretstorage-3.5.0",
     "qtwebengine",
     "qtmultimedia",
@@ -136,6 +137,36 @@ coll = COLLECT(
 # 사용자가 즉시 찾을 수 있도록 프로젝트와 제3자 법률 문서를 onedir 최상위에 둔다.
 # 내부 CI 검증용 JSON(licenses/inventory/)과 유지보수 문서(licenses/sources/)는 제외한다.
 distribution_root = Path(DISTPATH) / "MDLogger"
+if sys.platform == "win32":
+    # 기존 PyInstaller 호출도 도우미를 만든다. 오래된 공개 키를 포함한 빌드는 재사용하지 않는다.
+    update_helper = Path("build/update/MDLoggerUpdate.exe")
+    trust_path = Path("src/mdlogger/data/update-trusted-keys.json").resolve(strict=True)
+    trust = json.loads(trust_path.read_text(encoding="utf-8"))
+    if trust.get("schema") != 1 or not trust.get("keys"):
+        raise RuntimeError("Windows 업데이트 공개 키가 없습니다.")
+    compiler = (
+        Path(os.environ["WINDIR"]) / "Microsoft.NET/Framework64/v4.0.30319/csc.exe"
+    )
+    update_helper.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            str(compiler),
+            "/nologo",
+            "/target:winexe",
+            "/platform:anycpu",
+            "/optimize+",
+            "/codepage:65001",
+            f"/out:{update_helper.resolve()}",
+            "/reference:System.Web.Extensions.dll",
+            "/reference:System.Windows.Forms.dll",
+            f"/resource:{trust_path},MDLogger.UpdateTrustedKeys.json",
+            f"/win32manifest:{Path('scripts/update/update-helper.manifest').resolve()}",
+            str(Path("scripts/update/UpdateHelper.cs").resolve()),
+        ],
+        check=True,
+        timeout=120,
+    )
+    copy2(update_helper, distribution_root / "MDLoggerUpdate.exe")
 copy2("LICENSE", distribution_root / "LICENSE")
 copy2("THIRD_PARTY_NOTICES.txt", distribution_root / "THIRD_PARTY_NOTICES.txt")
 distribution_licenses = distribution_root / "licenses"
@@ -146,3 +177,7 @@ copytree(
     distribution_licenses / "desktop",
     ignore=ignore_patterns(*excluded_windows_license_dirs),
 )
+# 기존 SBOM은 Linux wheel의 증거이므로 Windows 배포 고지에 섞지 않는다.
+linux_crypto_sbom = distribution_licenses / "desktop/cryptography-50.0.2/sboms"
+if linux_crypto_sbom.exists():
+    rmtree(linux_crypto_sbom)

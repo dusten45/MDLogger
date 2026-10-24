@@ -23,8 +23,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import io
 import json
+import os
+import re
+import shutil
 import sqlite3
+import tempfile
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -33,6 +39,9 @@ from pathlib import Path
 
 from . import __version__, db
 from .checksum import sha256_file
+from .enums import END_REASON_LABELS, RANK_TIER_LABELS, RESULT_LABELS, TURN_ORDER_LABELS
+from .local_reset import sync_directory
+from .paths import secure_data_file
 from .profiles import ProfileKind
 
 MANIFEST_FILENAME = "manifest.json"
@@ -134,16 +143,17 @@ def export_portable_archive(
     이미 존재하면 재사용하지 않고 오류를 던진다. 반환값은 생성된 디렉터리 경로.
     """
     archive_dir = Path(path)
-    try:
-        archive_dir.mkdir(parents=False, exist_ok=False)
-    except FileExistsError as error:
-        raise PortableArchiveError(f"Archive already exists: {archive_dir}") from error
-
+    if archive_dir.exists() or archive_dir.is_symlink():
+        raise PortableArchiveError(f"아카이브가 이미 존재합니다: {archive_dir}")
+    if len(rows) > MAX_RECORD_COUNT:
+        raise PortableArchiveError("기록 수가 아카이브 한도를 초과합니다.")
     records = [_record_dict(row) for row in rows]
-    if len(records) > MAX_RECORD_COUNT:
-        raise PortableArchiveError(
-            f"record count {len(records)} exceeds limit {MAX_RECORD_COUNT}"
-        )
+    seen: set[str] = set()
+    for line_number, record in enumerate(records, 1):
+        _validate_record(record, line_number, payload_version=PAYLOAD_VERSION)
+        if record["sync_id"] in seen:
+            raise PortableArchiveError(f"기록 {line_number}행의 sync_id가 중복됩니다.")
+        seen.add(record["sync_id"])
 
     manifest = {
         "format_version": PORTABLE_FORMAT_VERSION,
@@ -156,19 +166,51 @@ def export_portable_archive(
         "included_sections": [INCLUDED_SECTION_GAMES],
     }
 
-    records_path = archive_dir / RECORDS_FILENAME
-    with records_path.open("w", encoding="utf-8") as file:
-        for record in records:
-            file.write(
-                json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n"
-            )
-
-    manifest_path = archive_dir / MANIFEST_FILENAME
-    manifest_path.write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    _validate_manifest(manifest)
+    temporary = Path(
+        tempfile.mkdtemp(prefix=f".{archive_dir.name}.", dir=archive_dir.parent)
     )
-
-    _write_checksums(archive_dir)
+    try:
+        total_bytes = 0
+        with (temporary / RECORDS_FILENAME).open("wb") as file:
+            for record in records:
+                encoded = (
+                    json.dumps(
+                        record,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        allow_nan=False,
+                    )
+                    + "\n"
+                ).encode("utf-8")
+                total_bytes += len(encoded)
+                if total_bytes > MAX_RECORDS_BYTES:
+                    raise PortableArchiveError(
+                        "records.ndjson의 크기가 한도를 초과합니다."
+                    )
+                file.write(encoded)
+        (temporary / MANIFEST_FILENAME).write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        _write_checksums(temporary)
+        # 실제 reader로 검증한 완성본만 게시한다. 긴 메모도 양쪽 계약이 동일하다.
+        _read_archive(temporary)
+        for file_path in temporary.iterdir():
+            secure_data_file(file_path)
+            with file_path.open("r+b") as file:
+                os.fsync(file.fileno())
+        sync_directory(temporary)
+        if archive_dir.exists() or archive_dir.is_symlink():
+            raise PortableArchiveError(f"아카이브가 이미 존재합니다: {archive_dir}")
+        temporary.rename(archive_dir)
+        sync_directory(archive_dir.parent)
+    except (OSError, UnicodeError, ValueError) as error:
+        raise PortableArchiveError(
+            "아카이브 내보내기를 완료하지 못했습니다."
+        ) from error
+    finally:
+        if temporary.exists():
+            shutil.rmtree(temporary)
     return archive_dir
 
 
@@ -197,15 +239,12 @@ def import_portable_archive(
     등록하므로 이후 기존 동기화 엔진이 서버에 업로드한다.
     """
     archive_dir = Path(archive_path)
-    _validate_archive_layout(archive_dir)
-    manifest, source_kind = _read_manifest(archive_dir)
-    _verify_checksums(archive_dir)
-    records = _read_records(archive_dir, manifest["record_count"])
-    archive_checksum = sha256_file(archive_dir / RECORDS_FILENAME)
+    manifest, source_kind, records, archive_checksum = _read_archive(archive_dir)
 
     target_conn = db.connect(target_path)
     try:
         db.init_db(target_conn)
+        target_conn.execute("BEGIN IMMEDIATE")
         if _completed_batch_matches(
             target_conn,
             manifest["archive_id"],
@@ -281,14 +320,14 @@ def import_portable_archive(
 
 def _validate_archive_layout(archive_dir: Path) -> None:
     """아카이브 디렉터리가 예상 파일만 정확히 포함하는지(경로 검증) 확인한다."""
-    if not archive_dir.is_dir():
+    if not archive_dir.is_dir() or archive_dir.is_symlink():
         raise PortableArchiveError(f"Not a directory: {archive_dir}")
     entries = list(archive_dir.iterdir())
     # 심볼릭 링크는 아카이브 밖 파일을 가리킬 수 있어 체크섬 우회/경로 탈출
     # 표면이 된다. 압축 풀기가 아닌 단일 디렉터리 구조이므로 링크는 항상 거부한다.
     if any(entry.is_symlink() for entry in entries):
         raise PortableArchiveError("Symlink is not allowed in archive")
-    if any(entry.is_dir() for entry in entries):
+    if any(not entry.is_file() for entry in entries):
         raise PortableArchiveError("Unexpected subdirectory in archive")
     names = {entry.name for entry in entries}
     expected = {MANIFEST_FILENAME, RECORDS_FILENAME, CHECKSUMS_FILENAME}
@@ -299,44 +338,93 @@ def _validate_archive_layout(archive_dir: Path) -> None:
         )
 
 
-def _read_manifest(archive_dir: Path) -> tuple[dict, ProfileKind]:
-    manifest_path = archive_dir / MANIFEST_FILENAME
-    if manifest_path.stat().st_size > MAX_MANIFEST_BYTES:
-        raise PortableArchiveError("manifest.json exceeds size limit")
+def _read_archive(archive_dir: Path) -> tuple[dict, ProfileKind, list[dict], str]:
+    """검증한 바이트를 그대로 파싱하여 검사 도중 파일 교체의 영향을 받지 않는다."""
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as error:
-        raise PortableArchiveError("manifest.json is not valid UTF-8 JSON") from error
+        _validate_archive_layout(archive_dir)
+        contents = {}
+        for name, limit in (
+            (MANIFEST_FILENAME, MAX_MANIFEST_BYTES),
+            (RECORDS_FILENAME, MAX_RECORDS_BYTES),
+            (CHECKSUMS_FILENAME, MAX_CHECKSUMS_BYTES),
+        ):
+            with (archive_dir / name).open("rb") as file:
+                data = file.read(limit + 1)
+            if len(data) > limit:
+                raise PortableArchiveError(f"{name}의 크기가 한도를 초과합니다.")
+            contents[name] = data
+        _verify_checksums(contents)
+        manifest = _json_object(contents[MANIFEST_FILENAME].decode("utf-8"))
+        source_kind = _validate_manifest(manifest)
+        records = _read_records(
+            contents[RECORDS_FILENAME],
+            manifest["record_count"],
+            manifest["payload_version"],
+        )
+        return (
+            manifest,
+            source_kind,
+            records,
+            hashlib.sha256(contents[RECORDS_FILENAME]).hexdigest(),
+        )
+    except (OSError, ValueError, RecursionError) as error:
+        raise PortableArchiveError(
+            "아카이브를 읽을 수 없거나 JSON 형식이 올바르지 않습니다."
+        ) from error
+
+
+def _json_object(text: str):
+    def reject_constant(value: str):
+        raise ValueError("유한하지 않은 JSON 숫자입니다.")
+
+    def unique_keys(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError("JSON 필드가 중복됩니다.")
+            result[key] = value
+        return result
+
+    return json.loads(
+        text, parse_constant=reject_constant, object_pairs_hook=unique_keys
+    )
+
+
+def _validate_manifest(manifest) -> ProfileKind:
     if not isinstance(manifest, dict):
         raise PortableArchiveError("manifest.json must be a JSON object")
 
     format_version = manifest.get("format_version")
-    if format_version != PORTABLE_FORMAT_VERSION:
+    if type(format_version) is not int or format_version != PORTABLE_FORMAT_VERSION:
         raise PortableArchiveError(
             f"Unsupported archive format_version: {format_version!r}"
         )
     # payload 계약 버전이 다르면(예: v1 score_after 아카이브) 필드가 조용히
     # 유실되지 않도록 거부한다(정책 B-a', 레거시 없음).
     payload_version = manifest.get("payload_version")
-    if payload_version != PAYLOAD_VERSION:
+    if type(payload_version) is not int or payload_version != PAYLOAD_VERSION:
         raise PortableArchiveError(
             f"Unsupported archive payload_version: {payload_version!r}"
         )
     archive_id = manifest.get("archive_id")
-    if not isinstance(archive_id, str) or not archive_id:
+    if (
+        not isinstance(archive_id, str)
+        or not archive_id
+        or len(archive_id) > MAX_STRING_LENGTH
+    ):
         raise PortableArchiveError("manifest.json missing archive_id")
 
     source_value = manifest.get("source_profile_kind")
     try:
         source_kind = ProfileKind(source_value)
-    except ValueError as error:
+    except (TypeError, ValueError) as error:
         raise PortableArchiveError(
             f"manifest.json has invalid source_profile_kind: {source_value!r}"
         ) from error
 
     record_count = manifest.get("record_count")
     if (
-        not isinstance(record_count, int)
+        type(record_count) is not int
         or record_count < 0
         or record_count > MAX_RECORD_COUNT
     ):
@@ -344,48 +432,70 @@ def _read_manifest(archive_dir: Path) -> tuple[dict, ProfileKind]:
             f"manifest.json has invalid record_count: {record_count!r}"
         )
 
-    return manifest, source_kind
+    if manifest.get("included_sections") != [INCLUDED_SECTION_GAMES]:
+        raise PortableArchiveError("아카이브의 포함 항목이 올바르지 않습니다.")
+    for key in ("archive_id", "created_at", "source_app_version"):
+        value = manifest.get(key)
+        if not isinstance(value, str) or not value or len(value) > MAX_STRING_LENGTH:
+            raise PortableArchiveError(f"아카이브의 {key} 값이 올바르지 않습니다.")
+        try:
+            value.encode("utf-8")
+            if key == "created_at":
+                datetime.fromisoformat(value)
+        except (ValueError, UnicodeError) as error:
+            raise PortableArchiveError(
+                f"아카이브의 {key} 값이 올바르지 않습니다."
+            ) from error
+    return source_kind
 
 
-def _verify_checksums(archive_dir: Path) -> None:
-    checksums_path = archive_dir / CHECKSUMS_FILENAME
-    if checksums_path.stat().st_size > MAX_CHECKSUMS_BYTES:
-        raise PortableArchiveError("checksums.sha256 exceeds size limit")
+def _verify_checksums(contents: dict[str, bytes]) -> None:
     digest_by_name: dict[str, str] = {}
-    for line in checksums_path.read_text(encoding="ascii").splitlines():
+    for line in contents[CHECKSUMS_FILENAME].decode("ascii").splitlines():
         parts = line.split("  ", 1)
         if len(parts) != 2:
             raise PortableArchiveError("checksums.sha256 is malformed")
         digest, name = parts
-        if name in (MANIFEST_FILENAME, RECORDS_FILENAME):
-            digest_by_name[name] = digest
+        if (
+            name not in (MANIFEST_FILENAME, RECORDS_FILENAME)
+            or name in digest_by_name
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+        ):
+            raise PortableArchiveError("체크섬 항목이 올바르지 않거나 중복됩니다.")
+        digest_by_name[name] = digest
     if set(digest_by_name) != {MANIFEST_FILENAME, RECORDS_FILENAME}:
         raise PortableArchiveError("checksums.sha256 is missing entries")
     for name in (MANIFEST_FILENAME, RECORDS_FILENAME):
-        actual = sha256_file(archive_dir / name)
+        actual = hashlib.sha256(contents[name]).hexdigest()
         if actual != digest_by_name[name]:
             raise PortableArchiveError(f"{name} checksum mismatch (tampered archive)")
 
 
-def _read_records(archive_dir: Path, expected_count: int) -> list[dict]:
-    records_path = archive_dir / RECORDS_FILENAME
-    if records_path.stat().st_size > MAX_RECORDS_BYTES:
-        raise PortableArchiveError("records.ndjson exceeds size limit")
-
+def _read_records(data: bytes, expected_count: int, payload_version: int) -> list[dict]:
     records: list[dict] = []
-    with records_path.open(encoding="utf-8") as file:
+    seen: set[str] = set()
+    with io.StringIO(data.decode("utf-8")) as file:
         for line_number, line in enumerate(file, start=1):
             stripped = line.strip()
             if not stripped:
                 continue
             try:
-                record = json.loads(stripped)
-            except json.JSONDecodeError as error:
+                record = _json_object(stripped)
+            except (ValueError, RecursionError) as error:
                 raise PortableArchiveError(
                     f"records.ndjson: invalid JSON on line {line_number}"
                 ) from error
-            _validate_record(record, line_number)
+            _validate_record(record, line_number, payload_version=payload_version)
+            if record["sync_id"] in seen:
+                raise PortableArchiveError(
+                    f"기록 {line_number}행의 sync_id가 중복됩니다."
+                )
+            seen.add(record["sync_id"])
             records.append(record)
+            if len(records) > expected_count:
+                raise PortableArchiveError(
+                    "실제 기록 수가 선언한 기록 수를 초과합니다."
+                )
     if len(records) != expected_count:
         raise PortableArchiveError(
             f"record_count mismatch: manifest says {expected_count},"
@@ -394,7 +504,12 @@ def _read_records(archive_dir: Path, expected_count: int) -> list[dict]:
     return records
 
 
-def _validate_record(record, line_number: int) -> None:
+def _validate_record(
+    record, line_number: int, *, payload_version: int = PAYLOAD_VERSION
+) -> None:
+    """v2 기록을 변환 없이 검증한다. 이관된 모드 미지정 기록의 NULL은 보존한다."""
+    if type(payload_version) is not int or payload_version != PAYLOAD_VERSION:
+        raise PortableArchiveError("지원하지 않는 기록 계약 버전입니다.")
     if not isinstance(record, dict):
         raise PortableArchiveError(
             f"records.ndjson: line {line_number} is not a JSON object"
@@ -403,16 +518,126 @@ def _validate_record(record, line_number: int) -> None:
         raise PortableArchiveError(
             f"records.ndjson: line {line_number} has too many fields"
         )
+    required = {
+        "played_at",
+        "result",
+        "turn_order",
+        "opp_deck",
+        "turns",
+        "end_reason",
+        "sync_id",
+    }
+    if not required <= record.keys() or record.keys() - set(PORTABLE_RECORD_FIELDS):
+        raise PortableArchiveError(
+            f"기록 {line_number}행의 필수 필드가 없거나 알 수 없는 필드가 있습니다."
+        )
     sync_id = record.get("sync_id")
     if not isinstance(sync_id, str) or not sync_id:
         raise PortableArchiveError(
             f"records.ndjson: line {line_number} has invalid sync_id"
         )
+    integer_fields = {
+        "turns",
+        "rank_division_before",
+        "rank_division_after",
+        "rating_before",
+        "rating_after",
+        "event_points_before",
+        "event_points_after",
+        "timezone_offset_minutes",
+    }
+    nullable_core_fields = {"opp_deck", "turns", "end_reason"}
     for key, value in record.items():
-        if isinstance(value, str) and len(value) > MAX_STRING_LENGTH:
+        if value is None and (key not in required or key in nullable_core_fields):
+            continue
+        if key in integer_fields:
+            valid = type(value) is int and -(2**63) <= value < 2**63
+        else:
+            valid = isinstance(value, str)
+            if valid:
+                try:
+                    byte_count = len(value.encode("utf-8"))
+                except UnicodeError:
+                    valid = False
+                else:
+                    valid = (
+                        byte_count <= MAX_RECORDS_BYTES
+                        if key == "note"
+                        else len(value) <= MAX_STRING_LENGTH
+                    )
+        if not valid:
             raise PortableArchiveError(
-                f"records.ndjson: line {line_number} field {key!r} too long"
+                f"기록 {line_number}행의 {key} 타입 또는 크기가 올바르지 않습니다."
             )
+    for key, choices in (
+        ("result", RESULT_LABELS),
+        ("turn_order", TURN_ORDER_LABELS),
+        ("end_reason", END_REASON_LABELS),
+    ):
+        if record[key] is not None and record[key] not in choices:
+            raise PortableArchiveError(
+                f"기록 {line_number}행의 {key} 값이 올바르지 않습니다."
+            )
+    if record["turns"] is not None and record["turns"] < 0:
+        raise PortableArchiveError(
+            f"기록 {line_number}행의 턴 수는 0 이상이어야 합니다."
+        )
+    offset = record.get("timezone_offset_minutes")
+    if offset is not None and not -1440 < offset < 1440:
+        raise PortableArchiveError(
+            f"기록 {line_number}행의 시간대 오프셋이 올바르지 않습니다."
+        )
+    for key in ("played_at", "local_updated_at"):
+        value = record.get(key)
+        if value is not None:
+            try:
+                parsed = datetime.fromisoformat(value)
+                if len(value) < 19 or (
+                    key == "played_at" and parsed.tzinfo is not None
+                ):
+                    raise ValueError
+            except ValueError as error:
+                raise PortableArchiveError(
+                    f"기록 {line_number}행의 {key} 날짜가 올바르지 않습니다."
+                ) from error
+    kind = record.get("standing_kind")
+    snapshots = {
+        "rank": {
+            "rank_tier_before",
+            "rank_tier_after",
+            "rank_division_before",
+            "rank_division_after",
+        },
+        "rating": {"rating_before", "rating_after"},
+        "event_points": {"event_points_before", "event_points_after"},
+    }
+    if kind is not None and kind not in snapshots:
+        raise PortableArchiveError(f"기록 {line_number}행의 모드가 올바르지 않습니다.")
+    for snapshot_kind, fields in snapshots.items():
+        if snapshot_kind != kind and any(record.get(key) is not None for key in fields):
+            raise PortableArchiveError(
+                f"기록 {line_number}행의 모드와 점수 필드가 일치하지 않습니다."
+            )
+    if kind is None and record.get("play_context_id") is not None:
+        raise PortableArchiveError(
+            f"기록 {line_number}행의 모드 없는 문맥은 지원하지 않습니다."
+        )
+    if kind == "rank":
+        for suffix in ("before", "after"):
+            tier, division = (
+                record.get(f"rank_tier_{suffix}"),
+                record.get(f"rank_division_{suffix}"),
+            )
+            if tier is None and division is None:
+                continue
+            if (
+                tier not in RANK_TIER_LABELS
+                or division is None
+                or not 1 <= division <= 5
+            ):
+                raise PortableArchiveError(
+                    f"기록 {line_number}행의 랭크 조합이 올바르지 않습니다."
+                )
 
 
 def _completed_batch_matches(
@@ -435,7 +660,10 @@ def _completed_batch_matches(
     ).fetchone()
     if row is None:
         return False
-    return int(row["imported_count"]) + int(row["skipped_count"]) == expected_count
+    return (
+        row["failed_count"] == 0
+        and int(row["imported_count"]) + int(row["skipped_count"]) == expected_count
+    )
 
 
 def _insert_record(conn: sqlite3.Connection, record: dict, batch_id: str) -> None:

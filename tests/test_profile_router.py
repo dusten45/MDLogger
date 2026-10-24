@@ -299,6 +299,9 @@ def test_application_reset_preserves_data_when_sync_does_not_stop(
         def start(self) -> None:
             pass
 
+        def resume(self) -> None:
+            pass
+
         def stop(self, *, timeout_seconds: float = 5.0) -> bool:
             return False
 
@@ -315,8 +318,9 @@ def test_application_reset_preserves_data_when_sync_does_not_stop(
             merged_payload: dict | None = None,
             *,
             expected_remote_version: int | None = None,
-        ) -> None:
-            pass
+            expected_local_revision: str,
+        ) -> str:
+            return "resolution-request"
 
     controller._sync_factory = lambda _profile: TimedOutSync()
     router.request_guest()

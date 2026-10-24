@@ -28,11 +28,17 @@ class AuthError(Exception):
     """분류된 인증 실패. 메시지에 토큰·비밀번호를 포함하지 않는다."""
 
     def __init__(
-        self, kind: AuthErrorKind, message: str, *, code: str | None = None
+        self,
+        kind: AuthErrorKind,
+        message: str,
+        *,
+        code: str | None = None,
+        retry_after_seconds: int | None = None,
     ) -> None:
         super().__init__(message)
         self.kind = kind
         self.code = code
+        self.retry_after_seconds = retry_after_seconds
 
 
 @dataclass(frozen=True, slots=True)

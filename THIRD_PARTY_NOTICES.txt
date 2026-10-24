@@ -16,7 +16,7 @@ DESKTOP DISTRIBUTIONS
 
 Review status: lockfile closures, tracked legal files, and selected license expressions are reviewed; final Windows payload inspection remains a Windows release-host check.
 Linux Flatpak resolver closure: 17 third-party distributions (Python 3.14).
-Windows resolver closure: 13 third-party distributions (Python 3.15) plus the uv-managed CPython runtime, PyInstaller/hooks, NumPy native libraries, Qt Windows third-party code and Inno Setup; this is not an exact PyInstaller payload inventory.
+Windows resolver closure: 16 third-party distributions (Python 3.15) plus the uv-managed CPython runtime, PyInstaller/hooks, NumPy native libraries, Qt Windows third-party code and Inno Setup; this is not an exact PyInstaller payload inventory.
 Qt/PySide6 selected license: GPL-3.0-only.
 Source instructions: licenses/sources/desktop-source-offer.md
 Qt license corpus: licenses/desktop/qt-6.12.0/LICENSES-MANIFEST.json (69 unique texts).
@@ -31,7 +31,7 @@ RUNTIME DISTRIBUTIONS
 ---------------------
 
 cffi 2.1.1
-  Platforms: linux
+  Platforms: linux, windows
   Dependency: indirect
   Purpose: Foreign-function interface used by cryptography.
   Selected license: MIT-0
@@ -55,9 +55,9 @@ colorama 0.4.6
   Review note: No additional note.
 
 cryptography 50.0.2
-  Platforms: linux
-  Dependency: indirect
-  Purpose: Secret Service cryptographic transport used by keyring.
+  Platforms: linux, windows
+  Dependency: direct
+  Purpose: RSA update-manifest signature verification on Windows and Secret Service cryptographic transport used by keyring on Linux.
   Selected license: BSD-3-Clause
   Copyright/attribution: Copyright (c) Individual contributors
   Homepage: https://cryptography.io/
@@ -175,7 +175,7 @@ openpyxl 3.1.5
   Review note: No additional note.
 
 pycparser 3.12
-  Platforms: linux
+  Platforms: linux, windows
   Dependency: indirect
   Purpose: C parser used by cffi.
   Selected license: BSD-3-Clause
@@ -303,14 +303,14 @@ GNU libquadmath runtime from NumPy Linux wheel 0.0.0 (wheel file)
   Legal files: licenses/desktop/numpy-2.5.4/licenses/LICENSE.txt
   Review note: Known limitation: The exact GCC revision is not disclosed by the wheel; the retained NumPy LICENSE.txt identifies the bundled runtime and notices.
 
-OpenSSL embedded in cryptography Linux wheel 4.0.3
-  Platforms: linux
-  Purpose: Statically built into cryptography _rust.abi3.so according to the wheel SBOM (no-shared).
+OpenSSL embedded in cryptography wheels 4.0.3
+  Platforms: linux, windows
+  Purpose: Cryptographic primitives bundled with cryptography, including Windows update signature verification. Linux static linkage is recorded in its wheel SBOM.
   License: Apache-2.0
   Copyright: Copyright 1998-2026 The OpenSSL Project Authors. All Rights Reserved.
   Source: https://github.com/openssl/openssl
   Legal files: licenses/desktop/cryptography-50.0.2/licenses/LICENSE.APACHE
-  Review note: Exact source URL, SHA256 and build flags are validated from the wheel SBOM.
+  Review note: Exact source URL, SHA256 and build flags are validated from the Linux wheel SBOM. This is not Windows build-provenance evidence; the Windows release gate checks the loaded OpenSSL version separately.
 
 NumPy Windows OpenBLAS and LAPACK 2.5.4 wheel bundle
   Platforms: windows

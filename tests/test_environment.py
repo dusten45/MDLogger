@@ -67,14 +67,15 @@ def test_env_cache_corrupted_returns_none(tmp_path):
     assert load_env_id(cache) is None
 
 
-def test_environment_provider_set_and_reload(tmp_path):
+def test_environment_provider_does_not_trust_legacy_id_only_cache(tmp_path):
     cache = tmp_path / "env_cache.json"
     provider = EnvironmentVersionProvider(cache_path=cache)
     assert provider.current() is None
     provider.set_current("md-2026-08")
     assert provider.current() == "md-2026-08"
     reloaded = EnvironmentVersionProvider(cache_path=cache)
-    assert reloaded.current() == "md-2026-08"
+    assert reloaded.current() is None
+    assert load_env_id(cache) == "md-2026-08"
 
 
 def test_reset_current_environment_clears_memory_without_recreating_cache(
@@ -120,6 +121,41 @@ def test_fetch_current_empty_or_error_returns_none():
         CONFIG, client=JsonHttpClient(FakeTransport(error=NetworkError("offline")))
     )
     assert error_client.fetch_current() is None
+
+
+def test_fetch_current_malformed_success_returns_none():
+    client = EnvironmentVersionClient(
+        CONFIG, client=JsonHttpClient(FakeTransport(body=b"<html>error</html>"))
+    )
+    assert client.fetch_current() is None
+
+
+def test_fetch_current_accepts_open_ended_environment_filter():
+    from urllib.parse import parse_qs, urlsplit
+
+    transport = FakeTransport(body=b'[{"id":"open-ended"}]')
+    client = EnvironmentVersionClient(CONFIG, client=JsonHttpClient(transport))
+    assert client.fetch_current() == "open-ended"
+    assert isinstance(transport.last_url, str)
+    query = parse_qs(urlsplit(transport.last_url).query)
+    assert query["or"] == ["(effective_to.is.null,effective_to.gte.now)"]
+
+
+def test_invalid_utf8_environment_cache_returns_none(tmp_path):
+    cache = tmp_path / "env_cache.json"
+    cache.write_bytes(b"\xff\xfe")
+    assert load_env_id(cache) is None
+
+
+def test_environment_cache_write_failure_keeps_verified_memory_value(tmp_path):
+    def unavailable(_path, _value):
+        raise OSError("disk full")
+
+    provider = EnvironmentVersionProvider(
+        cache_path=tmp_path / "env_cache.json", save=unavailable
+    )
+    provider.set_current("verified-current")
+    assert provider.current() == "verified-current"
 
 
 # ----- 신규 기록 stamping -----
@@ -183,6 +219,15 @@ def test_refresh_from_server_offline_uses_cache(monkeypatch, tmp_path):
     provider.set_current("cached-env")
     monkeypatch.setattr("mdlogger.environment._PROVIDER", provider)
     assert refresh_from_server(None) == "cached-env"
+
+
+def test_refresh_empty_response_clears_previous_environment(monkeypatch, tmp_path):
+    provider = EnvironmentVersionProvider(cache_path=tmp_path / "env_cache.json")
+    provider.set_current("old-environment")
+    monkeypatch.setattr("mdlogger.environment._PROVIDER", provider)
+    monkeypatch.setattr(EnvironmentVersionClient, "fetch_current", lambda self: None)
+    assert refresh_from_server(CONFIG) is None
+    assert provider.current() is None
 
 
 # ----- allowlist wiring -----

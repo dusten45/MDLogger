@@ -153,9 +153,13 @@ jobs:
               run: npm run check:secrets
 
     windows-package:
-        name: Windows onedir license contents
+        name: Windows package and update validation
         runs-on: windows-latest
-        timeout-minutes: 30
+        timeout-minutes: 45
+        env:
+            MDLOGGER_DATA_DIR: ${{ runner.temp }}
+            MDLOGGER_DECKS_URL: ""
+            QT_QPA_PLATFORM: offscreen
 
         steps:
             - name: Check out repository
@@ -178,6 +182,9 @@ jobs:
 
             - name: Verify desktop license artifacts
               run: uv run python scripts/generate_desktop_licenses.py --check
+
+            - name: Run Windows regression and native updater tests
+              run: uv run pytest --ignore=tests/integration
 
             - name: Determine Windows packaging scope
               id: windows-changes
@@ -249,3 +256,18 @@ jobs:
             - name: Scan Windows onedir for secrets
               if: steps.windows-changes.outputs.required != 'false'
               run: uv run python -m mdlogger.secret_scan dist/MDLogger
+
+            - name: Verify administrator update installation before tagging
+              if: steps.windows-changes.outputs.required != 'false'
+              shell: pwsh
+              run: |
+                  $version = (& uv run python -c "from mdlogger._version import __version__; print(__version__)").Trim()
+                  if ($LASTEXITCODE -ne 0) { throw "Could not read application version" }
+                  ./scripts/release/verify_windows_release.ps1 `
+                    -Onedir dist/MDLogger `
+                    -BuildDirectory build/MDLogger `
+                    -Installer (Join-Path (Get-Location) "dist/installer/MDLoggerSetup-$version.exe") `
+                    -Version $version `
+                    -InstallRoot (Join-Path $env:RUNNER_TEMP "MDLogger-update-verification") `
+                    -Record (Join-Path $env:RUNNER_TEMP "windows-update-verification.json") `
+                    -VerifyUpdater

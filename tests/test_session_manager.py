@@ -6,7 +6,11 @@ import threading
 
 import pytest
 
-from mdlogger.auth.credential_store import InMemoryCredentialStore
+from mdlogger.auth.credential_store import (
+    CredentialStoreBusy,
+    CredentialStoreError,
+    InMemoryCredentialStore,
+)
 from mdlogger.auth.models import (
     AccountDeletionResult,
     AccountExportData,
@@ -440,3 +444,279 @@ def test_concurrent_access_keeps_state_consistent():
         SessionState.OFFLINE,
         SessionState.REAUTH_REQUIRED,
     )
+
+
+def test_offline_restore_reconnects_after_backoff_without_new_login():
+    clock = [100.0]
+    service = FakeAccountService()
+    store = InMemoryCredentialStore()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    manager = SessionManager(service, store, now=lambda: clock[0], jitter=lambda _: 0)
+    service.refresh_result = AuthError(AuthErrorKind.NETWORK, "일시적인 연결 실패")
+    first = manager.restore(USER_ID)
+    assert first.state is SessionState.OFFLINE
+    assert first.retry_at == 102
+    service.refresh_result = make_session("refresh-2")
+    for _ in range(3):
+        assert manager.session_for_sync(USER_ID).state is SessionState.OFFLINE
+    assert service.refresh_calls == ["refresh-1"]
+    clock[0] = 102
+    assert manager.session_for_sync(USER_ID).state is SessionState.AUTHENTICATED
+    assert service.refresh_calls == ["refresh-1", "refresh-1"]
+    assert store.load_refresh_token(USER_ID) == "refresh-2"
+
+
+def test_refresh_rate_limit_deadline_is_not_bypassed():
+    clock = [0.0]
+    service = FakeAccountService()
+    store = InMemoryCredentialStore()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    manager = SessionManager(service, store, now=lambda: clock[0], jitter=lambda _: 0)
+    error = AuthError(AuthErrorKind.RATE_LIMITED, "요청 제한")
+    setattr(error, "retry_after_seconds", 600)
+    service.refresh_result = error
+    assert manager.restore(USER_ID).retry_at == 600
+    clock[0] = 599
+    manager.restore(USER_ID)
+    manager.refresh_for_sync(USER_ID)
+    assert service.refresh_calls == ["refresh-1"]
+    clock[0] = 600
+    service.refresh_result = make_session()
+    assert manager.session_for_sync(USER_ID).state is SessionState.AUTHENTICATED
+
+
+def test_keyring_read_failure_stays_offline_and_does_not_erase_credentials():
+    class UnavailableStore(InMemoryCredentialStore):
+        unavailable = True
+
+        def load_refresh_token(self, account_id):
+            if self.unavailable:
+                raise CredentialStoreError("잠긴 저장소")
+            return super().load_refresh_token(account_id)
+
+    clock = [0.0]
+    service = FakeAccountService()
+    store = UnavailableStore()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    manager = SessionManager(service, store, now=lambda: clock[0], jitter=lambda _: 0)
+    assert manager.restore(USER_ID).state is SessionState.OFFLINE
+    assert service.refresh_calls == []
+    store.unavailable = False
+    clock[0] = 3
+    assert manager.session_for_sync(USER_ID).state is SessionState.AUTHENTICATED
+
+
+def test_rotation_save_failure_retries_only_save_and_holds_refresh_lease():
+    class SaveFailureStore(InMemoryCredentialStore):
+        fail = False
+
+        def save_refresh_token(self, account_id, refresh_token):
+            if self.fail:
+                raise CredentialStoreError("저장 실패")
+            super().save_refresh_token(account_id, refresh_token)
+
+    clock = [0.0]
+    service = FakeAccountService()
+    store = SaveFailureStore()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    store.fail = True
+    manager = SessionManager(service, store, now=lambda: clock[0], jitter=lambda _: 0)
+    assert manager.restore(USER_ID).state is SessionState.OFFLINE
+    assert store.load_refresh_token(USER_ID) == "refresh-1"
+    with pytest.raises(CredentialStoreBusy), store.refresh_lock(USER_ID):
+        pass
+    clock[0] = 3
+    assert manager.session_for_sync(USER_ID).state is SessionState.OFFLINE
+    assert service.refresh_calls == ["refresh-1"]
+    store.fail = False
+    clock[0] = 100
+    assert manager.session_for_sync(USER_ID).state is SessionState.AUTHENTICATED
+    assert service.refresh_calls == ["refresh-1"]
+    assert store.load_refresh_token(USER_ID) == "refresh-2"
+    with store.refresh_lock(USER_ID):
+        pass
+
+
+def test_revoked_token_is_not_retried_even_if_keyring_delete_fails():
+    class DeleteFailureStore(InMemoryCredentialStore):
+        def delete_refresh_token(self, account_id):
+            raise CredentialStoreError("삭제 실패")
+
+    service = FakeAccountService()
+    store = DeleteFailureStore()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    service.refresh_result = AuthError(AuthErrorKind.TOKEN_EXPIRED, "폐기된 세션")
+    manager = SessionManager(service, store)
+    assert manager.restore(USER_ID).state is SessionState.REAUTH_REQUIRED
+    for _ in range(3):
+        assert manager.restore(USER_ID).state is SessionState.REAUTH_REQUIRED
+    assert service.refresh_calls == ["refresh-1"]
+
+
+def test_concurrent_refresh_is_single_flight():
+    entered, release = threading.Event(), threading.Event()
+
+    class BlockingService(FakeAccountService):
+        def refresh_session(self, refresh_token):
+            entered.set()
+            assert release.wait(5)
+            return super().refresh_session(refresh_token)
+
+    service = BlockingService()
+    store = InMemoryCredentialStore()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    manager = SessionManager(service, store)
+    results = []
+    threads = [
+        threading.Thread(target=lambda: results.append(manager.restore(USER_ID)))
+        for _ in range(8)
+    ]
+    try:
+        for thread in threads:
+            thread.start()
+        assert entered.wait(2)
+    finally:
+        release.set()
+        for thread in threads:
+            thread.join(5)
+    assert all(not thread.is_alive() for thread in threads)
+    assert len(results) == 8
+    assert all(result.state is SessionState.AUTHENTICATED for result in results)
+    assert service.refresh_calls == ["refresh-1"]
+
+
+def test_other_manager_logout_wins_over_inflight_refresh():
+    entered, release = threading.Event(), threading.Event()
+
+    class BlockingService(FakeAccountService):
+        def refresh_session(self, refresh_token):
+            entered.set()
+            assert release.wait(5)
+            return super().refresh_session(refresh_token)
+
+    service = BlockingService()
+    store = InMemoryCredentialStore()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    first = SessionManager(service, store)
+    second = SessionManager(FakeAccountService(), store)
+    result = []
+    worker = threading.Thread(target=lambda: result.append(first.restore(USER_ID)))
+    worker.start()
+    try:
+        assert entered.wait(2)
+        second.sign_out(USER_ID)
+    finally:
+        release.set()
+        worker.join(5)
+    assert not worker.is_alive()
+    assert result[0].state is SessionState.SIGNED_OUT
+    assert store.load_refresh_token(USER_ID) is None
+
+
+def test_account_change_discards_old_refresh_and_never_returns_other_token():
+    entered, release = threading.Event(), threading.Event()
+
+    class BlockingService(FakeAccountService):
+        def refresh_session(self, refresh_token):
+            entered.set()
+            assert release.wait(5)
+            return super().refresh_session(refresh_token)
+
+    service = BlockingService()
+    store = InMemoryCredentialStore()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    manager = SessionManager(service, store)
+    result = []
+    worker = threading.Thread(target=lambda: result.append(manager.restore(USER_ID)))
+    worker.start()
+    other = AuthSession(
+        AccountInfo("다른 계정", "other@test.local", True),
+        AuthTokens("다른 access", "다른 refresh", 3600),
+    )
+    try:
+        assert entered.wait(2)
+        manager.activate(other)
+    finally:
+        release.set()
+        worker.join(5)
+    assert result[0].state is SessionState.SIGNED_OUT
+    assert manager.session == other
+    assert manager.session_for_sync(USER_ID).session is None
+    assert store.load_refresh_token(USER_ID) == "refresh-1"
+
+
+def test_explicit_logout_remains_signed_out_when_keyring_delete_fails():
+    class DeleteFailureStore(InMemoryCredentialStore):
+        def delete_refresh_token(self, account_id):
+            raise CredentialStoreError("삭제 실패")
+
+    service = FakeAccountService()
+    store = DeleteFailureStore()
+    manager = SessionManager(service, store)
+    manager.activate(make_session())
+    with pytest.raises(CredentialStoreError):
+        manager.sign_out(USER_ID)
+    assert manager.session_for_sync(USER_ID).state is SessionState.SIGNED_OUT
+    assert manager.restore(USER_ID).state is SessionState.SIGNED_OUT
+    assert service.refresh_calls == []
+
+
+def test_same_account_new_login_invalidates_old_refresh_result():
+    entered, release = threading.Event(), threading.Event()
+
+    class BlockingService(FakeAccountService):
+        def refresh_session(self, refresh_token):
+            entered.set()
+            assert release.wait(5)
+            return super().refresh_session(refresh_token)
+
+    service = BlockingService()
+    store = InMemoryCredentialStore()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    manager = SessionManager(service, store)
+    result = []
+    worker = threading.Thread(target=lambda: result.append(manager.restore(USER_ID)))
+    worker.start()
+    try:
+        assert entered.wait(2)
+        manager.activate(make_session("새 로그인 토큰"))
+    finally:
+        release.set()
+        worker.join(5)
+    assert result[0].state is SessionState.SIGNED_OUT
+    assert manager.state is SessionState.AUTHENTICATED
+    assert store.load_refresh_token(USER_ID) == "새 로그인 토큰"
+
+
+def test_other_manager_refresh_reloads_rotated_token_after_lock_contention():
+    entered, release = threading.Event(), threading.Event()
+
+    class BlockingService(FakeAccountService):
+        def refresh_session(self, refresh_token):
+            entered.set()
+            assert release.wait(5)
+            return super().refresh_session(refresh_token)
+
+    first_service = BlockingService()
+    second_service = FakeAccountService()
+    second_service.refresh_result = make_session("refresh-3")
+    store = InMemoryCredentialStore()
+    store.save_refresh_token(USER_ID, "refresh-1")
+    first = SessionManager(first_service, store)
+    clock = [0.0]
+    second = SessionManager(
+        second_service, store, now=lambda: clock[0], jitter=lambda _: 0
+    )
+    worker = threading.Thread(target=lambda: first.restore(USER_ID))
+    worker.start()
+    try:
+        assert entered.wait(2)
+        assert second.restore(USER_ID).state is SessionState.OFFLINE
+        assert second_service.refresh_calls == []
+    finally:
+        release.set()
+        worker.join(5)
+    clock[0] = 3
+    assert second.session_for_sync(USER_ID).state is SessionState.AUTHENTICATED
+    assert second_service.refresh_calls == ["refresh-2"]
+    assert store.load_refresh_token(USER_ID) == "refresh-3"

@@ -337,9 +337,11 @@ def test_current_uv_closures_match_reviewed_counts_and_versions():
     closures = LICENSES.validate_platform_closures(policy)
 
     assert len(closures["linux"]) == 17
-    assert len(closures["windows"]) == 13
+    assert len(closures["windows"]) == 16
     assert closures["linux"]["cryptography"] == "50.0.2"
-    assert "cryptography" not in closures["windows"]
+    assert closures["windows"]["cryptography"] == "50.0.2"
+    assert closures["windows"]["cffi"] == "2.1.1"
+    assert closures["windows"]["pycparser"] == "3.12"
     assert closures["windows"]["pywin32-ctypes"] == "0.2.3"
 
 
@@ -381,7 +383,7 @@ def test_lock_version_drift_is_rejected():
 def test_generated_inventories_are_stably_sorted_without_duplicates():
     for filename, expected_count in (
         ("desktop-linux.json", 17),
-        ("desktop-windows.json", 13),
+        ("desktop-windows.json", 16),
     ):
         inventory = json.loads(
             (PROJECT_ROOT / "licenses" / "inventory" / filename).read_text(
@@ -448,7 +450,7 @@ def test_flatpak_runtime_requirements_preserve_platform_markers():
     requirements = (PROJECT_ROOT / "flatpak" / "requirements-runtime.txt").read_text(
         encoding="utf-8"
     )
-    assert "cryptography==50.0.2 ; sys_platform == 'linux'" in requirements
+    assert "cryptography==50.0.2 \\\n" in requirements
     assert "pyside6-essentials==6.12.0" in requirements
     assert "pyside6-addons==" not in requirements
     assert "pyside6==" not in requirements
@@ -471,7 +473,12 @@ def test_pyinstaller_spec_exposes_legal_files_and_excludes_unverified_palettes()
     assert "ignore=ignore_patterns(*excluded_windows_license_dirs)" in spec
     assert '"qtwebengine"' in spec
     assert '"qtmultimedia"' in spec
-    assert '"cryptography-50.0.2"' in spec
+    excluded_licenses = spec.split("excluded_windows_license_dirs = (", 1)[1].split(
+        ")", 1
+    )[0]
+    for directory in ("cryptography-50.0.2", "cffi-2.1.1", "pycparser-3.12"):
+        assert directory not in excluded_licenses
+    assert "desktop/cryptography-50.0.2/sboms" in spec
     assert '"PySide6.support.deprecated"' in spec
     assert 'copytree("licenses/sources"' not in spec
     assert "desktop-windows.json" not in spec

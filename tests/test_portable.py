@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-from mdlogger import db
+from mdlogger import db, portable
 from mdlogger.checksum import sha256_file
+from mdlogger.game_sync.repository import SyncRepository
 from mdlogger.portable import (
     CHECKSUMS_FILENAME,
     MANIFEST_FILENAME,
@@ -343,3 +345,297 @@ def test_import_rejects_missing_file(tmp_path: Path):
     with pytest.raises(PortableArchiveError):
         import_portable_archive(archive, target)
     assert not target.exists()
+
+
+def _source_records(directory: Path, count: int = 2) -> list[dict]:
+    source = directory / "source.db"
+    _make_source_db(source, count=count)
+    connection = db.connect(source)
+    try:
+        return [portable._record_dict(row) for row in db.get_all_games(connection)]
+    finally:
+        connection.close()
+
+
+def _rewrite_records(archive: Path, records: list[dict]) -> None:
+    (archive / RECORDS_FILENAME).write_text(
+        "".join(json.dumps(record, ensure_ascii=False) + "\n" for record in records),
+        encoding="utf-8",
+    )
+    portable._write_checksums(archive)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("event_points_after", "not-an-integer"),
+        ("event_points_after", True),
+        ("event_points_after", 2**63),
+        ("event_points_after", float("nan")),
+        ("event_points_after", float("inf")),
+        ("turns", 2.5),
+        ("turns", -1),
+        ("turns", False),
+        ("opp_deck", 123),
+        ("end_reason", {}),
+        ("result", "draw"),
+        ("turn_order", "unknown"),
+        ("end_reason", "unknown"),
+        ("standing_kind", "unknown"),
+        ("rating_after", 1000),
+        ("note", {"text": "메모"}),
+        ("played_at", "2026-02-30T10:00:00"),
+        ("played_at", "2026-06-19T10:00:00Z"),
+        ("timezone_offset_minutes", True),
+        ("timezone_offset_minutes", 1440),
+    ],
+)
+def test_invalid_last_record_is_rejected_before_target_changes(tmp_path, field, value):
+    records = _source_records(tmp_path)
+    archive, target = tmp_path / "out", tmp_path / "target.db"
+    export_portable_archive(archive, records)
+    _make_source_db(target, count=1)
+    before = target.read_bytes()
+    records[-1][field] = value
+    _rewrite_records(archive, records)
+
+    with pytest.raises(PortableArchiveError):
+        import_portable_archive(archive, target)
+    assert target.read_bytes() == before
+    assert len(_target_rows(target)) == 1
+    assert _outbox_count(target) == 1
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["played_at", "result", "turn_order", "opp_deck", "turns", "end_reason", "sync_id"],
+)
+def test_writer_and_reader_reject_missing_core_fields(tmp_path, field):
+    records = _source_records(tmp_path)
+    archive = tmp_path / "out"
+    export_portable_archive(archive, records)
+    del records[-1][field]
+    _rewrite_records(archive, records)
+    with pytest.raises(PortableArchiveError):
+        import_portable_archive(archive, tmp_path / "target.db")
+    with pytest.raises(PortableArchiveError):
+        export_portable_archive(tmp_path / "bad-export", records)
+    assert not (tmp_path / "target.db").exists()
+    assert not (tmp_path / "bad-export").exists()
+
+
+@pytest.mark.parametrize("length", [10_000, 10_001, 40_000])
+def test_long_hangul_notes_round_trip_without_truncation(tmp_path, length):
+    records = _source_records(tmp_path, count=1)
+    records[0]["note"] = "한" * length
+    records[0]["played_at"] = "2026-10-24T17:23:42.123456"
+    archive, target = tmp_path / "out", tmp_path / "target.db"
+    export_portable_archive(archive, records)
+    import_portable_archive(archive, target)
+    row = _target_rows(target)[0]
+    assert portable._record_dict(row) == records[0]
+
+
+def test_nullable_migrated_v2_record_round_trips_exactly(tmp_path):
+    records = _source_records(tmp_path, count=1)
+    for field in (
+        "standing_kind",
+        "play_context_id",
+        "event_points_before",
+        "event_points_after",
+        "my_deck",
+        "note",
+        "timezone_offset_minutes",
+        "environment_version_id",
+    ):
+        records[0][field] = None
+    archive, target = tmp_path / "legacy-v2", tmp_path / "target.db"
+    export_portable_archive(archive, records)
+    import_portable_archive(archive, target)
+    assert portable._record_dict(_target_rows(target)[0]) == records[0]
+
+
+@pytest.mark.parametrize("kind", ["rank", "rating"])
+def test_other_standing_kinds_round_trip(tmp_path, kind):
+    records = _source_records(tmp_path, count=1)
+    records[0].update(
+        standing_kind=kind, event_points_before=None, event_points_after=None
+    )
+    if kind == "rank":
+        records[0].update(
+            rank_tier_before="gold",
+            rank_tier_after="gold",
+            rank_division_before=5,
+            rank_division_after=4,
+        )
+    else:
+        records[0].update(rating_before=1500, rating_after=1530)
+    archive, target = tmp_path / "out", tmp_path / "target.db"
+    export_portable_archive(archive, records)
+    import_portable_archive(archive, target)
+    assert portable._record_dict(_target_rows(target)[0]) == records[0]
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("format_version", True),
+        ("payload_version", 2.0),
+        ("record_count", True),
+        ("included_sections", []),
+        ("source_profile_kind", {}),
+        ("archive_id", {}),
+    ],
+)
+def test_manifest_contract_rejects_wrong_types_before_target_creation(
+    tmp_path, field, value
+):
+    records = _source_records(tmp_path, count=1)
+    archive = tmp_path / "out"
+    export_portable_archive(archive, records)
+    manifest_path = archive / MANIFEST_FILENAME
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest[field] = value
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    portable._write_checksums(archive)
+    with pytest.raises(PortableArchiveError):
+        import_portable_archive(archive, tmp_path / "target.db")
+    assert not (tmp_path / "target.db").exists()
+
+
+def test_record_byte_limit_is_symmetric_and_failed_export_is_not_published(
+    tmp_path, monkeypatch
+):
+    records = _source_records(tmp_path, count=1)
+    records[0]["note"] = "한글" * 100
+    archive = tmp_path / "valid"
+    export_portable_archive(archive, records)
+    monkeypatch.setattr(
+        portable, "MAX_RECORDS_BYTES", (archive / RECORDS_FILENAME).stat().st_size - 1
+    )
+    with pytest.raises(PortableArchiveError):
+        export_portable_archive(tmp_path / "too-large", records)
+    with pytest.raises(PortableArchiveError):
+        import_portable_archive(archive, tmp_path / "target.db")
+    assert not (tmp_path / "too-large").exists()
+    assert not list(tmp_path.glob(".too-large.*"))
+    assert not (tmp_path / "target.db").exists()
+
+
+def test_import_outbox_failure_rolls_back_every_record_and_batch(tmp_path):
+    records = _source_records(tmp_path)
+    archive, target = tmp_path / "out", tmp_path / "target.db"
+    export_portable_archive(archive, records)
+    connection = db.connect(target)
+    db.init_db(connection)
+    connection.execute(
+        "CREATE TRIGGER fail_second BEFORE INSERT ON sync_outbox "
+        "WHEN (SELECT COUNT(*) FROM sync_outbox) = 1 "
+        "BEGIN SELECT RAISE(ABORT, 'outbox failure'); END"
+    )
+    connection.close()
+    with pytest.raises(sqlite3.IntegrityError):
+        import_portable_archive(archive, target)
+    connection = db.connect(target)
+    try:
+        for table in ("games", "sync_outbox", "import_batches"):
+            assert (
+                connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
+            )
+    finally:
+        connection.close()
+
+
+def test_reader_rejects_unknown_fields_instead_of_silently_dropping_them(tmp_path):
+    records = _source_records(tmp_path, count=1)
+    archive = tmp_path / "out"
+    export_portable_archive(archive, records)
+    records[0]["unknown_field"] = "보존할 수 없는 값"
+    _rewrite_records(archive, records)
+    with pytest.raises(PortableArchiveError):
+        import_portable_archive(archive, tmp_path / "target.db")
+    assert not (tmp_path / "target.db").exists()
+
+
+def test_duplicate_archive_ids_are_rejected(tmp_path):
+    records = _source_records(tmp_path)
+    archive = tmp_path / "out"
+    export_portable_archive(archive, records)
+    records[1]["sync_id"] = records[0]["sync_id"]
+    _rewrite_records(archive, records)
+    with pytest.raises(PortableArchiveError):
+        import_portable_archive(archive, tmp_path / "target.db")
+    with pytest.raises(PortableArchiveError):
+        export_portable_archive(tmp_path / "duplicate", records)
+
+
+@pytest.mark.parametrize("turns", [None, 0])
+def test_minimal_server_v2_pull_can_be_exported_and_restored_exactly(tmp_path, turns):
+    remote = {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "played_at": "2026-08-07T10:00:00",
+        "result": "win",
+        "turn_order": "first",
+        "note": "중복 저장하지 않을 메모",
+        "standing_kind": "event_points",
+        "play_context_id": "dc_cup_2026_08",
+        "event_points_after": 10000,
+        "payload_version": 2,
+        "change_version": 1,
+        "updated_at": "2026-08-07T10:01:00+00:00",
+    }
+    if turns is not None:
+        remote["turns"] = turns
+    source = db.connect(tmp_path / "synced.db")
+    try:
+        db.init_db(source)
+        repository = SyncRepository(source)
+        assert (
+            repository.apply_pull_batch(
+                [remote],
+                completed_at=datetime(2026, 8, 7, 10, 1),
+                initial_sync_completed=True,
+            )
+            == 1
+        )
+        records = [portable._record_dict(row) for row in db.get_all_games(source)]
+    finally:
+        source.close()
+    assert records[0]["opp_deck"] is None
+    assert records[0]["end_reason"] is None
+    assert records[0]["turns"] == turns
+    archive, target = tmp_path / "synced-export", tmp_path / "restored.db"
+    export_portable_archive(archive, records, profile_kind=ProfileKind.REGISTERED)
+    assert import_portable_archive(archive, target).imported_count == 1
+    assert portable._record_dict(_target_rows(target)[0]) == records[0]
+
+
+@pytest.mark.parametrize("turns", [None, 0])
+def test_existing_v2_archive_with_nullable_trio_round_trips(tmp_path, turns):
+    records = _source_records(tmp_path, count=1)
+    archive, target = tmp_path / "old-v2", tmp_path / "restored.db"
+    export_portable_archive(archive, records)
+    records[0].update(opp_deck=None, turns=turns, end_reason=None)
+    _rewrite_records(archive, records)
+    assert import_portable_archive(archive, target).imported_count == 1
+    restored = portable._record_dict(_target_rows(target)[0])
+    assert restored == records[0]
+    reexported = tmp_path / "reexported"
+    export_portable_archive(reexported, [restored])
+    second_target = tmp_path / "second.db"
+    assert import_portable_archive(reexported, second_target).imported_count == 1
+    assert portable._record_dict(_target_rows(second_target)[0]) == records[0]
+
+
+@pytest.mark.parametrize("field", ["played_at", "result", "turn_order", "sync_id"])
+def test_nullable_v2_fields_do_not_make_core_identifiers_nullable(tmp_path, field):
+    records = _source_records(tmp_path, count=1)
+    archive = tmp_path / "out"
+    export_portable_archive(archive, records)
+    records[0][field] = None
+    _rewrite_records(archive, records)
+    with pytest.raises(PortableArchiveError):
+        import_portable_archive(archive, tmp_path / "target.db")
+    with pytest.raises(PortableArchiveError):
+        export_portable_archive(tmp_path / "invalid", records)
+    assert not (tmp_path / "target.db").exists()

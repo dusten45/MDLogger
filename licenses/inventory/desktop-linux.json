@@ -81,12 +81,13 @@
           "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe"
         }
       ],
-      "name": "OpenSSL embedded in cryptography Linux wheel",
+      "name": "OpenSSL embedded in cryptography wheels",
       "platforms": [
-        "linux"
+        "linux",
+        "windows"
       ],
-      "purpose": "Statically built into cryptography _rust.abi3.so according to the wheel SBOM (no-shared).",
-      "review_notes": "Exact source URL, SHA256 and build flags are validated from the wheel SBOM.",
+      "purpose": "Cryptographic primitives bundled with cryptography, including Windows update signature verification. Linux static linkage is recorded in its wheel SBOM.",
+      "review_notes": "Exact source URL, SHA256 and build flags are validated from the Linux wheel SBOM. This is not Windows build-provenance evidence; the Windows release gate checks the loaded OpenSSL version separately.",
       "selected_license_expression": "Apache-2.0",
       "source_repository": "https://github.com/openssl/openssl",
       "version": "4.0.3"
@@ -94,7 +95,7 @@
   ],
   "distribution_count": 17,
   "generated_by": "scripts/generate_desktop_licenses.py",
-  "lockfile_sha256": "d4aefa1c40be37e3072a5fcc462292dcebd0c0d5766066aefd9c6d1a0e3cb9dc",
+  "lockfile_sha256": "d124ee8cd11366f21863c97687ab0de39c196f52a1478e4c3125067ac91d59e3",
   "packages": [
     {
       "copyright": "Armin Rigo, Maciej Fijalkowski and contributors",
@@ -142,7 +143,7 @@
     },
     {
       "copyright": "Copyright (c) Individual contributors",
-      "dependency": "indirect",
+      "dependency": "direct",
       "homepage": "https://cryptography.io/",
       "license_files": [
         {
@@ -164,7 +165,7 @@
         "value": "Apache-2.0 OR BSD-3-Clause"
       },
       "name": "cryptography",
-      "purpose": "Secret Service cryptographic transport used by keyring.",
+      "purpose": "RSA update-manifest signature verification on Windows and Secret Service cryptographic transport used by keyring on Linux.",
       "review_notes": "The BSD-3-Clause alternative is explicitly selected; LICENSE and both upstream alternative texts are preserved.",
       "selected_license_expression": "BSD-3-Clause",
       "source_repository": "https://github.com/pyca/cryptography",

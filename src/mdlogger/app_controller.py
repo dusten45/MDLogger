@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Protocol
+
+from PySide6.QtCore import QObject, Signal
 
 from .game_service import GameService
 from .game_sync.models import SyncConflict
-from .profiles import ProfileContext, ProfileManager
+from .profiles import ProfileContext, ProfileKind, ProfileManager
 
 
 class ProfileWindow(Protocol):
@@ -39,16 +42,21 @@ class SyncScope(Protocol):
         merged_payload: dict | None = None,
         *,
         expected_remote_version: int | None = None,
-    ) -> None: ...
+        expected_local_revision: str,
+    ) -> str: ...
 
     def stop(self, *, timeout_seconds: float = 5.0) -> bool: ...
+
+    def resume(self) -> None: ...
 
 
 SyncFactory = Callable[[ProfileContext], SyncScope | None]
 
 
-class AppController:
+class AppController(QObject):
     """프로필 전환마다 계정 범위 서비스와 창을 새로 구성한다."""
+
+    profile_closing = Signal()
 
     def __init__(
         self,
@@ -57,6 +65,7 @@ class AppController:
         window_factory: WindowFactory,
         sync_factory: SyncFactory | None = None,
     ):
+        super().__init__()
         self._profiles = profiles
         self._service_factory = service_factory
         self._window_factory = window_factory
@@ -89,6 +98,10 @@ class AppController:
     def list_conflicts(self) -> list[SyncConflict]:
         return self._sync.list_conflicts() if self._sync is not None else []
 
+    @property
+    def resolution_finished(self) -> Any:
+        return getattr(self._sync, "resolution_finished", None)
+
     def resolve_conflict(
         self,
         conflict_id: int,
@@ -96,14 +109,34 @@ class AppController:
         merged_payload: dict | None = None,
         *,
         expected_remote_version: int | None = None,
-    ) -> None:
+        expected_local_revision: str,
+    ) -> str:
         if self._sync is not None:
-            self._sync.resolve_conflict(
+            return self._sync.resolve_conflict(
                 conflict_id,
                 resolution,
                 merged_payload,
                 expected_remote_version=expected_remote_version,
+                expected_local_revision=expected_local_revision,
             )
+        raise ValueError("동기화 연결을 사용할 수 없어 충돌을 해결할 수 없습니다.")
+
+    def backup_guest_to(self, destination: Path) -> None:
+        if (
+            self._games is None
+            or self._current_profile is None
+            or self._current_profile.kind is not ProfileKind.GUEST
+        ):
+            raise ValueError("현재 게스트 프로필의 스냅숏을 만들 수 없습니다.")
+        self._games.backup_to(destination)
+
+    def pause_for_update(self) -> bool:
+        """창과 연결은 유지하면서 설치 전에 동기화 작업을 정지한다."""
+        return self._sync is None or self._sync.stop() is not False
+
+    def resume_after_update(self) -> None:
+        if self._sync is not None:
+            self._sync.resume()
 
     def start_guest(self) -> None:
         self.switch_profile(self._profiles.guest())
@@ -170,6 +203,7 @@ class AppController:
         return True
 
     def _close_current_scope(self, *, sync_already_stopped: bool = False) -> None:
+        self.profile_closing.emit()
         sync = self._sync
         window = self._window
         games = self._games

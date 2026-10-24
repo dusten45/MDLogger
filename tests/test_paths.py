@@ -47,7 +47,11 @@ def test_migrates_legacy_files_without_overwriting(monkeypatch, tmp_path):
     legacy_data_dir = base_dir / "data"
     new_data_dir = tmp_path / "standard"
     legacy_data_dir.mkdir(parents=True)
-    (legacy_data_dir / "games.db").write_text("legacy-db")
+    source = sqlite3.connect(legacy_data_dir / "games.db")
+    source.execute("CREATE TABLE marker (value TEXT)")
+    source.execute("INSERT INTO marker VALUES ('legacy-db')")
+    source.commit()
+    source.close()
     (legacy_data_dir / "decks_sync.json").write_text("legacy-state")
     (base_dir / "decks.json").write_text("legacy-decks")
     new_data_dir.mkdir()
@@ -63,7 +67,9 @@ def test_migrates_legacy_files_without_overwriting(monkeypatch, tmp_path):
 
     paths.ensure_data_dir()
 
-    assert (new_data_dir / "games.db").read_text() == "legacy-db"
+    copied = sqlite3.connect(new_data_dir / "games.db")
+    assert copied.execute("SELECT value FROM marker").fetchone()[0] == "legacy-db"
+    copied.close()
     assert (new_data_dir / "decks_sync.json").read_text() == "legacy-state"
     assert (new_data_dir / "decks.json").read_text() == "current-decks"
     assert (new_data_dir / ".legacy-data-migrated").exists()
@@ -184,3 +190,167 @@ def test_legal_urls_defined_and_overrideable(monkeypatch):
         paths.TERMS_OF_SERVICE_URL
         == "https://mdlogger-web.dalimi4511-615.workers.dev/terms"
     )
+
+
+def test_backup_full_never_falls_back_to_stale_main_file(tmp_path, monkeypatch):
+    source, destination = tmp_path / "source.db", tmp_path / "copy.db"
+    connection = sqlite3.connect(source)
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("PRAGMA wal_autocheckpoint=0")
+    connection.execute("CREATE TABLE games (note TEXT)")
+    connection.execute("INSERT INTO games VALUES ('체크포인트 완료')")
+    connection.commit()
+    connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    connection.execute("INSERT INTO games VALUES (?)", ("기록" * 65536,))
+    connection.commit()
+    real_connect = sqlite3.connect
+
+    def limited_connect(path, *args, **kwargs):
+        opened = real_connect(path, *args, **kwargs)
+        if str(path).endswith(".copy.tmp"):
+            opened.execute("PRAGMA max_page_count=2")
+        return opened
+
+    monkeypatch.setattr(paths.sqlite3, "connect", limited_connect)
+    try:
+        with pytest.raises(sqlite3.OperationalError) as error:
+            paths.copy_database_via_backup(source, destination)
+        assert error.value.sqlite_errorcode == sqlite3.SQLITE_FULL
+        assert not destination.exists()
+        assert connection.execute("SELECT COUNT(*) FROM games").fetchone()[0] == 2
+        assert not list(tmp_path.glob(".*.copy.tmp*"))
+    finally:
+        connection.close()
+
+
+def test_backup_rejects_corrupt_or_missing_source_without_publishing(tmp_path):
+    source, destination = tmp_path / "broken.db", tmp_path / "copy.db"
+    with pytest.raises(sqlite3.Error):
+        paths.copy_database_via_backup(source, destination)
+    assert not source.exists()
+    source.write_bytes(b"not sqlite")
+    with pytest.raises(sqlite3.Error):
+        paths.copy_database_via_backup(source, destination)
+    assert source.read_bytes() == b"not sqlite"
+    assert not destination.exists()
+    assert not list(tmp_path.glob(".*.copy.tmp*"))
+
+
+def test_backup_does_not_overwrite_racing_destination(tmp_path, monkeypatch):
+    source = sqlite3.connect(":memory:")
+    source.execute("CREATE TABLE marker (value TEXT)")
+    destination = tmp_path / "copy.db"
+    real_link = paths.os.link
+
+    def publish_after_other_writer(temporary, target):
+        target.write_bytes(b"other data")
+        real_link(temporary, target)
+
+    monkeypatch.setattr(paths.os, "link", publish_after_other_writer)
+    with pytest.raises(FileExistsError):
+        paths.copy_database_via_backup(source, destination)
+    assert destination.read_bytes() == b"other data"
+    assert source.execute("SELECT COUNT(*) FROM marker").fetchone()[0] == 0
+    source.close()
+
+
+def test_backup_contention_is_bounded(tmp_path):
+    source, destination = tmp_path / "locked.db", tmp_path / "copy.db"
+    writer = sqlite3.connect(source)
+    writer.execute("CREATE TABLE marker (value TEXT)")
+    writer.execute("BEGIN EXCLUSIVE")
+    try:
+        with pytest.raises(sqlite3.OperationalError, match="제한 시간"):
+            paths.copy_database_via_backup(source, destination, timeout=0.01)
+        assert not destination.exists()
+        assert not list(tmp_path.glob(".*.copy.tmp*"))
+    finally:
+        writer.rollback()
+        writer.close()
+
+
+def test_backup_rejects_uncommitted_owned_connection_without_rolling_it_back(tmp_path):
+    source = sqlite3.connect(":memory:")
+    source.execute("CREATE TABLE marker (value TEXT)")
+    source.execute("INSERT INTO marker VALUES ('미커밋')")
+    with pytest.raises(sqlite3.OperationalError, match="트랜잭션"):
+        paths.copy_database_via_backup(source, tmp_path / "copy.db")
+    assert source.in_transaction
+    assert source.execute("SELECT COUNT(*) FROM marker").fetchone()[0] == 1
+    source.close()
+
+
+def test_reset_is_recovered_before_legacy_migration(tmp_path, monkeypatch):
+    from mdlogger.profiles import ProfileManager
+
+    class ProcessStopped(BaseException):
+        pass
+
+    data_dir, base_dir = tmp_path / "current", tmp_path / "portable"
+    manager = ProfileManager(data_dir)
+    guest_id = manager.guest().local_profile_id
+    (data_dir / "games.db").write_bytes(b"current data")
+    legacy = base_dir / "data"
+    legacy.mkdir(parents=True)
+    (legacy / "games.db").write_bytes(b"stale data")
+
+    def stop_before_commit(directory):
+        raise ProcessStopped
+
+    monkeypatch.setattr(manager, "_prepare_reset_state", stop_before_commit)
+    with pytest.raises(ProcessStopped):
+        manager.reset_local_data()
+    assert not (data_dir / "games.db").exists()
+    for name, value in {
+        "DATA_DIR": data_dir,
+        "BASE_DIR": base_dir,
+        "DB_PATH": data_dir / "games.db",
+        "SETTINGS_PATH": data_dir / "settings.json",
+        "DECKS_PATH": data_dir / "decks.json",
+        "DECKS_SYNC_STATE_PATH": data_dir / "decks_sync.json",
+    }.items():
+        monkeypatch.setattr(paths, name, value)
+    paths.ensure_data_dir()
+    assert (data_dir / "games.db").read_bytes() == b"current data"
+    assert ProfileManager(data_dir).guest().local_profile_id == guest_id
+    assert not list(data_dir.glob(".mdlogger-reset-*"))
+
+
+def test_backup_restarts_safely_when_another_connection_writes_and_checkpoints(
+    tmp_path,
+):
+    source, destination = tmp_path / "source.db", tmp_path / "copy.db"
+    writer = sqlite3.connect(source)
+    writer.execute("PRAGMA journal_mode=WAL")
+    writer.execute("CREATE TABLE games (note TEXT)")
+    writer.executemany("INSERT INTO games VALUES (?)", [("기록" * 4096,)] * 100)
+    writer.commit()
+    wrote_during_backup = False
+
+    class ConcurrentConnection(sqlite3.Connection):
+        def backup(self, target, *, progress=None, **kwargs):
+            def concurrent_progress(status, remaining, total):
+                nonlocal wrote_during_backup
+                if remaining and not wrote_during_backup:
+                    wrote_during_backup = True
+                    writer.execute("INSERT INTO games VALUES ('복사 도중 커밋')")
+                    writer.commit()
+                    writer.execute("PRAGMA wal_checkpoint(PASSIVE)")
+                if progress is not None:
+                    progress(status, remaining, total)
+
+            return super().backup(target, progress=concurrent_progress, **kwargs)
+
+    reader = sqlite3.connect(source, factory=ConcurrentConnection)
+    try:
+        paths.copy_database_via_backup(reader, destination)
+        copied = sqlite3.connect(destination)
+        try:
+            assert wrote_during_backup
+            assert copied.execute("SELECT COUNT(*) FROM games").fetchone()[0] == 101
+            assert copied.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        finally:
+            copied.close()
+    finally:
+        reader.close()
+        writer.close()

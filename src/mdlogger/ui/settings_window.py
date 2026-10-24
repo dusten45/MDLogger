@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .._version import __version__
 from ..app_settings import (
     AccentPreset,
     AppSettings,
@@ -107,6 +108,7 @@ class SettingsWindow(QDialog):
     sign_out_all_requested = Signal()
     delete_account_requested = Signal()
     app_reset_requested = Signal()
+    update_requested = Signal()
     # 메모 표시 여부를 메인 창(상세 폼/통계 표)에 전달한다.
     memo_enabled_changed = Signal(bool)
     # 점수/레이팅 입력 방식을 메인 창(상세 폼)에 전달한다.
@@ -187,6 +189,9 @@ class SettingsWindow(QDialog):
         )
         app_reset_btn.clicked.connect(self._request_application_reset)
         footer.addWidget(app_reset_btn)
+        update_btn = QPushButton(f"업데이트 확인 ({__version__})")
+        update_btn.clicked.connect(self.update_requested)
+        footer.addWidget(update_btn)
         footer.addStretch(1)
         close_btn = QPushButton("닫기")
         close_btn.setProperty("role", "primary")
