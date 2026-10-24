@@ -94,7 +94,6 @@ jobs:
             RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
             RELEASE_INPUTS: ${{ github.workspace }}/.release-work/inputs
             RELEASE_SOURCE: ${{ github.workspace }}/.release-work/source/MDLogger-${{ needs.prepare.outputs.version }}
-            MDLOGGER_DATA_DIR: ${{ runner.temp }}/mdlogger-release-tests
             MDLOGGER_DECKS_URL: ""
             QT_QPA_PLATFORM: offscreen
             PYTHONDONTWRITEBYTECODE: "1"
@@ -114,6 +113,8 @@ jobs:
             - name: Verify and extract immutable source archive
               working-directory: ${{ github.workspace }}
               run: |
+                  $env:MDLOGGER_DATA_DIR = Join-Path $env:RUNNER_TEMP "mdlogger-release-tests"
+                  "MDLOGGER_DATA_DIR=$env:MDLOGGER_DATA_DIR" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
                   $archive = Join-Path $env:RELEASE_INPUTS "MDLogger-$env:RELEASE_VERSION-source.tar.gz"
                   $digest = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
                   $sidecar = [IO.File]::ReadAllText("$archive.sha256").Replace("`r`n", "`n")
