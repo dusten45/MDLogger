@@ -48,6 +48,44 @@ beforeEach(() => {
     });
 });
 
+describe("GitHub 저장소 아이콘 링크", () => {
+    it.each([
+        ["로그인", LoginPage],
+        ["설정", SettingsPage],
+    ])("%s 화면에서 공식 로고로 저장소를 새 탭에 연결한다", async (_, Page) => {
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter>
+                <Page />
+            </MemoryRouter>,
+        );
+
+        const link = await screen.findByRole("link", {
+            name: "MDLogger GitHub 저장소 (새 탭에서 열림)",
+        });
+        expect(link).toHaveAttribute("href", "https://github.com/dusten45/MDLogger");
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link.getAttribute("rel")?.split(/\s+/)).toEqual(
+            expect.arrayContaining(["noopener", "noreferrer"]),
+        );
+        expect(link).toHaveAttribute("title", "MDLogger GitHub 저장소 (새 탭에서 열림)");
+
+        const icons = Array.from(link.querySelectorAll("img"));
+        expect(icons.map((icon) => icon.getAttribute("src"))).toEqual([
+            "/github-invertocat-black.svg",
+            "/github-invertocat-white.svg",
+        ]);
+        for (const icon of icons) {
+            expect(icon).toHaveAttribute("alt", "");
+            expect(icon).toHaveAttribute("width", "32");
+            expect(icon).toHaveAttribute("height", "32");
+        }
+
+        await user.tab({ shift: true });
+        expect(link).toHaveFocus();
+    });
+});
+
 describe("오픈소스 및 GPL-3.0 라이선스 링크와 회원가입 동의", () => {
     it("로그인 footer에서 정적 오픈소스 라이선스 고지 파일로 이동한다", () => {
         render(

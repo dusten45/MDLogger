@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { AuthUnavailable } from "../components/AuthUnavailable";
+import { GitHubLink } from "../components/GitHubLink";
 import { UnofficialNotice } from "../components/UnofficialNotice";
 
 type Mode = "login" | "signup" | "reset";
@@ -337,12 +338,15 @@ export function LoginPage() {
 
             <UnofficialNotice />
 
-            <footer className="auth-footer-links">
-                <Link to="/privacy">개인정보 처리방침</Link>
-                <span aria-hidden="true">·</span>
-                <Link to="/terms">이용약관</Link>
-                <span aria-hidden="true">·</span>
-                <a href="/third-party-notices.txt">오픈소스 라이선스</a>
+            <footer className="auth-footer">
+                <div className="auth-footer-links">
+                    <Link to="/privacy">개인정보 처리방침</Link>
+                    <span aria-hidden="true">·</span>
+                    <Link to="/terms">이용약관</Link>
+                    <span aria-hidden="true">·</span>
+                    <a href="/third-party-notices.txt">오픈소스 라이선스</a>
+                </div>
+                <GitHubLink />
             </footer>
         </div>
     );

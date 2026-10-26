@@ -1,0 +1,38 @@
+.github-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: var(--control-height);
+    height: var(--control-height);
+    border-radius: var(--radius-control);
+}
+
+.github-link:hover {
+    background: var(--surface-subtle);
+}
+
+.github-link:active {
+    background: var(--selection);
+}
+
+.github-link:focus-visible {
+    outline: var(--focus-width) solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.github-link__icon--light {
+    display: block;
+}
+
+.github-link__icon--dark {
+    display: none;
+}
+
+[data-theme="dark"] .github-link__icon--light {
+    display: none;
+}
+
+[data-theme="dark"] .github-link__icon--dark {
+    display: block;
+}

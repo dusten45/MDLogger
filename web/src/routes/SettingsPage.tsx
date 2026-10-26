@@ -19,6 +19,7 @@ import {
 } from "../settings/settingsSync";
 import { DEFAULT_MODE_LAST_USED, parseSettings } from "../settings/webSettings";
 import { useInstallPrompt } from "../lib/useInstallPrompt";
+import { GitHubLink } from "../components/GitHubLink";
 import { UnofficialNotice } from "../components/UnofficialNotice";
 import "./settings.css";
 
@@ -556,6 +557,7 @@ export function SettingsPage() {
                     >
                         오픈소스 라이선스
                     </a>
+                    <GitHubLink />
                 </div>
             </section>
 
