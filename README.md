@@ -13,7 +13,7 @@ An unofficial match logging and analytics tool for Yu-Gi-Oh! MASTER DUEL, with a
 - [Desktop downloads](https://github.com/dusten45/MDLogger/releases): Windows x64 installer and Linux x86_64 Flatpak bundles. A Windows-only release does not replace the Linux bundle.
 - [Web application](https://mdlogger-web.dalimi4511-615.workers.dev/): browser access and PWA installation.
 
-Windows installer editions from v2.1.0 check for signed updates after startup; downloading and installing requires user action. For the v2.1.0 to v2.1.1 transition, close the app and run the new installer manually. Versions before v2.1.0 also require manual installation.
+Windows installer editions from v2.1.0 support automatic updates. Versions before v2.1.0 require manual installation.
 
 Update signatures do not replace Windows Authenticode signing: administrator approval or SmartScreen warnings may still appear. Linux updates remain manual; no MDLogger automatic-update Flatpak remote is configured. See [update verification limits](docs/release.md#업데이트와-검증).
 
