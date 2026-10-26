@@ -1,62 +1,70 @@
-# MDLogger Web (3단계)
+# MDLogger Web
 
-로그인 필수 온라인 반응형 웹앱 (React + TypeScript + Vite SPA).
+React + TypeScript + Vite 기반의 로그인 필수 웹앱이다. 기록 입력·수정·삭제,
+개인 통계·기록 목록, 계정 관리와 취향 설정 동기화를 제공한다.
+서버 계약은 [Supabase README](../supabase/README.md), 배포 기준은
+[릴리스 문서](../docs/release.md)를 따른다.
 
-기준 문서: `docs/phase3-web-implementation-spec.md`.
+## 개발
 
-## 요구 사항
-
-- Node.js 20+ (개발 환경: v22)
-- Supabase hosted project (URL + publishable anon key)
-
-## 설정
-
-`.env.example`을 참고해 `.env.development`/`.env.preview`/`.env.production`에
-Supabase URL과 publishable(anon) key를 넣는다. 배포 시에는 `VITE_BUILD_ID`에 git
-commit을 주입한다. service-role key는 절대 넣지 않는다.
-
-## 명령
+Node.js는 루트 [`.nvmrc`](../.nvmrc)의 버전을 사용한다. 아래 명령은 `web/`에서 실행한다.
 
 ```sh
-npm install        # 의존성 설치
-npm run generate:icons # PWA 표준 및 Maskable 아이콘 생성
-npm run dev        # 로컬 개발 서버
-npm run build      # 타입 검사 + 정적 자산 및 PWA Service Worker 빌드
-npm run lint       # ESLint
-npm test              # Vitest·Node secret 검사 단위 테스트
-npm run check:deploy-env # 배포용 Supabase 환경 변수를 검사
-npm run check:secrets    # dist에 server secret이 없는지 검사
-npm run preview          # 빌드 결과 미리보기
-npm run deploy        # 빌드·secret 검사 후 Cloudflare Workers 배포
+npm ci --no-audit
+npm run dev
 ```
 
-## 구조
+`.env.example`을 참고해 로컬 전용 `.env.development`에
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`를 설정한다. 로컬 Supabase 또는
+명시적으로 허가된 테스트 프로젝트를 사용한다. 프런트엔드가 localhost에서
+실행되어도 지정한 서버에는 실제 요청이 전달된다.
 
-- `src/theme/` — 디자인 토큰(CSS 변수)·강조색 프리셋·테마 적용 (데스크톱 `ui/theme.py`와 동일 의미)
-- `src/settings/` — 웹 설정 모델·검증·저장소 (데스크톱 `app_settings.py`와 동일 키)
-- `src/lib/` — 환경 변수·Supabase 클라이언트·네트워크/PWA 설치 훅
-- `src/routes/` — 화면(기록/통계/기록 목록/설정/로그인)
-- `src/components/` — 공용 컴포넌트(내비게이션 셸·오프라인 안내 배너·업데이트 알림)
-- `public/` — Cloudflare 보안/캐시 헤더와 PWA 다목적 아이콘 자산
-- `scripts/` — 아이콘 생성 및 배포 산출물 secret 검사
+배포 환경은 같은 두 변수와 `VITE_BUILD_ID`에 대상 commit SHA를 제공한다.
+publishable(anon) key만 브라우저에 포함할 수 있으며 service-role/secret key와
+DB 비밀번호는 환경 파일·번들에 넣지 않는다.
 
-## 구현 단계
+| 명령 | 용도 |
+| --- | --- |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest 및 Node 검사 |
+| `npm run build` | 타입 검사, 정적 자산·Service Worker 빌드 |
+| `npm run preview` | 빌드 결과 로컬 미리보기 |
+| `npm run generate:icons` | 원본 아이콘에서 PWA 파생 자산 생성 |
+| `npm run generate:licenses` | 제3자 고지 재생성 |
 
-- [x] 3-A 프로젝트 기반 (Vite+React+TS, 환경 분리, 라우팅, 디자인 토큰)
-- [x] 3-B 인증·계정 (로그인/회원가입/인증/재설정/로그아웃/계정 운영)
-- [x] 3-C 서버 데이터 계약 + `deck-catalog` + 덱 캐시 마이그레이션
-- [x] 3-D 핵심 기록 흐름
-- [x] 3-E 기록 목록·통계·설정(+수동 동기화)
-- [x] 3-F 반응형·접근성 검증
-- [x] 3-G 보안·운영·배포
-- [x] 4단계 PWA 도입 (Web App Manifest, Service Worker App Shell Precache, 오프라인 안내, 업데이트 알림, 설치 UX)
+## 배포 전 검사
 
-## 보안·운영·PWA
+배포 환경 변수를 설정하고 lint·테스트를 통과시킨 뒤, 게시 없이 산출물을 검사한다.
 
-- CSP 및 `sw.js`/`manifest.webmanifest` no-cache 헤더는 `public/_headers`에서 관리한다.
-- `npm run check:secrets`는 service-role key·service-role JWT·URL 임베드 자격 증명을
-  배포 산출물에서 차단한다. publishable(anon) key는 허용한다.
-- 배포·롤백·Supabase Auth URL allowlist·개인정보 공개 전 조건은
-  `docs/operations/web-deployment-runbook.md`를 따른다.
-- PWA는 온라인 전용 데이터 정책을 유지하며, 정적 앱 셸만 캐시하고 Supabase API는 Network-Only로 동작한다.
-  상세 내용은 `PWA_READINESS.md` 및 `docs/phase4-pwa-implementation-plan.md`를 참조한다.
+```sh
+npm audit
+npm run check:deploy-env
+npm run check:licenses
+npm run check:license-artifacts
+npm run build
+npm run check:license-bundle
+npm run strip:source-maps
+npm run check:secrets
+```
+
+`npm run deploy`는 위 검사 후 **실제 Cloudflare 배포**까지 수행한다.
+이 명령 자체에는 lint와 테스트가 없으므로 별도로 통과시켜야 한다.
+수동 [Deploy web workflow](../.github/workflows/web-deploy.yml)는 이 검사들을
+포함하며 `preview`/`production`을 구분하고 production을 `main`으로 제한한다.
+일반 `build`는 라이선스 검증용 source map을 남기므로 `dist/`를 그대로 게시하지 않는다.
+
+## PWA 경계
+
+- Manifest, 표준·maskable 아이콘, 정적 앱 셸 precache, 설치 안내와 업데이트 알림을 구현했다.
+- 정적 앱 셸만 오프라인에서 사용할 수 있다. 경기 조회·저장·통계는 온라인 전용이며 Supabase 요청을 Service Worker에 캐시하지 않는다.
+- IndexedDB 경기 저장소나 영속적인 오프라인 outbox는 없다. 미확인 생성 요청의 재시도 상태는 로그인 범위의 메모리에만 유지되며 새로고침·탭 종료 뒤 복구를 보장하지 않는다.
+- 새 버전은 알림 후 사용자가 새로고침한다. `/sw.js`와 `/manifest.webmanifest`의 `no-cache` 및 CSP는 [`public/_headers`](public/_headers)에서 관리한다.
+- Android TWA는 미구현 제안이다. 도입 여부는 장기 소유 HTTPS 도메인, Digital Asset Links, 패키지명·서명, 인증 callback과 Play 정책을 별도로 검토해 결정한다.
+
+## 코드 위치
+
+- `src/auth/`, `src/games/`: 인증, 서버 RPC와 경기 계약
+- `src/routes/`, `src/components/`: 화면과 공용 UI
+- `src/settings/`, `src/theme/`: 로컬 취향 설정, 수동 동기화, 테마
+- `src/lib/`, `vite.config.ts`, `public/`: 환경 설정, PWA, 정적 자산·헤더
+- `scripts/`: 아이콘·라이선스 생성, 배포 환경·산출물 검사

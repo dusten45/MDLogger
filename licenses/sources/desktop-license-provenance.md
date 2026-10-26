@@ -7,11 +7,12 @@ extra/missing wheel legal files, or hash drift.
 
 ## Wheel and source evidence
 
-For installed Linux distributions, legal files were collected through
+For installed Linux distributions, legal files are collected through
 `importlib.metadata.Distribution.files` from the wheels synchronized by the
-current `uv.lock`. The manual policy records the exact Core Metadata license
-field or classifier that was reviewed. The selected license expression is a
-separate field and does not blindly trust package metadata.
+current `uv.lock`. Flatpak evidence targets Python 3.14, not the default
+Python 3.15.1 environment or Windows wheels. The manual policy records the
+exact Core Metadata license field or classifier reviewed; the selected license
+expression is a separate field, not automatic approval of package metadata.
 
 The following lock-pinned source archives supplied originals that were absent
 from, or needed to supplement, the installed wheel evidence:
@@ -25,114 +26,75 @@ from, or needed to supplement, the installed wheel evidence:
 - pywin32-ctypes 0.2.3 sdist:
   <https://files.pythonhosted.org/packages/85/9f/01a1a99704853cb63f253eea009390c88e7131c67e66a0a02099a8c917cb/pywin32-ctypes-0.2.3.tar.gz>
   (`sha256:d162dc04946d704503b2edc4d55f3dba5c1d539ead017afa00142c38b9885755`)
-- PySide 6.11.1 source: see `desktop-source-offer.md`.
-- Qt 6.11.1 source: the verified `qt-everywhere-src-6.11.1.tar.xz` archive
-  contains 402 module-level `LICENSES` entries. Their 83 unique byte contents
-  are preserved under `licenses/desktop/qt-6.11.1/LICENSES/`; the deterministic
-  source-member mapping and SHA256 values are recorded in
-  `licenses/desktop/qt-6.11.1/LICENSES-MANIFEST.json`. This module-level corpus
-  is necessary but not sufficient by itself: package-specific copyright and
-  attribution records are preserved in
-  `licenses/desktop/qt-6.11.1/QT-THIRD-PARTY-ATTRIBUTIONS.json`, and all 88
-  source legal files referenced by those records are preserved under
-  `licenses/desktop/qt-6.11.1/third-party-source-files/`. Adjacent FFmpeg
-  license files and generated Chromium source credits are preserved separately
-  as described below.
 
-## QtWebEngine/Chromium and Qt Multimedia/FFmpeg evidence
+Qt/PySide6 6.12.0, cryptography 50.0.2, NumPy 2.5.4 and Windows CPython 3.15.1
+source/vendor URLs and verification hashes are recorded in
+[desktop-source-offer.md](desktop-source-offer.md).
 
-The complete Linux `PySide6-Addons 6.11.1` wheel actually ships QtWebEngine,
-Chromium resources, the Qt WebEngine subprocess, Qt Multimedia's FFmpeg plugin,
-and FFmpeg shared libraries. This is not inferred from dependency declarations:
+## Current Qt evidence
+
+Only `PySide6-Essentials 6.12.0` and `shiboken6 6.12.0` are installed. The
+umbrella PySide6 package and Addons are absent; WebEngine, Pdf, Multimedia,
+Chromium and FFmpeg runtimes are not shipped. Shared PySide originals are under
+`licenses/desktop/qt-for-python-6.12.0/`. Windows commercial-license metadata
+is retained as evidence, not as the selected license; MDLogger selects
+`GPL-3.0-only` for Qt/PySide6.
+
+The verified `qt-everywhere-src-6.12.0.tar.xz` supplied 374 module-level
+`LICENSES` members with 69 distinct texts. Their source-member mappings and
+SHA256 values are in `licenses/desktop/qt-6.12.0/LICENSES-MANIFEST.json`.
+`QT-THIRD-PARTY-ATTRIBUTIONS.json` in that directory records 98 attributions
+and 61 referenced legal originals under `third-party-source-files/`.
+Its scope includes cross-platform records from the Essentials source modules,
+but excludes tests/examples and unused Addons, WebEngine, Pdf and Multimedia.
+It may over-disclose components absent from the publisher's actual build.
+
 `licenses/inventory/qt-third-party-runtime-linux-flatpak.json` records the
-installed paths, sizes, and SHA256 values and the generator queries the runtime
-version and license APIs.
+remaining Essentials ELF bindings, libraries, plugins and tools with exact
+wheel paths, sizes and hashes. ICU 73.2 is verified through `u_getVersion_73`;
+its full release license is retained under `licenses/desktop/icu-73.2/`.
+The Qt publisher's exact-build SBOM is unavailable. Neither source attributions
+nor binary inventories substitute for it; Windows requires separate inspection
+of its PyInstaller payload.
 
-- QtWebEngine runtime: `6.11.1`
-- Chromium runtime: `140.0.7339.225`
-- Qt source `CHROMIUM_VERSION` base: `140.0.7339.264`
-- Qt security-patch statement: through Chromium `148.0.7778.96`
-- FFmpeg runtime: `7.1.3`, reporting `LGPL version 2.1 or later`
-- The wheel contains Qt FFmpeg loader stubs but no `libssl` or `libcrypto` binary;
-  OpenSSL, zlib, bzip2 and standard C/C++ libraries are resolved from the
-  Flatpak platform runtime rather than bundled as separate MDLogger files.
-- FFmpeg Qt attribution expression: `LGPL-2.1-or-later AND BSD-3-Clause AND
-BSD-2-Clause AND BSD-Source-Code AND ISC AND MIT AND MPL-2.0`
+## Windows runtime and build components
 
-The wheel publisher does not include an installed SPDX or CycloneDX SBOM. The
-project therefore does not label any source-generated document as the wheel's
-exact-build SBOM. `QT-THIRD-PARTY-ATTRIBUTIONS.json` is a deterministic,
-123-record conservative source-attribution superset for Qt modules represented
-in the complete Linux wheels. It excludes examples, tests, build-only tools,
-and non-Linux platform records, but can still over-disclose source records
-absent from the publisher's exact build configuration.
+Windows uses uv-managed python-build-standalone 20261021 CPython 3.15.1,
+not the python.org installer. `licenses/desktop/cpython-3.15.1/` retains the
+verified install-only archive's composite LICENSE, matching full-archive
+native-library originals and `PYTHON.json`, CPython's `Doc/license.rst`, and
+`VENDOR-MANIFEST.json`. These describe vendor build inputs, not an exact
+PyInstaller payload. Microsoft Distributable Code terms and native-library
+notices, including zstd introduced with Python 3.14, remain intact.
 
-`chromium-source-credits.html` is a separate deterministic, 262-component
-conservative Linux source-tree superset generated by Chromium's official
-`tools/licenses/licenses.py` from the verified Qt 6.11.1 source. It can likewise
-over-disclose components absent from the publisher's exact GN target graph, but
-prevents source-tree third-party notices from being silently omitted.
+The policy also inventories distributed build components even though their
+packages are development dependencies:
 
-Tracked originals and generated evidence are located at:
+- PyInstaller 6.22.3 bootloader/loader code: `GPL-2.0-or-later WITH
+  Bootloader-exception`; embedded runtime hooks: `Apache-2.0`.
+- pyinstaller-hooks-contrib 2026.9 runtime hooks: `Apache-2.0`, including
+  `pyi_rth_pyqtgraph_multiprocess.py`.
+- Inno Setup 6 loader/uninstaller: `LicenseRef-Inno-Setup`.
+- Qt 6.12.0 Windows D3D12MemoryAllocator: `MIT`; Wintab:
+  `LicenseRef-Lcs-Telegraphics`.
 
-- `licenses/desktop/qt-6.11.1/QT-THIRD-PARTY-ATTRIBUTIONS.json`
-- `licenses/desktop/qt-6.11.1/third-party-source-files/`
-- `licenses/desktop/qt-6.11.1/qtwebengine/`
-- `licenses/desktop/qt-6.11.1/qtmultimedia/ffmpeg/`
-
-The Chromium credits were regenerated twice from the same extracted source and
-both outputs had SHA256
-`dcff1f0db5c1c9a52d633a50504d68483bb916a9e6356ef7e8641f579aa96816`.
-Exact file hashes are pinned in `scripts/desktop_license_policy.json`.
-
-PyInstaller bootloader 6.21.0 and `pyinstaller-hooks-contrib 2026.6` runtime
-hooks are manually inventoried even though both are development dependencies:
-PyInstaller embeds its compiled bootloader (`GPL-2.0-or-later WITH
-Bootloader-exception`), its `PyInstaller/hooks/rthooks/pyi_rth_*.py` and
-`_pyi_rth_utils` modules (`Apache-2.0`), and `pyinstaller-hooks-contrib`'s
-`pyi_rth_pyqtgraph_multiprocess.py` hook (`Apache-2.0`) directly into the
-Windows executable. `licenses/desktop/pyinstaller-6.21.0/licenses/COPYING.txt`
-and `licenses/desktop/pyinstaller-hooks-contrib-2026.6/licenses/LICENSE` preserve
-those license terms in full.
-
-For the Windows PyInstaller onedir and Inno Setup distribution, the policy also
-explicitly inventories:
-
-- `CPython runtime and standard library 3.13`:
-  `licenses/desktop/cpython-3.13/LICENSE.txt`,
-  `licenses/desktop/cpython-3.13/Doc-license.rst`,
-  `licenses/desktop/cpython-3.13/crtlicense.txt`,
-  `licenses/desktop/cpython-3.13/bzip2-LICENSE.txt`,
-  `licenses/desktop/cpython-3.13/libffi-LICENSE.txt`,
-  `licenses/desktop/cpython-3.13/openssl-LICENSE.txt`,
-  `licenses/desktop/cpython-3.13/xz-COPYING.txt`, and
-  `licenses/desktop/qt-6.11.1/LICENSES/blessing.txt`, covering PSF-2.0, 0BSD,
-  Microsoft Distributable Code terms (`vcruntime140*.dll`, `msvcp140*.dll`),
-  and the native libraries bundled with the Windows Python runtime (OpenSSL
-  3.5.9 Apache-2.0, libffi 3.4.4 MIT, xz/liblzma 5.2.5 0BSD/Public Domain, Expat
-  MIT, bzip2, libmpdec BSD-2-Clause, zlib, SQLite blessing, mimalloc MIT,
-  SipHash24 CC0-1.0).
-- `Inno Setup runtime loader and uninstaller 6`:
-  `licenses/desktop/innosetup-6/LICENSE.txt` (`LicenseRef-Inno-Setup`).
-- `Qt Windows D3D12 Memory Allocator 6.11.1` (`MIT`,
-  `licenses/desktop/qt-6.11.1/windows-3rdparty/D3D12MemoryAllocator/LICENSE.txt`)
-  and `Qt Windows Wintab API 6.11.1` (`LicenseRef-Lcs-Telegraphics`,
-  `licenses/desktop/qt-6.11.1/LICENSES/LicenseRef-Lcs-Telegraphics.txt`).
+Their original texts remain in the corresponding versioned directories;
+the policy records every path and hash.
 
 ## Composite package review
 
-- `cryptography 50.0.0`: upstream metadata is `Apache-2.0 OR BSD-3-Clause`;
+- `cryptography 50.0.2`: upstream metadata is `Apache-2.0 OR BSD-3-Clause`;
   MDLogger explicitly selects `BSD-3-Clause` for the Python package and retains
-  the umbrella file plus both upstream alternative texts. The actual Linux wheel
-  also carries exact wheel SBOM evidence under
-  `licenses/desktop/cryptography-50.0.0/sboms/`: `sbom.json` identifies a
-  statically built OpenSSL 4.0.1 (`no-shared`), while
+  the umbrella file plus both upstream alternative texts. The Python 3.14 Linux
+  wheel also carries exact wheel SBOM evidence under
+  `licenses/desktop/cryptography-50.0.2/sboms/`: `sbom.json` identifies a
+  statically built OpenSSL 4.0.3 (`no-shared`), while
   `cryptography-rust.cyclonedx.json` records 39 Rust build components. The Rust
   SBOM is retained as wheel build provenance, not as an object-level linker map.
 - `et_xmlfile 2.0.0`: the metadata says MIT, but `LICENCE.python` discloses
   Python standard-library-derived code. MIT and the Python Software Foundation
   license are both retained.
-- `NumPy 2.4.6`: all 20 legal files reported by the Linux wheel plus the
+- `NumPy 2.5.4`: all legal files reported by the Linux wheel plus the
   Windows wheel's `LICENSE-windows.txt` are retained,
   including libdivide, pythoncapi-compat, Highway, Dragon4, x86-simd-sort,
   SVML, pocketfft, LAPACK, masked arrays, and random-generator components. The
@@ -144,12 +106,13 @@ explicitly inventories:
   linked GCC `libgfortran` runtime code; its retained `LICENSE-windows.txt`
   preserves those notices. Both Linux and Windows native runtime components are
   listed in the policy rather than being hidden by NumPy's package-level
-  metadata expression.
+  metadata expression. The exact OpenBLAS/GCC source revisions remain unknown;
+  generic upstream links are not verified corresponding-source snapshots.
 - `pyqtgraph 0.14.0`: the package MIT license, CC-BY-4.0 CET license,
   ColorCET/Peter Kovesi attribution, CC0 legal code, turbo Apache-2.0 marker and
   full Apache text are retained.
 
-## Excluded pyqtgraph palette data and Windows opengl32sw.dll / QtPdf binaries
+## Packaging exclusions
 
 Both PyInstaller's pyqtgraph hook and the Flatpak's full wheel would normally
 include all of `pyqtgraph/colors/maps`. The files `PAL-relaxed.hex` and
@@ -158,16 +121,25 @@ and the upstream tag does not provide enough evidence to determine their
 license. MDLogger does not use either palette, so the developer decided to
 exclude them from both supported desktop distributions.
 
-On Windows, the PySide6 wheels also include `opengl32sw.dll` (a prebuilt Mesa
-3D / LLVM software OpenGL rasterizer) and the Qt PDF imageformat plugin
-(`qpdf.dll`, which links `Qt6Pdf.dll` / Chromium PDFium). MDLogger does not
-render PDF documents or require software OpenGL fallback, so `MDLogger.spec`
-excludes `PySide6.QtPdf*` and filters `opengl32sw.dll`, `qpdf.dll`, and
-`Qt6Pdf.dll` from the collected binaries, and
-`scripts/release/release_validation.py` forbids them in the packaged Windows
-distribution.
+`MDLogger.spec` filters both palette files from PyInstaller's collected data;
+Flatpak removes and checks them after wheel installation. Windows also excludes
+unused `opengl32sw.dll`, PDF bindings/plugin/runtime, the orphan WebEngine
+Designer plugin and Chromium `icudtl.dat`. Flatpak removes orphan WebEngine/Pdf
+plugins and QtQuick/Pdf QML. These exclusions are enforced by packaging tests
+and payload verification; no packaging change is implied by this document.
 
-`MDLogger.spec` filters both destination paths from PyInstaller's collected data.
-The Flatpak manifest removes both files after installing the locked wheel and
-immediately asserts that they are absent. Packaging tests and release checks
-must continue to enforce these exclusions.
+## Historical acquisition evidence
+
+The earlier Qt 6.11.1/Addons, CPython 3.13 and PyInstaller 6.21.0 review is
+preserved with its original paths, hashes and source directions in
+[commit a0d62bf3511a7be3a3313d2db7b1a4948b5209c9](https://github.com/dusten45/MDLogger/tree/a0d62bf3511a7be3a3313d2db7b1a4948b5209c9/licenses).
+It is historical evidence, not a description of the current payload.
+
+That Qt source review recorded 402 `LICENSES` members, 83 distinct texts,
+123 attributions and 88 referenced legal files. The old Addons wheel reported
+QtWebEngine 6.11.1, Chromium 140.0.7339.225 and FFmpeg 7.1.3 (LGPL 2.1 or later);
+its Qt source recorded Chromium base 140.0.7339.264 with security patches through
+148.0.7778.96. Chromium's official license tool generated the 262-component
+Linux source-credit superset twice with SHA256
+`dcff1f0db5c1c9a52d633a50504d68483bb916a9e6356ef7e8641f579aa96816`.
+Those source supersets were not exact-build SBOMs either.

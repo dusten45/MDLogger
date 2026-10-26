@@ -33,9 +33,10 @@ The byte hashes and originating archive members are recorded in
 `licenses/desktop/qt-6.12.0/LICENSES-MANIFEST.json`. The attribution document in
 the same directory contains 98 records and 61 referenced legal originals from
 qtbase, qtdeclarative, qtlanguageserver, qtlottie, qtquicktimeline,
-qtshadertools, qtsvg, qttools and qtwayland. This is a conservative source superset including cross-platform
-records, not the wheel publisher's exact-build SBOM. Tests/examples and unused
-Addons, WebEngine, Pdf and Multimedia source modules are outside that scope.
+qtshadertools, qtsvg, qttools and qtwayland. This is a conservative source
+superset including cross-platform records, not the wheel publisher's
+exact-build SBOM. Tests/examples and unused Addons, WebEngine, Pdf and
+Multimedia source modules are outside that scope.
 
 ## Essentials-only distribution
 
@@ -100,8 +101,9 @@ Other legal files declared by NumPy wheel metadata are also retained.
 Known limitation: the wheel notices do not identify the exact OpenBLAS or GCC
 source revisions used by the wheel publisher. Do not describe these upstream
 repository links as verified corresponding-source snapshots. If matching build
-revisions become available, retain their source hashes and publish them beside
-the binaries. This upgrade does not remove or disguise that limitation.
+revisions become available, add their verified source URLs and hashes to these
+directions and the release record. The current guidance does not resolve that
+limitation.
 
 ## Windows runtime and build components
 
@@ -145,16 +147,34 @@ the actual SDK build; it must never be copied from an older release or assumed
 equal to the raw wheel hash. Windows release hosts separately inspect their
 PyInstaller and installed Inno Setup payloads.
 
-For each published Windows, Flatpak or web release, archive the MDLogger source
-and packaging files from the exact release commit in
-<https://github.com/dusten45/MDLogger>, record its commit and SHA256, and publish
-`MDLogger-<version>-source.tar.gz` beside the release assets.
+MDLogger source and packaging files are available from the release's immutable
+tag or commit in <https://github.com/dusten45/MDLogger>; GitHub Releases provide
+the tag's `Source code (zip)` and `Source code (tar.gz)` downloads. The combined
+desktop workflow retains its additional `MDLogger-<version>-source.tar.gz` and
+release manifest as internal Actions artifacts, not as public release assets.
+Internal artifacts are verification evidence, not a substitute for public
+source access.
 
-For unmodified third-party libraries, the exact upstream directions above are
-maintained next to the object-code downloads and in distributed notices under
-**GPL-3.0 Section 6(d)**. Recipients must have equivalent, free access to the
-corresponding sources. If an upstream server stops providing a required archive
-while the corresponding binary is distributed, the distributor remains
-responsible for mirroring the verified sources for the required period. A
-source URL or a source-level attribution superset does not waive attribution or
-source-availability duties.
+For unmodified third-party libraries, the current policy is to provide the
+upstream URLs and recorded hashes above, not attach source archives to each
+release. `scripts/release/third_party_source_delivery.json` records
+`upstream_urls_documented_in_source_offer` and
+`workflow_downloads_or_attaches_archives: false`. Its reference to
+**GPL-3.0 Section 6(d)** describes the intended delivery approach, not a finding
+that every source-delivery obligation has been met.
+
+The canonical public source-information page is
+<https://github.com/dusten45/MDLogger/blob/main/licenses/sources/desktop-source-offer.md>.
+Distributed notices link there because Windows deliberately omits
+`licenses/sources/`. This is a moving branch page; for an older binary, consult
+this file at its actual release tag or commit rather than assume the current
+versions match. Release directions should identify that revision and keep the
+source-information link accessible alongside the object-code download.
+
+The release reviewer must check equivalent, free source access and continued
+availability for the applicable period. If a required upstream source becomes
+unavailable, the distributor must address that gap; the current workflows do
+not provide an automatic mirror. URLs and hashes alone do not establish legal
+compliance or resolve the NumPy revision and Qt exact-build SBOM limitations
+above. This document is source-location and provenance guidance, not a legal
+compliance guarantee or a separate written source offer.

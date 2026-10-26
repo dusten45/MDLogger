@@ -28,6 +28,10 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 POLICY_PATH = PROJECT_ROOT / "scripts" / "desktop_license_policy.json"
 LOCK_PATH = PROJECT_ROOT / "uv.lock"
+SOURCE_OFFER_URL = (
+    "https://github.com/dusten45/MDLogger/blob/main/"
+    "licenses/sources/desktop-source-offer.md"
+)
 
 MD_BEGIN = "<!-- BEGIN GENERATED DESKTOP THIRD-PARTY NOTICES -->"
 MD_END = "<!-- END GENERATED DESKTOP THIRD-PARTY NOTICES -->"
@@ -1166,8 +1170,8 @@ def _markdown_desktop_section(policy: Mapping[str, Any]) -> str:
         "  and libgfortran, Qt Windows D3D12MemoryAllocator and Wintab, and the ",
         "  Inno Setup 6 loader/uninstaller.",
         "- Qt/PySide6 is distributed under the selected `GPL-3.0-only` path.",
-        "- Exact Qt/PySide6 corresponding-source instructions: ",
-        "  `licenses/sources/desktop-source-offer.md`.",
+        "- Source URLs, hashes and known limitations: ",
+        f"  <{SOURCE_OFFER_URL}>.",
         f"- Qt license corpus: {policy['qt_license_corpus']['unique_license_file_count']} unique source texts; manifest `{policy['qt_license_corpus']['manifest']}`.",
         f"- Qt package-specific source attribution: {policy['qt_source_attributions']['record_count']} records and {policy['qt_source_attributions']['legal_file_count']} referenced legal files.",
         "  This is a conservative Essentials source-attribution superset (which also covers cross-platform ",
@@ -1247,7 +1251,7 @@ def _text_desktop_section(policy: Mapping[str, Any]) -> str:
         f"Linux Flatpak resolver closure: {policy['expected_distribution_counts']['linux']} third-party distributions (Python {policy['python_versions']['linux']}).",
         f"Windows resolver closure: {policy['expected_distribution_counts']['windows']} third-party distributions (Python {policy['python_versions']['windows']}) plus the uv-managed CPython runtime, PyInstaller/hooks, NumPy native libraries, Qt Windows third-party code and Inno Setup; this is not an exact PyInstaller payload inventory.",
         "Qt/PySide6 selected license: GPL-3.0-only.",
-        "Source instructions: licenses/sources/desktop-source-offer.md",
+        f"Source instructions (upstream URLs, hashes and known limitations): {SOURCE_OFFER_URL}",
         f"Qt license corpus: {policy['qt_license_corpus']['manifest']} ({policy['qt_license_corpus']['unique_license_file_count']} unique texts).",
         f"Qt source attribution: {policy['qt_source_attributions']['record_count']} records and {policy['qt_source_attributions']['legal_file_count']} legal files; conservative cross-platform Essentials superset, not an exact wheel-build SBOM.",
         "Only PySide6-Essentials and shiboken6 are installed. Addons, WebEngine, Pdf, Multimedia, Chromium and FFmpeg are absent; every Essentials ELF binary is inventoried.",

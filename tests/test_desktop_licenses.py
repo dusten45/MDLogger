@@ -835,6 +835,21 @@ def test_generator_check_mode_reuses_tracked_qt_runtime_inventory(monkeypatch):
     ) == tracked.read_text(encoding="utf-8")
 
 
+@pytest.mark.parametrize(
+    "render_notice",
+    [LICENSES._markdown_desktop_section, LICENSES._text_desktop_section],
+)
+def test_notices_link_public_source_information_without_bundled_sources(render_notice):
+    notice = render_notice(LICENSES.load_policy())
+
+    assert (
+        "https://github.com/dusten45/MDLogger/blob/main/"
+        "licenses/sources/desktop-source-offer.md"
+    ) in notice
+    assert "Source instructions: licenses/sources/desktop-source-offer.md" not in notice
+    assert "`licenses/sources/desktop-source-offer.md`" not in notice
+
+
 def test_generator_check_mode_is_deterministic():
     result = subprocess.run(
         [

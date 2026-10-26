@@ -18,7 +18,7 @@ Review status: lockfile closures, tracked legal files, and selected license expr
 Linux Flatpak resolver closure: 17 third-party distributions (Python 3.14).
 Windows resolver closure: 16 third-party distributions (Python 3.15) plus the uv-managed CPython runtime, PyInstaller/hooks, NumPy native libraries, Qt Windows third-party code and Inno Setup; this is not an exact PyInstaller payload inventory.
 Qt/PySide6 selected license: GPL-3.0-only.
-Source instructions: licenses/sources/desktop-source-offer.md
+Source instructions (upstream URLs, hashes and known limitations): https://github.com/dusten45/MDLogger/blob/main/licenses/sources/desktop-source-offer.md
 Qt license corpus: licenses/desktop/qt-6.12.0/LICENSES-MANIFEST.json (69 unique texts).
 Qt source attribution: 98 records and 61 legal files; conservative cross-platform Essentials superset, not an exact wheel-build SBOM.
 Only PySide6-Essentials and shiboken6 are installed. Addons, WebEngine, Pdf, Multimedia, Chromium and FFmpeg are absent; every Essentials ELF binary is inventoried.

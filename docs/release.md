@@ -1,113 +1,63 @@
-# MDLogger 릴리스 빌드
+# MDLogger 빌드·릴리스
 
-이 문서는 MDLogger의 Flatpak 배포판과 Windows exe 배포판을 만드는 절차를 기록한다.
-모든 명령은 프로젝트 루트에서 실행한다.
+현재 빌드와 배포 절차만 관리한다. 기능 계획, 세션 인수인계, 과거 테스트 수와 오류 재현 기록은 공개 문서에 누적하지 않는다. 명령의 기준 디렉터리는 별도 표시가 없으면 저장소 루트다.
 
-기본 개발·Windows 빌드는 Python 3.15.1, Flatpak은 Freedesktop 26.08의 Python 3.14를 사용한다. 웹 도구는 루트 `.nvmrc`의 Node 26.12.1을 사용하며, `nvm use`로 선택한다.
+## 빌드 기준
 
-## v2.1.1 준비 상태
-
-2026-10-26 기준 소스 버전은 `2.1.1`이다. 로컬 v2.1.0 안정성 보고서의 잔여 결함 MDL-210-01부터 MDL-210-08까지를 보완하고 정식 회귀 테스트를 추가했다. 원본 보고서는 기존 정책대로 저장소에 포함하지 않으며 변경 요약과 검증 결과는 이 문서에 기록한다. **소스 준비와 실제 Windows 전체 인계 검증은 별개다.** 소유자는 전체 인계가 미검증이라는 설명을 확인한 뒤 2026-10-26에 v2.1.1 정식 릴리스를 명시적으로 요청했다. 이 잔여 검증은 완료로 표시하지 않으며, 자동 빌드·검증·서명 게이트를 통과한 자산으로 공개를 진행한다. 운영 DB 변경과 웹 배포는 이번 Windows 릴리스 범위에 포함하지 않는다.
-
-### 변경 사항 초안
-
-- 업데이트 준비 중 로그인 창과 계정 전환을 안전하게 제어하고, 취소·실패 후 다시 시도할 수 있도록 수정했습니다.
-- 중단된 초기화를 복구할 때 덱 갱신과 겹쳐 앱 시작이 실패하는 문제를 수정했습니다.
-- 서버 기록이 자동으로 일치한 뒤에도 보존한 충돌 초안을 다시 확인하고 적용하거나 버릴 수 있도록 수정했습니다.
-- 다른 계정의 로그인 정보 저장에 실패해도 이전 계정의 동기화 상태를 유지하고, 취소된 로그인은 다음 실행에서 자동 복원하지 않도록 수정했습니다.
-- 로그아웃을 시작한 뒤 새 경기 전송이나 조회가 이어지지 않도록 수정했습니다.
-- 웹에서 내부 화면을 이동해도 결과가 미확인인 저장 요청과 입력 내용을 유지하도록 수정했습니다.
-- 웹의 마지막 모드 설정 저장 실패가 이미 성공한 경기 저장을 실패로 표시하지 않도록 수정했습니다.
-- 오래된 기록 조회가 현재 필터의 오류·로딩 안내를 덮어쓰지 않도록 수정했습니다.
-
-공개 Release 본문에는 위 사용자용 변경 사항 중 실제 배포하는 데스크톱 항목만 사용한다. 웹 수정은 소스에 포함되지만 이번 Windows 릴리스만으로 운영 웹에 반영되지 않는다. 아래 검증 정보와 미완료 항목은 배포 검토용이며 공개 본문과 분리한다.
-
-### 호환성과 검증
-
-- 새 의존성, DB 스키마 또는 서버 migration을 추가하지 않았다. 기존 schema 1 / payload 2와 v2.0.0 서버 요청 계약을 유지한다.
-- 최소 지원 버전을 올리지 않으며 미적용 정책 migration `0029`를 이 수정에 포함하지 않는다. 운영 정책 자체를 이번 로컬 검사로 다시 확인했다는 뜻은 아니다.
-- 기존 `played_at` 로컬 naive ISO 값, 사용자 데이터 경로, `MDLOGGER_DATA_DIR`, 미전송 outbox와 계정 격리를 유지한다.
-- 웹의 미확인 요청은 계정·로그인 세대별 메모리 상태다. 링크, 뒤로·앞으로, 프로그램 이동 및 약관·개인정보 화면 이동에 유지되지만 문서 새로고침이나 탭 종료까지 보존하는 영속 outbox는 아니다.
-- 업데이트 실행기 준비와 최종 설치 승인을 분리했다. 늦은 결과, 창 파괴, 상태 변경 시 미승인 작업을 취소하며, 정상 승인 종료는 취소하지 않는다. 이미 끝난 실행기 작업은 새 다운로드로 재시도한다.
-- Linux의 Qt 테스트와 가짜 외부 서비스는 Windows 실기기·OS 키링·실서버 검증을 대체하지 않는다.
-
-2026-10-26 최종 로컬 검증 결과:
-
-| 검사 | 결과 |
+| 대상 | 도구와 배포 형식 |
 |---|---|
-| `uv run ruff check .` | 통과 |
-| `uv run ruff format --check .` | 161개 파일 통과 |
-| `uv run ty check` | 통과 |
-| Python 3.15.1 전체 pytest | 1,031개 통과, 11개 건너뜀 |
-| Python 3.14.9 전체 pytest | 1,031개 통과, 11개 건너뜀 |
-| 웹 Vitest | 17개 파일, 133개 테스트 통과 |
-| 웹 Node 지원 스크립트 | 18개 테스트 통과 |
-| TypeScript 빌드 검사 / ESLint | 통과 |
-| 오프라인 Vite / PWA 빌드 | 통과, 123개 모듈 및 42개 precache 항목 |
-| 웹 라이선스 원문·추적 여부·번들 대조 / 비밀키 검사 | 통과 |
-| 런타임·릴리스 버전 및 Windows 설치 스크립트 일치 | `2.1.1`, 통과 |
-| `git diff --check` | 통과 |
+| Windows x64 | Python 3.15.1, PySide6-Essentials 6.12, PyInstaller onedir, Inno Setup 6 |
+| Linux x86_64 | Freedesktop 26.08, SDK의 Python 3.14, Flatpak bundle |
+| 웹/PWA | Node 26.12.1, Vite, Cloudflare Workers Static Assets |
 
-Python 검사는 임시 사용자 데이터와 네트워크 차단을 적용하고 운영 `.env`를 읽지 않는 검증용 가드로 전체 수집을 실행했다. 건너뛴 11개는 실서버 인증·동기화 4개와 Windows PE·기본 .NET 실행기 7개다. 웹 검사는 운영 환경 변수와 `.env` 로딩 없이 네트워크를 차단해 실행했다. 가드는 로컬 검사 환경을 격리하기 위한 것이며 앱 실행의 요구 사항이 아니다.
+버전의 기준은 [`_version.py`](../src/mdlogger/_version.py), [`.python-version`](../.python-version), [`pyproject.toml`](../pyproject.toml), [`.nvmrc`](../.nvmrc)와 각 lockfile이다. Ruff의 `py313`은 소스 문법 검사 기준이며 현재 Python 런타임 버전이 아니다. macOS 네이티브 패키지와 Windows 32비트·ARM64 전용 빌드는 제공하지 않는다.
 
-웹 빌드에는 minify 후 주 번들이 약 587.27 kB로 500 kB를 초과한다는 경고가 남는다. 빌드 실패는 아니며 이번 안정성 패치에서 번들 분할이나 의존성 변경은 하지 않았다. 최초 전체 검사는 설치 스크립트의 기본 버전 불일치로 실패했고, 이를 `2.1.1`로 수정한 뒤 위 두 Python 전체 검사를 다시 통과했다.
-
-### Windows 공개 전 확인
-
-기존 v2.1.0 바이너리의 업데이트 코드는 소스 수정만으로 바뀌지 않는다. **v2.1.0에서 v2.1.1로 전환할 때는 앱을 닫고 새 설치 파일을 직접 실행하는 수동 설치를 권장한다.** v2.0.0 이전에는 업데이트 기능이 없으므로 수동 설치가 필요하다. v2.1.1을 설치한 뒤의 업데이트 경로도 아래 항목을 별도 Windows 테스트 계정에서 확인한다.
-
-- [ ] 실행 중 앱의 승인부터 실제 부모 PID 종료, `--job` 실행기의 설치, 새 PID·버전·난수 시작 영수증까지 검증한다.
-- [ ] UAC 승인·취소와 다른 관리자 자격 증명을 사용한 경우를 검증한다. 재실행은 원래 사용자 권한이어야 한다.
-- [ ] 기본 데이터 경로와 `MDLOGGER_DATA_DIR` 각각에서 기록·계정·미전송 데이터 보존을 확인한다.
-- [ ] 다중 창, 준비 중 창 파괴, 동기화 정지 지연, 실행기 실패·시간 초과, 취소 후 재시도를 확인한다.
-- [ ] 설치 실패, 재부팅 필요 종료 코드, 기동 확인 시간 초과에서도 자동 PC 재부팅과 강제 프로세스 종료가 없음을 확인한다.
-- [ ] 검증한 소스 커밋의 새 annotated `v2.1.1` 태그와 설치 파일·서명·provenance가 일치하는지 확인한다. 기존 `v2.1.0` 태그와 공개 자산은 바꾸지 않는다.
-- [ ] 웹 변경은 별도 배포 전에 검증된 운영용 설정으로 다시 빌드한다. 오프라인 검사 산출물을 그대로 배포하지 않는다.
-
-## GitHub Actions 데스크톱 릴리스 초안
-
-Windows 전용 릴리스는 `.github/workflows/windows-release.yml`의 **Windows release** 수동 workflow를 사용한다. 기존 `.github/workflows/desktop-release.yml`의 **Desktop release draft**는 Windows·Linux 동시 빌드용으로 그대로 유지한다. Windows 전용 workflow는 Flatpak이나 웹을 빌드·배포하지 않는다. 두 workflow 모두 GitHub Release를 **draft**로만 만들며, 공개 publish 또는 기존 release·asset 덮어쓰기를 자동으로 수행하지 않는다.
-
-GitHub Release의 표시 제목은 **태그 이름과 정확히 같게** 지정한다. 예를 들어 태그가 `v2.1.1`이면 제목도 `v2.1.1`이며, `MDLogger ` 접두사나 별도 설명을 붙이지 않는다. 자동 workflow와 수동 생성·수정·공개에 모두 같은 규칙을 적용한다. 제목을 고치기 위해 태그, 버전, 배포 파일을 변경하지 않는다.
-
-### 최초 설정: GitHub Environment
-
-다음 Environment는 GitHub 저장소의 **Settings → Environments**에서 소유자가 직접 만든다. workflow 파일이나 repository secret에 service-role key, 코드 서명 인증서, 개인 토큰, 비밀번호를 추가하지 않는다.
-
-| Environment             | 용도                                                                | 필요한 설정                                                                                                                                                                                 |
-| ----------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `desktop-release-build` | Windows·Flatpak 빌드에서 앱에 포함할 publishable Supabase 설정 제공 | Variables에 `MDLOGGER_SUPABASE_URL`, `MDLOGGER_SUPABASE_ANON_KEY`를 설정한다. 둘 다 앱에 포함 가능한 publishable 값이어야 하며 service-role/secret key는 금지한다. 승인 규칙은 두지 않는다. |
-| `desktop-release`       | Windows 업데이트 서명 및 검증된 asset으로 GitHub Release draft 생성 | repository owner를 승인자로 설정한다. `MDLOGGER_UPDATE_SIGNING_KEY` Secret에 전용 RSA 개인 키의 PEM을 보관한다. 마지막 job만 `contents: write` 권한을 가진다. |
-
-첫 릴리스 범위에서는 Windows installer에 코드 서명을 하지 않는다. 인증서를 구매하거나 GitHub에 보관하지 않는다. 따라서 사용자는 Windows SmartScreen 경고를 볼 수 있으며, 이 상태를 release 검토 시 확인한다. 코드 서명 도입은 인증서 공급자·보관 방법·SmartScreen 운영 정책이 정해진 별도 작업으로 진행한다.
-
-업데이트 manifest 서명은 Authenticode 코드 서명과 별개다. RSA 3072비트, SHA-256, PKCS#1 v1.5로 **파일에 기록한 UTF-8 원문 바이트**를 서명한다. 개인 키는 위 보호된 Environment의 서명 단계에만 주입하며 파일, 명령행 인수, 로그, artifact에 기록하지 않는다. 번들에는 `src/mdlogger/data/update-trusted-keys.json`의 공개 키만 포함한다. 개인 키가 없거나 공개 키와 일치하지 않으면 릴리스를 중단한다. 공개 키 교체는 새 키를 신뢰하는 앱을 기존 키로 먼저 배포해야 하며, 네트워크로 받은 키를 자동 신뢰하지 않는다.
-
-### 실행 전 tag 계약
-
-workflow는 이미 존재하는 **annotated** `v<major>.<minor>.<patch>` tag만 받는다. 예를 들어 `v1.2.3`은 `src/mdlogger/_version.py`의 `__version__ = "1.2.3"`과 정확히 일치해야 한다. lightweight tag, prerelease suffix가 붙은 tag, 현재 checkout과 다른 tag commit, 수정되거나 untracked 파일이 있는 checkout은 초기에 거부된다.
-
-기존 tag가 이 계약에 맞지 않으면 tag를 이동하거나 다시 쓰지 않는다. release 자동화가 포함된 새 commit에서 version을 올리고, 그 commit에 새 annotated tag를 만든다. 예시는 다음과 같다.
+## 개발과 검사
 
 ```bash
-git tag -a v1.2.3 -m "v1.2.3"
-git push origin v1.2.3
+uv sync --locked --group dev
+uv run mdlogger
 ```
 
-### 수동 workflow 실행
+앱은 OS 표준 사용자 데이터 폴더를 사용한다. 개발용 자료는 `MDLOGGER_DATA_DIR`로 분리한다. 원격 설정은 환경변수, 번들 설정, 현재 작업 디렉터리의 `.env` 순으로 읽으므로 환경변수만 지워서 오프라인 격리를 보장할 수는 없다.
 
-Windows 전용 v2.1.1 릴리스(위 검증과 태그 준비 후):
+Python 변경의 기본 검사는 다음과 같다. GUI 표시 장치가 없는 Linux에서는 `QT_QPA_PLATFORM=offscreen`을 사용한다.
 
-1. **Windows release**를 선택하고 existing annotated `v2.1.1` tag와 `create_draft`를 입력한다.
-2. `prepare`는 깨끗한 tag checkout의 버전·tag 객체를 확인하고 정확한 commit으로 source archive를 만든다.
-3. Windows job은 artifact ID로 받은 archive의 checksum을 검증한 뒤 새 환경에서 `uv sync --locked --group dev`, Ruff, ty, 전체 로컬 pytest, 라이선스 검사와 의존성 감사를 실행한다. 실제 원격 서비스를 호출하는 `tests/integration`은 제외한다.
-4. 독립 .NET Framework helper를 빌드하고 PyInstaller와 Inno Setup을 실행한다. 관리자 권한 설치, HKLM 설치 등록, 설치된 helper 동일성, 무인 재설치, 실제 설치된 앱의 오프라인 시작·정상 종료, 법률 문서·secret scan·checksum을 검사한다.
-5. 보호된 `desktop-release` job이 동일 source와 artifact의 provenance를 다시 확인하고 업데이트 manifest를 서명한다. Python 없이 별도 디렉터리에 복사한 native helper로 정상 서명, manifest 원문 변조, 설치 파일 변조, 서명 누락을 검증한다.
-6. `create_draft=true`인 경우 원격 annotated tag 객체가 그대로인지 다시 확인하고 초안만 만든다. `false`여도 승인된 서명 단계와 artifact 검증은 수행하지만 GitHub Release는 만들지 않는다.
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run ty check
+uv run pytest --ignore=tests/integration
+```
 
-앱 소스와 실행기는 항상 입력한 태그의 archive에서 빌드한다. 동적 API의 검증용 타입 정보는 workflow 커밋에 고정된 별도 경로에서 읽을 수 있으며, 해당 커밋을 검사 로그에 남긴다. 이 방식은 태그 소스나 검사 규칙을 수정하지 않고 `pefile`처럼 실행 중 속성을 만드는 검사 도구의 타입 정보를 제공하기 위한 것이다. 이미 만든 릴리스 태그를 검증 도구 수정 때문에 이동하지 않는다.
+`tests/integration`은 실제 서버에 인증·경기·게스트 관측 요청을 보낼 수 있다. 운영 `.env`나 배포 설정을 사용하는 환경에서 전체 pytest를 무심코 실행하지 않는다. 실서버 통합 검사는 별도의 테스트 프로젝트와 폐기 가능한 계정·자료로 수행한다. 웹 검사와 서버 검사는 각각 [웹 README](../web/README.md), [Supabase README](../supabase/README.md)를 따른다.
 
-Windows 전용 공개 asset은 다음 4개다. 서명된 metadata도 설치 프로그램과 **같은 release에 함께 공개**해야 한다.
+## 릴리스 자동화
+
+| workflow | 용도 | 공개 배포 자산 |
+|---|---|---|
+| [Windows release](../.github/workflows/windows-release.yml) | 서명된 Windows 앱 내 업데이트 | 설치 파일, 설치 파일 SHA-256, `update.json`, `update.json.sig` |
+| [Desktop release draft](../.github/workflows/desktop-release.yml) | Windows와 Linux 동시 빌드 | 설치 파일과 SHA-256, Flatpak bundle과 SHA-256 |
+
+두 workflow는 수동 실행하며 GitHub Release **draft만 생성**한다. 기존 Release·자산을 덮어쓰거나 자동 publish하지 않는다. 동시 빌드 workflow는 업데이트 metadata를 서명하지 않으므로 Windows 앱 내 업데이트 배포에 사용하지 않는다. Windows 전용 릴리스는 Linux와 웹을 배포하지 않는다.
+
+### 설정과 태그
+
+- `desktop-release-build` Environment에는 배포 가능한 `MDLOGGER_SUPABASE_URL`, `MDLOGGER_SUPABASE_ANON_KEY` Variables만 둔다. service-role key는 클라이언트에 포함하지 않는다.
+- `desktop-release` Environment는 소유자 승인 대상으로 설정하고 `MDLOGGER_UPDATE_SIGNING_KEY` Secret을 보관한다. 비밀키는 로그·파일·artifact·명령행 인수에 출력하지 않는다.
+- 입력은 기존 annotated `v<major>.<minor>.<patch>` 태그이며 `_version.py`와 정확히 일치해야 한다. 깨끗한 태그 소스에서 빌드한다.
+- 기존 태그를 삭제·이동·재작성하여 검증 실패를 해결하지 않는다. 제품 수정은 새 커밋과 새 버전의 태그로 배포한다.
+- Release 제목은 태그 이름과 정확히 같게 한다. `MDLogger ` 접두사를 붙이지 않는다. 제목 수정으로 태그·버전·자산·릴리스 노트를 바꾸지 않는다.
+
+### 실행과 공개
+
+1. 해당 소스의 CI 결과와 필요한 수동 검증을 확인한다.
+2. 대상 workflow에 태그와 `create_draft`를 지정한다. `false`는 자산 검토용이며 Windows 서명·검증 단계를 생략하는 옵션이 아니다.
+3. workflow는 태그 커밋의 소스 아카이브를 만들고 같은 아카이브의 체크섬을 확인하여 플랫폼별로 빌드한다. 잠금 의존성, 라이선스, 비밀값, 플랫폼 payload와 설치 검사를 수행한다.
+4. Windows 서명 job은 동일 소스·자산의 provenance를 확인한 뒤 업데이트 metadata를 서명하고 독립 실행기로 정상·변조·서명 누락을 검사한다.
+5. draft의 제목, 버전, 배포 파일, 체크섬, 서명, 검증 기록을 대조한 후 소유자가 공개한다. 공개 본문은 사용자에게 보이는 변경 사항만 담는다.
+
+Windows 업데이트 배포에는 다음 네 파일이 같은 Release에 필요하다.
 
 ```text
 MDLoggerSetup-<version>.exe
@@ -116,272 +66,81 @@ MDLogger-<version>-update.json
 MDLogger-<version>-update.json.sig
 ```
 
-Manifest는 `schema`, `key_id`, `version`, `platform: windows-x64`, `issued_at`, `expires_at`와 설치 파일의 `name`, 고정 GitHub 저장소 URL, `size`, `sha256`을 포함한다. `.sig`는 `schema`, `key_id`, base64 `signature`를 담은 JSON이다. 시간은 UTC 초 단위이며 기본 유효기간은 서명부터 90일, 최대 366일이다. 만료되거나 서명이 없으면 앱은 설치를 거부한다. 초안 검토가 길어져 유효기간이 부족하면 기존 asset을 덮어쓰지 말고 새 버전으로 다시 빌드한다. SHA-256 sidecar만으로 서명을 대신하지 않는다.
+업데이트 manifest는 고정 공개 키로 UTF-8 원문 바이트의 RSA 3072비트/SHA-256/PKCS#1 v1.5 서명을 검증한다. 버전 상승, 플랫폼, 저장소 URL, 유효기간, 설치 파일 크기·SHA-256도 검사한다. 기본 유효기간은 90일이며 최대 366일이다. 체크섬만으로 서명을 대신하거나 네트워크에서 받은 공개 키를 자동 신뢰하지 않는다. 키 교체는 새 키를 신뢰하는 앱을 기존 키로 먼저 배포하는 별도 작업이다.
 
-`windows-signed-release-<run_id>` artifact의 `windows-release-provenance.json`에는 source/tag identity, installer/helper hash, 공개 키 hash, 설치 검증 기록이 남는다. private key와 사용자 데이터는 포함하지 않는다. 자동화의 재설치 검사는 실행 중 앱의 전체 업데이트 인계와 다르다. 공개 전 별도 Windows 테스트 계정에서 앱 종료 대기, UAC 취소, 실제 업데이트 후 원래 사용자 권한 재실행, 시작 확인 실패·복구 안내, 기록 보존을 확인한다.
+## 업데이트와 검증
 
-기존 Windows·Linux 동시 빌드 절차:
+Windows 설치판은 시작 후 공개된 정식 릴리스를 비차단 방식으로 확인한다. 다운로드·설치는 사용자 선택 후 진행하며, 초안·사전 릴리스는 설치하지 않는다. 관리자 범위의 Program Files 설치를 유지하므로 UAC 동의가 필요할 수 있다. 업데이트 서명은 Authenticode 코드 서명과 다르며 SmartScreen 경고가 사라진다는 뜻이 아니다.
 
-1. GitHub Actions에서 **Desktop release draft**를 선택하고 **Run workflow**를 누른다.
-2. `tag`에 검증할 existing annotated tag를 입력한다.
-3. 처음에는 `create_draft=false`로 실행해 Windows installer·Flatpak bundle·source archive artifact만 검토할 수 있다. 이 경우 GitHub Release는 만들지 않는다.
-4. 같은 tag의 artifact와 검증 기록이 확인되면 `create_draft=true`로 새 실행을 시작한다. 기존 release가 있으면 workflow는 실패하며 덮어쓰지 않는다.
+v2.1.0 이전에는 앱 내 업데이트 기능이 없다. v2.1.0에서 v2.1.1로 전환할 때도 앱을 닫고 새 설치 파일을 직접 실행하는 수동 설치를 권장한다. 새 소스의 수정은 이미 설치된 구버전 실행기를 바꾸지 않는다. Linux는 수동 bundle 업데이트이며 자동 업데이트용 MDLogger Flatpak remote가 구성되어 있지 않다.
 
-`prepare` job은 tag commit에서 source archive를 만들고 checksum을 기록한다. Windows와 Flatpak job은 각자 작업 디렉터리가 아니라 이 동일한 archive를 checksum 검증 후 풀어 빌드한다. Windows는 PyInstaller onedir, Inno Setup compile, 무인 설치 및 설치 payload 검사를 수행한다. Flatpak은 final image license payload 검사, bundle 생성, 새 GitHub runner의 user Flatpak 설치 검사를 수행한다. build job에는 Release 쓰기 권한이 없다.
+업데이트 캐시는 `%LOCALAPPDATA%\MDLogger\updates`에 별도로 저장한다. 실행기는 앱 종료를 기다린 뒤 installer만 승격하고 원래 사용자 권한으로 앱을 재실행한다. 자동 PC 재부팅이나 강제 앱 종료를 정상 경로로 사용하지 않는다.
 
-### Draft 검토와 공개
+**2026-10-26 소유자가 Windows 10·11에서 업데이트 정상 동작을 확인했다.** 이는 사용자 실기기 확인이며 CI 자동 검사의 결과와 구분한다. 업데이트 전후 버전, 설치 방식과 상세 인계 로그는 이 기록에 첨부되어 있지 않으므로 아래 조건 전체의 통과로 확대하지 않는다.
 
-자동 생성되는 release body에는 `변경 사항` 섹션만 들어 있다. `변경 사항` 섹션에는 **직전 릴리스 대비 사용자에게 보이는 변경 사항만** 작성한다. 그 밖의 기술 정보, 플랫폼별 checksum, source 상태, 검증 결과와 체크리스트는 release manifest와 이 문서에만 유지한다. 소유자는 AI 에이전트가 준비한 tag 비교 요약을 참고할 수 있지만, 공개할 문구와 publish 결정은 소유자가 최종 승인한다.
+CI의 설치·재설치·데이터 sentinel·기동 검사와 `--verify-payload` 서명 검사 외에 확인할 조건은 다음과 같다.
 
-기존 **Desktop release draft** workflow가 GitHub Release draft에 업로드하는 사용자 배포용 asset은 다음 4개다. 이 경로는 서명된 업데이트 metadata를 만들지 않으므로 Windows 앱 내 업데이트 배포에는 사용하지 않는다.
+- 앱에서 승인한 뒤 부모 PID 종료, 실행기의 `--job` 설치, 새 PID·버전·난수 시작 영수증까지 확인한다.
+- UAC 승인·취소·다른 관리자 자격 증명을 사용한 경우에도 원래 사용자로 재실행되는지 확인한다.
+- 기본 데이터 폴더와 `MDLOGGER_DATA_DIR`에서 계정·기록·미전송 자료 보존을 확인한다.
+- 다중 창, 창 파괴, 동기화 정지 지연, 설치 실패, 시간 초과, 취소 후 재시도를 확인한다.
+- 재부팅 필요 종료 코드에서도 자동 PC 재부팅과 강제 프로세스 종료가 없는지 확인한다.
 
-```text
-MDLoggerSetup-<version>.exe
-MDLoggerSetup-<version>.exe.sha256
-MDLogger-<version>.flatpak
-MDLogger-<version>.flatpak.sha256
+검증은 별도 Windows 테스트 계정과 폐기 가능한 자료로 수행한다. Linux Qt 테스트나 가짜 서비스 결과를 OS 키링·실서버·Windows 전체 인계 성공으로 기록하지 않는다.
+
+## 소스와 라이선스
+
+MDLogger 소스는 해당 태그의 GitHub `Source code (zip/tar.gz)`로 제공한다. 빌드에 사용한 별도 소스 아카이브, checksum, provenance는 Actions artifact에 보관한다. 저장소·배포물의 법률 원문과 고지는 삭제하지 않는다.
+
+제3자 라이브러리는 [소스 안내](../licenses/sources/desktop-source-offer.md)의 공식 업스트림 URL·확인된 해시로 안내한다. 현재 workflow는 제3자 소스 아카이브를 별도 공개 자산으로 첨부하지 않는다. URL 안내나 자동 검사의 성공만으로 모든 라이선스 의무가 충족되었다고 단정하지 않는다. 정확한 NumPy OpenBLAS/GCC 소스 revision, Qt exact-build SBOM과 소스의 지속적인 가용성 등 확인 범위·한계는 해당 안내와 [출처 기록](../licenses/sources/desktop-license-provenance.md)에 유지한다.
+
+의존성이나 lockfile을 변경하면 다음을 확인한다.
+
+- `scripts/desktop_license_policy.json`과 `scripts/generate_desktop_licenses.py`로 고지·inventory를 갱신하고 `--check`로 대조한다. Linux 증거는 Flatpak과 같은 Python 3.14 wheel 환경에서 확인한다.
+- 웹 고지는 `web/README.md`의 생성·추적·실제 번들 검사를 수행한다. 검사에 사용한 source map은 배포 전에 제거한다.
+- 새 라이선스, 누락 원문, hash 차이를 검사 완화로 숨기지 않는다. 라이선스 원문은 생성 요약문으로 대체하지 않는다.
+- PySide6-Essentials만 사용하며 WebEngine·Pdf·Multimedia와 Chromium/FFmpeg를 포함하지 않는다. 출처 미확인 `PAL-relaxed.hex`, `PAL-relaxed_bright.hex`도 제외한다.
+- Windows 고지는 설치된 법률 원문과 공개 소스 안내로 연결되어야 한다. Windows에서 제외하는 내부 inventory·source 문서를 로컬 설치 경로로 안내하지 않는다.
+
+## 로컬 패키징
+
+공개 릴리스는 위 workflow를 우선한다. 아래 명령은 로컬 패키징용이며 성공만으로 공개 준비가 완료되는 것은 아니다. 온라인 기능을 포함하려면 환경변수 또는 로컬 `.env`에 publishable Supabase 설정을 넣고 생성한다. `.env`와 생성된 `_bundled_config.py`는 커밋하지 않는다.
+
+### Windows
+
+PowerShell에서 실행한다. Inno Setup 6과 Windows 기본 .NET Framework compiler가 필요하다.
+
+```powershell
+uv sync --locked --group dev
+uv run python scripts/generate_build_config.py
+uv run python scripts/generate_desktop_licenses.py --check
+pwsh -NoProfile -File scripts/update/build_helper.ps1
+uv run pyinstaller --noconfirm --clean MDLogger.spec
+pwsh -NoProfile -File scripts/ensure_inno_setup.ps1
+$version = uv run python -c "from mdlogger._version import __version__; print(__version__)"
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$version" scripts/installer_windows.iss
 ```
 
-MDLogger 자체의 소스 아카이브는 GitHub Release가 자동으로 첨부하는 `Source code (zip)` 및 `Source code (tar.gz)`로 제공되며, CI 내부 검증용 `MDLogger-<version>-source.tar.gz`와 `MDLogger-<version>-release-manifest.json`은 GitHub Actions workflow artifact(`release-assets-<run_id>`)에 보관된다. 수정하지 않은 제3자 라이브러리(Qt, PySide6, cryptography, OpenSSL, NumPy)의 원본 소스는 **GPL-3.0 제6조 d항**에 따라 각 공식 업스트림 서버(`download.qt.io`, `github.com`, `files.pythonhosted.org`)를 통해 제공되며, 저장소 내 `licenses/sources/desktop-source-offer.md`를 통해 정확한 다운로드 URL과 SHA-256 해시를 안내한다.
+`dist/MDLogger/`가 onedir이고 설치 파일은 `dist/installer/MDLoggerSetup-<version>.exe`다. [Windows 검증 스크립트](../scripts/release/verify_windows_release.ps1)로 payload·설치·재설치·기동을 확인한다. 로컬 installer 생성만으로 서명된 업데이트 metadata가 생기지는 않는다. 앱 파일과 사용자 데이터는 별도 위치이며 제거 프로그램은 사용자 경기 DB를 삭제하지 않는다.
 
-공개 전에는 다음을 확인한다.
+### Linux Flatpak
 
-- 릴리스 표시 제목이 태그 이름과 정확히 같은지
-- 해당 릴리스의 installer, source archive 및 Flatpak이 있는 경우 bundle의 `.sha256`이 manifest와 일치하는지
-- 배포 대상 환경에서 설치·실행·법률 문서 열기가 가능한지
-- Windows 전용 릴리스의 업데이트 manifest·서명과 실제 installer가 일치하고 만료되지 않았는지
-- Windows installer가 unsigned임과 SmartScreen 안내가 현재 정책에 맞는지
-- `변경 사항` 섹션이 사용자용 변경 사항만 포함하는지
-
-모든 항목을 확인한 뒤에만 GitHub Release 화면에서 draft를 publish한다. draft 생성이나 asset upload가 실패하면 workflow는 자동으로 재시도하거나 asset을 교체하지 않는다. 소유자가 draft를 유지 또는 삭제하고 원인을 고친 뒤, **새 commit과 새 annotated tag**로 다시 시작한다.
-
-v2.0.0에는 업데이트 기능이 없어 v2.1.0으로 처음 전환할 때는 수동 설치가 필요하다. 이후 Windows 설치판은 시작 후 비차단 방식으로 한 번 자동 확인하며, 사용자가 직접 확인할 수도 있다. 다운로드·설치는 사용자 요청 후 진행한다. 공개된 정식 릴리스만 확인하며 초안·사전 릴리스는 설치 대상으로 삼지 않는다. Program Files 관리자 설치를 유지하므로 UAC 동의가 필요할 수 있고, 앱 재시작과 PC 재부팅은 별개다. 이 배포는 기존 클라이언트의 최소 허용 버전을 올리지 않는다. Linux는 기존 수동 Flatpak 설치를 유지하며, GitHub bundle 배포만으로 자동 업데이트용 MDLogger remote가 생기지는 않는다.
-
-### v2.1.0 서버 호환성
-
-웹 저장 재시도와 전체 기록 조회는 `0030_idempotent_game_creates.sql`, `0031_web_read_models.sql`을 먼저 적용한다. 기존 schema 1 / payload 2 요청과 응답 상태는 유지한다. 최소 지원 버전을 변경하는 별도 정책 migration을 함께 적용하지 않는다. 이번 운영 반영에서는 기존에 미적용 상태였던 `0029_release_policy_v100.sql`을 제외하고 0030·0031만 실행한 뒤 실제 적용한 두 버전의 이력을 등록했다. 이 번호 공백을 해소한다는 이유로 0029를 실행하거나 실행하지 않은 migration을 적용된 것으로 표시하지 않는다. 다음 배포에서도 `supabase migration list --linked`와 `supabase db push --linked --dry-run`으로 대상과 정책 영향을 먼저 확인한다.
-
-## 제3자 라이선스 산출물 갱신
-
-dependency 또는 lockfile이 변경되면 배포 빌드 전에 데스크톱과 웹 고지를 모두 재생성한다.
-
-```bash
-cd web
-npm ci
-npm run generate:licenses
-npm run check:licenses
-npm run check:license-artifacts
-npm run build
-npm run check:license-bundle
-npm run strip:source-maps
-npm run check:secrets
-cd ..
-
-# Linux에서는 Flatpak과 같은 Python 3.14 wheel을 별도 환경에서 검증한다.
-UV_PROJECT_ENVIRONMENT=/tmp/mdlogger-license-env uv run --python 3.14.9 --frozen python scripts/generate_desktop_licenses.py
-UV_PROJECT_ENVIRONMENT=/tmp/mdlogger-license-env uv run --python 3.14.9 --frozen python scripts/generate_desktop_licenses.py --check
-
-git status --porcelain --untracked-files=all -- \
-  THIRD_PARTY_NOTICES.md THIRD_PARTY_NOTICES.txt \
-  flatpak/requirements-runtime.txt licenses/desktop licenses/inventory licenses/sources \
-  web/licenses/inventory.json web/public/third-party-notices.txt web/public/licenses
-```
-
-새 package, 새 license expression, 누락된 LICENSE/NOTICE/COPYING 파일이 발견되면 자동 승인하지 않는다. `scripts/desktop_license_policy.json` 또는 `web/scripts/generate-third-party-notices.mjs`의 검토 정책을 갱신하기 전에 실제 production 포함 근거와 upstream 원문을 확인한다.
-
-Qt/PySide6, cryptography/OpenSSL와 NumPy 자체의 source archive는 `licenses/sources/desktop-source-offer.md`에 기록된 URL, 크기와 SHA-256을 릴리스마다 다시 확인한다. 현재 Qt/PySide6 선택 경로는 GPL-3.0-only이며, 공식 archive에 detached signature가 없는 상태를 signature 검증 완료로 표현하지 않는다. 바이너리와 같은 릴리스 다운로드 위치에 검증한 source archive와 MDLogger source revision·패키징 파일을 함께 제공한다. NumPy wheel의 OpenBLAS/GCC runtime은 정확한 toolchain revision이 공개되지 않은 알려진 한계다. 보존된 고지와 라이선스 원문을 포함하되, upstream URL을 해당 바이너리의 exact corresponding-source snapshot으로 표현하지 않는다. 일치하는 revision과 source hash가 나중에 확인되면 릴리스 기록과 source archive에 추가한다.
-
-Qt 또는 PySide6 버전이 바뀌면 실제 Essentials wheel과 같은 버전의 Qt/PySide source archive에서 법률 원문과 attribution을 다시 확인한다. Linux의 wheel 원본 hash와 Flatpak Builder 후처리 이후의 final-image hash는 각각 검증한다. 사용하지 않는 QtWebEngine, QtPdf, QtMultimedia와 Chromium/FFmpeg는 설치하지 않으며, inventory와 배포 검사에서도 이 제외 조건을 확인한다.
-
-pyqtgraph의 `PAL-relaxed.hex`와 `PAL-relaxed_bright.hex`는 라이선스와 출처를 확인할 수 없어 Windows와 Flatpak 배포물에서 제외한다. 두 파일이 다시 나타나면 릴리스를 중단한다.
-
-### Qt 배포 범위
-
-앱이 사용하는 QtCore, QtGui, QtWidgets, QtSvg와 테스트용 QtTest는 `PySide6-Essentials`가 제공한다. umbrella `PySide6`와 Addons 대신 Essentials만 고정하여 사용하지 않는 모듈의 보안·배포 부담을 줄인다. Python import 이름은 계속 `PySide6`이며, PyInstaller에는 Essentials-only 설치에서도 필요한 `PySide6.support.deprecated` hidden import를 명시한다.
-
-## Flatpak 배포판 생성 및 삭제
-
-### 사전 준비
-
-호스트에 `flatpak`과 `flatpak-builder`를 설치하고, 프로젝트가 요구하는 SDK를 설치한다.
-
-```bash
-flatpak install --user flathub org.freedesktop.Sdk//26.08
-```
-
-온라인 기능을 포함한 배포본은 빌드 전에 프로젝트 루트의 `.env`에서 Supabase publishable(anon) 설정을 생성한다. `.env` 파일이 없거나 필수 값이 비어 있으면 생성은 중단된다. service-role 또는 secret 키는 절대 사용하지 않는다.
-
-```text
-MDLOGGER_SUPABASE_URL=<hosted-project-url>
-MDLOGGER_SUPABASE_ANON_KEY=<publishable-anon-key>
-```
+`flatpak`과 `flatpak-builder`가 필요하다. 아래 스크립트는 Flathub SDK 확인·설치와 앱의 사용자 설치를 수행한다.
 
 ```bash
 uv run python scripts/generate_build_config.py
-```
-
-### 빌드 및 번들 생성
-
-`.venv`, 기존 빌드 산출물 등을 제외한 소스 스냅숏을 만들고 Flatpak을 빌드·설치한다.
-
-```bash
-STAGE="$(mktemp -d)"
-git ls-files -c | tar -cf - -T - | tar -xf - -C "$STAGE"
-cp src/mdlogger/remote/_bundled_config.py "$STAGE/src/mdlogger/remote/"
-
-flatpak-builder --user --install --force-clean \
-  --state-dir="$STAGE/state" \
-  --repo="$STAGE/repo" \
-  "$STAGE/build" \
-  "$STAGE/flatpak/io.github.dusten45.MDLogger.yaml"
-
-# Flatpak Builder 후처리(debug split/strip) 뒤의 최종 이미지 hash도 확인한다.
-uv run python "$STAGE/scripts/verify_flatpak_license_payload.py" \
-  --app-root "$STAGE/build/files" \
-  --payload-phase final_image
-```
-
-GitHub Releases 등에 올릴 단일 `.flatpak` 파일을 생성한다.
-
-```bash
 mkdir -p dist/linux
-flatpak build-bundle "$STAGE/repo" \
-  dist/linux/MDLogger.flatpak \
-  io.github.dusten45.MDLogger
-```
-
-설치 전 또는 임시 설치 후 다음 파일이 포함되고 제외 대상 palette가 없는지 검사한다.
-
-```bash
-flatpak run --command=sh io.github.dusten45.MDLogger -c \
-  'test -f /app/share/licenses/mdlogger/LICENSE && \
-   test -f /app/share/doc/mdlogger/THIRD_PARTY_NOTICES.txt && \
-   test -f /app/share/licenses/mdlogger/inventory/desktop-linux.json && \
-   test -f /app/share/licenses/mdlogger/inventory/qt-modules-linux-flatpak.json && \
-   test -f /app/share/licenses/mdlogger/inventory/qt-third-party-runtime-linux-flatpak.json && \
-   test ! -e /app/share/licenses/mdlogger/inventory/desktop-windows.json && \
-   test ! -e /app/venv/lib/python3.14/site-packages/PySide6/Qt/lib/libQt6WebEngineCore.so.6 && \
-   test ! -e /app/venv/lib/python3.14/site-packages/PySide6/Qt/lib/libQt6Multimedia.so.6 && \
-   test -f /app/share/doc/mdlogger/sources/desktop-source-offer.md && \
-   test -f /app/share/licenses/mdlogger/desktop/qt-6.12.0/QT-THIRD-PARTY-ATTRIBUTIONS.json && \
-   test -d /app/share/licenses/mdlogger/desktop/qt-6.12.0/third-party-source-files && \
-   test ! -e /app/venv/lib/python3.14/site-packages/pip && \
-   test ! -e /app/venv/bin/pip && \
-   test ! -e /app/venv/lib/python3.14/site-packages/pyqtgraph/colors/maps/PAL-relaxed.hex && \
-   test ! -e /app/venv/lib/python3.14/site-packages/pyqtgraph/colors/maps/PAL-relaxed_bright.hex'
-```
-
-생성한 파일의 설치·실행 방법은 다음과 같다.
-
-```bash
-flatpak install --user ./dist/linux/MDLogger.flatpak
+version="$(uv run python -c 'from mdlogger._version import __version__; print(__version__)')"
+FLATPAK_BUNDLE="$PWD/dist/linux/MDLogger-$version.flatpak" bash scripts/flatpak_build.sh
 flatpak run io.github.dusten45.MDLogger
 ```
 
-### Flatpak 앱 삭제
+배포 전에는 [Flatpak 검증 스크립트](../scripts/release/verify_flatpak_release.sh)와 `scripts/verify_flatpak_license_payload.py`로 설치 상태 및 strip/debug-split 이후 final-image payload를 확인한다. 검증 스크립트는 앱 설치·제거를 수행하므로 CI 또는 별도 테스트 계정에서 실행한다. 사용자는 `flatpak install --user`에 다운로드한 bundle 경로를 전달하여 설치한다.
 
-앱만 제거하고 데이터는 남긴다.
+## 서버·웹 호환성
 
-```bash
-flatpak uninstall io.github.dusten45.MDLogger
-```
+현재 웹의 멱등 생성과 전체 기록 조회에는 `0030_idempotent_game_creates.sql`, `0031_web_read_models.sql`이 필요하다. schema 1 / payload 2 계약과 기존 로컬 naive ISO `played_at` 의미를 유지한다.
 
-앱과 Flatpak 샌드박스 데이터까지 함께 제거한다.
+`0029_release_policy_v100.sql`은 최소 지원 버전을 변경하는 별도 정책이다. 적용 번호가 비었다는 이유로 실행하거나 실행하지 않은 migration을 적용된 것으로 표시하지 않는다. hosted 변경 전 `supabase migration list --linked`와 `supabase db push --linked --dry-run`으로 실제 대상과 정책 영향을 확인한다. 전체 migration 적용 명령을 무조건 운영 프로젝트에 실행하지 않는다.
 
-```bash
-flatpak uninstall --delete-data io.github.dusten45.MDLogger
-```
-
-더 이상 사용하지 않는 Flatpak 런타임도 정리하려면 다음을 실행한다.
-
-```bash
-flatpak uninstall --unused
-```
-
-## Windows exe 배포판 빌드
-
-Windows에서 PowerShell을 열고 프로젝트 루트에서 실행한다. 배포는 두 단계로 이루어진다. 먼저 PyInstaller로 onedir 산출물(`MDLogger.exe` + `_internal/`)을 만들고, 이어서 Inno Setup으로 설치 프로그램(`MDLoggerSetup-<버전>.exe`)을 생성한다. 최종 배포물은 설치 프로그램 하나다.
-
-### 설정 생성 및 PyInstaller 빌드
-
-온라인 기능을 포함하려면 프로젝트 루트의 `.env`에 `MDLOGGER_SUPABASE_URL`과 `MDLOGGER_SUPABASE_ANON_KEY`를 설정한 뒤 publishable(anon) 설정을 생성한다.
-
-```powershell
-uv run python scripts/generate_build_config.py
-uv run python scripts/generate_desktop_licenses.py --check
-
-pwsh -NoProfile -File scripts/update/build_helper.ps1
-uv run pyinstaller --noconfirm --clean MDLogger.spec
-```
-
-빌드 결과는 다음 위치에 생성된다.
-
-```text
-dist\MDLogger\MDLogger.exe
-dist\MDLogger\MDLoggerUpdate.exe
-dist\MDLogger\_internal\
-```
-
-### 배포 전 검증
-
-산출물 전체를 검사하고 체크섬을 생성한다.
-
-```powershell
-uv run python -m mdlogger.secret_scan dist\MDLogger
-uv run python -m mdlogger.checksum dist\MDLogger
-```
-
-시크릿 스캔 결과가 0건인지 확인한다. 체크섬 manifest는 `dist\MDLogger.sha256`에 생성된다. 이어서 법률 문서와 제외 대상 palette를 검사한다.
-
-```powershell
-$required = @(
-  "dist\MDLogger\LICENSE",
-  "dist\MDLogger\THIRD_PARTY_NOTICES.txt",
-  "dist\MDLogger\licenses\desktop\qt-6.12.0\LICENSES\GPL-3.0-only.txt"
-)
-$required | ForEach-Object { if (-not (Test-Path $_)) { throw "누락: $_" } }
-$palettes = Get-ChildItem dist\MDLogger -Recurse -File |
-  Where-Object { $_.Name -in @("PAL-relaxed.hex", "PAL-relaxed_bright.hex") }
-if ($palettes) { throw "라이선스 미확인 palette가 포함되었습니다." }
-```
-
-`build\MDLogger\Analysis-00.toc`, `build\MDLogger\COLLECT-00.toc`와 `dist\MDLogger`의 Qt DLL·plugin 목록도 확인한다. Windows 배포 폴더에는 사용하지 않는 `qtwebengine`, `qtmultimedia`, Linux 전용 SecretStorage·jeepney·ICU 고지와 내부 CI 인벤토리(`licenses/inventory/`)를 포함하지 않는다. 업데이트 서명 검증에 쓰는 `cryptography`, `cffi`, `pycparser`의 법률 원문은 포함한다. 기존 `cryptography` SBOM은 Linux Python 3.14 wheel 증거이므로 Windows 배포에는 넣지 않는다.
-
-### 설치 프로그램 생성 (Inno Setup)
-
-`scripts\installer_windows.iss`로 설치 프로그램을 만든다. Inno Setup 6을 설치한 뒤 `ISCC.exe`로 빌드한다.
-
-```powershell
-& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" scripts\installer_windows.iss
-```
-
-설치 프로그램은 `dist\installer\MDLoggerSetup-<버전>.exe`에 생성된다. 버전은 `src\mdlogger\_version.py`의 `__version__`과 일치해야 한다. 스크립트의 `MyAppVersion` 기본값을 직접 고치거나, 빌드 시 `/DMyAppVersion`으로 주입한다.
-
-```powershell
-& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion=1.0.0 scripts\installer_windows.iss
-```
-
-설치 프로그램은 onedir 폴더 전체(`_internal/` 포함)를 Program Files에 설치하고 시작 메뉴·바탕화면 바로가기와 제거 프로그램을 만든다. 설치 후 `{app}\LICENSE`, `{app}\THIRD_PARTY_NOTICES.txt`, `{app}\licenses\`가 존재하는지 확인한다. 사용자 데이터(SQLite)는 OS 표준 데이터 디렉터리에 있으므로 제거 시에도 남는다. Windows 바이너리 산출물은 `dist\installer\MDLoggerSetup-<버전>.exe` 하나이며, 같은 릴리스 다운로드 위치에 대응 source archive도 별도 첨부한다.
-
-## 웹 배포 전 제3자 라이선스 확인
-
-`web/`에서 실제 script를 사용해 생성 파일, production closure와 정적 배포물을 검사한다.
-
-```bash
-cd web
-npm ci
-npm run generate:licenses
-npm run check:licenses
-npm run check:license-artifacts
-npm run lint
-npm test
-npm run build
-npm run check:license-bundle
-npm run strip:source-maps
-npm run check:secrets
-
-test -f dist/third-party-notices.txt
-test -d dist/licenses
-```
-
-배포 후 `/third-party-notices.txt`가 열리고 로그인 footer와 설정 화면의 `오픈소스 라이선스` 링크가 해당 URL을 가리키는지 확인한다. 일반 production build에는 검사 전용 source map을 공개하지 않는다. 웹 정적 배포에도 Windows·Flatpak과 동일하게 해당 배포를 만든 정확한 MDLogger commit, source archive SHA-256, 고지 생성물과 패키징 파일을 같은 릴리스 위치에 제공한다.
+웹은 별도로 빌드·배포한다. production은 `main`만 허용하고 배포 전 audit·라이선스·lint·테스트·번들·source map 제거·비밀값 검사를 수행한다. 자세한 명령과 PWA의 온라인 사용 경계는 [웹 README](../web/README.md)를 따른다.

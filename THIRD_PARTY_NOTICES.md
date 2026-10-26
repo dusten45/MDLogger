@@ -30,8 +30,8 @@ Flatpak and Windows PyInstaller/Inno Setup distributions.
   and libgfortran, Qt Windows D3D12MemoryAllocator and Wintab, and the
   Inno Setup 6 loader/uninstaller.
 - Qt/PySide6 is distributed under the selected `GPL-3.0-only` path.
-- Exact Qt/PySide6 corresponding-source instructions:
-  `licenses/sources/desktop-source-offer.md`.
+- Source URLs, hashes and known limitations:
+  <https://github.com/dusten45/MDLogger/blob/main/licenses/sources/desktop-source-offer.md>.
 - Qt license corpus: 69 unique source texts; manifest `licenses/desktop/qt-6.12.0/LICENSES-MANIFEST.json`.
 - Qt package-specific source attribution: 98 records and 61 referenced legal files.
   This is a conservative Essentials source-attribution superset (which also covers cross-platform

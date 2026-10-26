@@ -32,10 +32,8 @@ src/mdlogger/remote/_bundled_config.py
 build/
 dist/
 *.manifest
-# Keep the .spec if you want a reusable build recipe. This project's
-# "마듀 듀얼로그 생성기.spec" hardcodes a local icon path (D:\Downloads\asdf.ico),
-# so .spec files are ignored by default. The MDLogger.spec is a clean, generic
-# recipe (no local paths) and IS tracked for reproducible builds:
+# 업데이트 실행기의 권한 선언과 재현 가능한 빌드 명세는 소스다.
+!scripts/update/update-helper.manifest
 *.spec
 !MDLogger.spec
 
@@ -51,10 +49,13 @@ data/
 *.db
 *.sqlite
 *.sqlite3
+*.db-*
+*.sqlite*-*
 
 # ---- Exported files ----
 games.csv
 games.xlsx
+*.mdlogger-export/
 
 # ---- Supabase CLI scratch dirs ----
 supabase/.branches/
@@ -82,6 +83,7 @@ COPILOT.md
 .cursor/
 .windsurf/
 .copilot/
+.kilo/
 
 # ---- Web / Node build artifacts ----
 web/node_modules/
@@ -90,8 +92,8 @@ web/dist-ssr/
 web/.wrangler/
 
 # ---- Local documentation (kept out of VCS) ----
-# 개발 과정 문서와 운영·제품 계획 문서는 로컬 전용으로 둔다.
-# 릴리스 노트와 공개 법률 문서는 저장소에서 버전 관리한다.
+# 계획·인수인계·감사·오류 보고서와 소유자 운영 메모는 로컬 전용이다.
+# 공개 빌드 절차와 법률 고지 세 문서만 버전 관리한다.
 docs/*
 !docs/release.md
 !docs/privacy-policy.md

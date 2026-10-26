@@ -174,16 +174,21 @@ def test_verification_page_keeps_tab_focus_blocked(qapp: QApplication):
     window.close()
 
 
+@pytest.mark.parametrize("registered", [False, True])
 def test_guest_notice_wraps_long_korean_copy_and_names_included_excluded_data(
     qapp: QApplication,
+    registered: bool,
 ):
-    dialog = GuestNoticeDialog()
+    dialog = GuestNoticeDialog(registered=registered)
     text = " ".join(label.text() for label in dialog.findChildren(QLabel))
 
-    assert "전송:" in text
-    assert "전송하지 않음:" in text
+    assert ("분석 관측에는" if registered else "전송하지 않음:") in text
     assert "자유 입력 메모" in text
     assert dialog.minimumWidth() >= 380
+    dialog.show()
+    qapp.processEvents()
+    for label in dialog.findChildren(QLabel):
+        assert label.height() >= label.heightForWidth(label.width())
     dialog.close()
 
 
@@ -556,7 +561,13 @@ def test_guest_notice_dialog_differentiates_registered_and_guest_copy(
     assert "게스트 기록은 이 PC에 계속 보관됩니다." in guest_text
     assert "installation_id" in guest_text
     assert "timezone_offset_minutes" in guest_text
-    assert "소급하여 수정·삭제되지 않습니다" in guest_text
+    assert "전송하지 않음: 자유 입력 메모" in guest_text
+    assert (
+        "수정·삭제 요청이 서버에 반영되면 관측이 갱신되거나 철회 표시됩니다."
+        in guest_text
+    )
+    assert "철회 후에도 분석 관측 자체는 보존합니다." in guest_text
+    assert "앱 초기화는 서버 관측 철회가 아닙니다." in guest_text
     guest_dialog.close()
 
     registered_dialog = GuestNoticeDialog(registered=True)
@@ -564,12 +575,24 @@ def test_guest_notice_dialog_differentiates_registered_and_guest_copy(
         label.text() for label in registered_dialog.findChildren(QLabel)
     )
     assert "1. 계정 개인 기록 동기화:" in registered_text
+    assert "자유 입력 메모(note)를 동기화합니다." in registered_text
+    assert "표시 이름(로그인 이메일)" in registered_text
+    assert "2. 듀얼 환경 분석: 서버는 개인 기록에서" in registered_text
+    assert "분석 관측에는 메모·이메일·표시 이름" in registered_text
+    assert "수정이 서버에 반영되면 분석 관측도 갱신됩니다." in registered_text
     assert (
-        "자유 입력 메모(note)가 회원 본인의 클라우드 계정에 동기화됩니다."
+        "분석 관측의 철회 표시로 처리하며, 분석 관측 자체는 보존합니다."
         in registered_text
     )
-    assert "2. 듀얼 환경 분석 데이터 전송(별도):" in registered_text
-    assert "환경 분석에서 제외(전송하지 않음): 자유 입력 메모" in registered_text
+    assert (
+        "계정 삭제는 개인 데이터를 삭제하지만 분석 관측을 삭제하거나 철회하지 않습니다."
+        in registered_text
+    )
+    assert "앱 초기화는 서버 데이터 삭제가 아닙니다." in registered_text
+    for text in (guest_text, registered_text):
+        assert "완전한 익명 데이터는 아닙니다." in text
+        assert "연결이 복구되면 전송이 재개됩니다." in text
+        assert "소급" not in text
     registered_dialog.close()
 
 
