@@ -1,6 +1,6 @@
 """관리자용 서버 ``game_modes`` 기준정보 client.
 
-일반 앱의 publishable key 경로와 분리해 service-role key를 환경 변수에서만 읽는다.
+일반 앱의 publishable key 경로와 분리해 환경 변수 또는 로컬 .env에서 관리자 설정을 읽는다.
 이 모듈은 관리자 실행 파일에서만 사용하며, 사용자 빌드 설정에 자격 증명을 포함하지 않는다.
 """
 
@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from .game_sync.modes import GAME_MODES_FIELDS
@@ -125,9 +126,24 @@ class AdminModesClient:
 def admin_client_from_environment(
     *, client: JsonHttpClient | None = None
 ) -> AdminModesClient:
-    """관리자 전용 환경 변수에서 client를 생성한다."""
-    base_url = os.environ.get(_ADMIN_URL_ENV, "").strip()
-    service_role_key = os.environ.get(_SERVICE_ROLE_KEY_ENV, "").strip()
+    """환경 변수 우선, 현재 작업 디렉터리의 로컬 .env 순으로 관리자 설정을 읽는다."""
+    values: dict[str, str] = {}
+    try:
+        lines = (Path.cwd() / ".env").read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeError):
+        lines = []
+    for line in lines:
+        text = line.strip().removeprefix("export ").lstrip()
+        if not text or text.startswith("#") or "=" not in text:
+            continue
+        key, _, value = text.partition("=")
+        if key.strip() in (_ADMIN_URL_ENV, _SERVICE_ROLE_KEY_ENV):
+            values[key.strip()] = value.strip().strip('"').strip("'")
+
+    base_url = os.environ.get(_ADMIN_URL_ENV, values.get(_ADMIN_URL_ENV, "")).strip()
+    service_role_key = os.environ.get(
+        _SERVICE_ROLE_KEY_ENV, values.get(_SERVICE_ROLE_KEY_ENV, "")
+    ).strip()
     missing = [
         name
         for name, value in (
@@ -139,6 +155,6 @@ def admin_client_from_environment(
     if missing:
         names = ", ".join(missing)
         raise AdminConfigurationError(
-            f"관리자 앱에 필요한 환경 변수가 없습니다: {names}"
+            f"관리자 앱의 .env 또는 환경 변수에 필요한 설정이 없습니다: {names}"
         )
     return AdminModesClient(base_url, service_role_key, client=client)

@@ -15,7 +15,7 @@ from .ui.theme import ThemeMode, apply_theme
 
 
 def main() -> None:
-    """service-role 환경 변수로 서버 모드 관리 창을 연다."""
+    """환경 변수 또는 로컬 .env의 관리자 설정으로 서버 모드 관리 창을 연다."""
     app = QApplication(sys.argv)
     install_pointer_focus_only(app)
     app.setApplicationName("MDLogger 관리자")
@@ -30,7 +30,7 @@ def main() -> None:
         QMessageBox.critical(
             None,
             "관리자 앱 설정 필요",
-            f"{error}\n\n환경 변수를 설정한 뒤 다시 실행하세요.",
+            f"{error}\n\n프로젝트 루트의 .env 또는 환경 변수를 설정한 뒤 다시 실행하세요.",
         )
         sys.exit(1)
 

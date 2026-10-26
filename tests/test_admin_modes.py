@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
@@ -21,6 +22,14 @@ def qapp():
 
     application = QApplication.instance() or QApplication([])
     yield application
+
+
+@pytest.fixture
+def admin_env_file(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("MDLOGGER_SUPABASE_URL", raising=False)
+    monkeypatch.delenv("MDLOGGER_SERVICE_ROLE_KEY", raising=False)
+    return tmp_path / ".env"
 
 
 class _Transport:
@@ -107,11 +116,100 @@ def test_admin_modes_client_upsert_uses_admin_rpc():
     }
 
 
-def test_admin_client_requires_service_role_environment(monkeypatch):
-    monkeypatch.delenv("MDLOGGER_SUPABASE_URL", raising=False)
-    monkeypatch.delenv("MDLOGGER_SERVICE_ROLE_KEY", raising=False)
-
+def test_admin_client_requires_local_credentials(admin_env_file):
     with pytest.raises(AdminConfigurationError, match="MDLOGGER_SUPABASE_URL"):
+        admin_client_from_environment()
+
+
+def test_admin_client_reads_local_env_without_exporting_secrets(admin_env_file):
+    admin_env_file.write_text(
+        "# 관리자 전용 로컬 설정\n"
+        '\nMDLOGGER_SUPABASE_URL="https://example.supabase.co/"\n'
+        "export MDLOGGER_SERVICE_ROLE_KEY='local-service-role-key'\n"
+        "MDLOGGER_SUPABASE_ANON_KEY=public-key\n"
+        "ignored line\n",
+        encoding="utf-8-sig",
+    )
+    transport = _Transport(HttpResponse(200, b"[]"))
+
+    client = admin_client_from_environment(client=JsonHttpClient(transport))
+
+    assert client.base_url == "https://example.supabase.co"
+    assert client.fetch() == []
+    assert transport.calls[0][2]["Authorization"] == "Bearer local-service-role-key"
+    assert "MDLOGGER_SERVICE_ROLE_KEY" not in os.environ
+    assert "MDLOGGER_SUPABASE_URL" not in os.environ
+
+
+@pytest.mark.parametrize("with_env_file", [False, True])
+def test_admin_client_prefers_environment(admin_env_file, monkeypatch, with_env_file):
+    if with_env_file:
+        admin_env_file.write_text(
+            "MDLOGGER_SUPABASE_URL=https://file.supabase.co\n"
+            "MDLOGGER_SERVICE_ROLE_KEY=file-service-role-key\n",
+            encoding="utf-8",
+        )
+    monkeypatch.setenv("MDLOGGER_SUPABASE_URL", "https://environment.supabase.co")
+    monkeypatch.setenv("MDLOGGER_SERVICE_ROLE_KEY", "environment-service-role-key")
+    transport = _Transport(HttpResponse(200, b"[]"))
+
+    client = admin_client_from_environment(client=JsonHttpClient(transport))
+
+    assert client.base_url == "https://environment.supabase.co"
+    client.fetch()
+    assert transport.calls[0][2]["apikey"] == "environment-service-role-key"
+
+
+def test_admin_client_uses_env_file_for_missing_environment_value(
+    admin_env_file, monkeypatch
+):
+    admin_env_file.write_text(
+        "MDLOGGER_SUPABASE_URL=https://example.supabase.co\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MDLOGGER_SERVICE_ROLE_KEY", "environment-service-role-key")
+
+    client = admin_client_from_environment()
+
+    assert client.base_url == "https://example.supabase.co"
+
+
+def test_admin_client_rejects_anon_only_env_file(admin_env_file):
+    admin_env_file.write_text(
+        "MDLOGGER_SUPABASE_URL=https://example.supabase.co\n"
+        "MDLOGGER_SUPABASE_ANON_KEY=public-key\n",
+        encoding="utf-8",
+    )
+    transport = _Transport(HttpResponse(200, b"[]"))
+
+    with pytest.raises(AdminConfigurationError, match="MDLOGGER_SERVICE_ROLE_KEY"):
+        admin_client_from_environment(client=JsonHttpClient(transport))
+
+    assert transport.calls == []
+
+
+def test_admin_client_empty_environment_key_does_not_fall_back(
+    admin_env_file, monkeypatch
+):
+    admin_env_file.write_text(
+        "MDLOGGER_SUPABASE_URL=https://example.supabase.co\n"
+        "MDLOGGER_SERVICE_ROLE_KEY=file-service-role-key\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("MDLOGGER_SERVICE_ROLE_KEY", "")
+
+    with pytest.raises(AdminConfigurationError, match="MDLOGGER_SERVICE_ROLE_KEY"):
+        admin_client_from_environment()
+
+
+@pytest.mark.parametrize("invalid_file", [False, True])
+def test_admin_client_rejects_unreadable_env_file(admin_env_file, invalid_file):
+    if invalid_file:
+        admin_env_file.write_bytes(b"\xff")
+    else:
+        admin_env_file.mkdir()
+
+    with pytest.raises(AdminConfigurationError, match="MDLOGGER_SERVICE_ROLE_KEY"):
         admin_client_from_environment()
 
 
