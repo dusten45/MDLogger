@@ -642,6 +642,9 @@ def test_workflow_keeps_release_writes_and_notes_in_the_final_draft_job():
     assert "needs.windows.outputs.artifact_id" in workflow
     assert "needs.flatpak.outputs.artifact_id" in workflow
     assert "--draft" in publish_job
+    assert "RELEASE_TAG: ${{ needs.prepare.outputs.tag }}" in publish_job
+    assert '--title "$RELEASE_TAG"' in publish_job
+    assert publish_job.count("--title ") == 1
     assert "--generate-notes" not in workflow
     assert "## 변경 사항" in publish_job
     assert "MDLoggerSetup-$RELEASE_VERSION.exe" in publish_job

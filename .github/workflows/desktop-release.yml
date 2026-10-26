@@ -473,7 +473,7 @@ jobs:
                   gh release create "$RELEASE_TAG" \
                     --repo "$GITHUB_REPOSITORY" \
                     --draft \
-                    --title "MDLogger v$RELEASE_VERSION" \
+                    --title "$RELEASE_TAG" \
                     --notes-file "$RUNNER_TEMP/release-notes.md" \
                     "$RELEASE_ASSETS/MDLoggerSetup-$RELEASE_VERSION.exe" \
                     "$RELEASE_ASSETS/MDLoggerSetup-$RELEASE_VERSION.exe.sha256" \

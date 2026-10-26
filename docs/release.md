@@ -68,6 +68,8 @@ Python 검사는 임시 사용자 데이터와 네트워크 차단을 적용하�
 
 Windows 전용 릴리스는 `.github/workflows/windows-release.yml`의 **Windows release** 수동 workflow를 사용한다. 기존 `.github/workflows/desktop-release.yml`의 **Desktop release draft**는 Windows·Linux 동시 빌드용으로 그대로 유지한다. Windows 전용 workflow는 Flatpak이나 웹을 빌드·배포하지 않는다. 두 workflow 모두 GitHub Release를 **draft**로만 만들며, 공개 publish 또는 기존 release·asset 덮어쓰기를 자동으로 수행하지 않는다.
 
+GitHub Release의 표시 제목은 **태그 이름과 정확히 같게** 지정한다. 예를 들어 태그가 `v2.1.1`이면 제목도 `v2.1.1`이며, `MDLogger ` 접두사나 별도 설명을 붙이지 않는다. 자동 workflow와 수동 생성·수정·공개에 모두 같은 규칙을 적용한다. 제목을 고치기 위해 태그, 버전, 배포 파일을 변경하지 않는다.
+
 ### 최초 설정: GitHub Environment
 
 다음 Environment는 GitHub 저장소의 **Settings → Environments**에서 소유자가 직접 만든다. workflow 파일이나 repository secret에 service-role key, 코드 서명 인증서, 개인 토큰, 비밀번호를 추가하지 않는다.
@@ -144,6 +146,7 @@ MDLogger 자체의 소스 아카이브는 GitHub Release가 자동으로 첨부�
 
 공개 전에는 다음을 확인한다.
 
+- 릴리스 표시 제목이 태그 이름과 정확히 같은지
 - 해당 릴리스의 installer, source archive 및 Flatpak이 있는 경우 bundle의 `.sha256`이 manifest와 일치하는지
 - 배포 대상 환경에서 설치·실행·법률 문서 열기가 가능한지
 - Windows 전용 릴리스의 업데이트 manifest·서명과 실제 installer가 일치하고 만료되지 않았는지

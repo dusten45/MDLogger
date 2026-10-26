@@ -410,6 +410,9 @@ def test_windows_workflow_preserves_immutable_protected_draft_boundary():
         < signing.index("gh release create")
     )
     assert "--verify-tag --draft" in signing
+    assert "RELEASE_TAG: ${{ needs.prepare.outputs.tag }}" in signing
+    assert '--title "$env:RELEASE_TAG"' in signing
+    assert signing.count("--title ") == 1
     assert "--clobber" not in workflow and "release edit" not in workflow
     assert "flatpak-builder" not in workflow and "web-deploy" not in workflow
     assert "-update.json.sig" in signing and '-update.json"' in signing
