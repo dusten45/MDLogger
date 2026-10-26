@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import threading
+from contextlib import contextmanager
+from dataclasses import replace
 
 import pytest
 
@@ -720,3 +722,235 @@ def test_other_manager_refresh_reloads_rotated_token_after_lock_contention():
     assert second.session_for_sync(USER_ID).state is SessionState.AUTHENTICATED
     assert second_service.refresh_calls == ["refresh-2"]
     assert store.load_refresh_token(USER_ID) == "refresh-3"
+
+
+OTHER_USER_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+
+
+def other_session() -> AuthSession:
+    return replace(
+        make_session("다른 갱신 토큰"),
+        account=AccountInfo(OTHER_USER_ID, "b@test.local", True),
+    )
+
+
+class AccountSaveFailureStore(InMemoryCredentialStore):
+    failing_accounts: set[str]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.failing_accounts = set()
+
+    def save_refresh_token(self, account_id, refresh_token):
+        if account_id in self.failing_accounts:
+            raise CredentialStoreError("저장 실패")
+        super().save_refresh_token(account_id, refresh_token)
+
+
+def test_failed_activation_preserves_authenticated_account_and_existing_credentials():
+    service = FakeAccountService()
+    store = AccountSaveFailureStore()
+    manager = SessionManager(service, store)
+    original = manager.activate(make_session())
+    store.save_refresh_token(OTHER_USER_ID, "이미 저장된 다른 계정 토큰")
+    store.failing_accounts.add(OTHER_USER_ID)
+
+    with pytest.raises(CredentialStoreError):
+        manager.activate(other_session())
+
+    assert manager.snapshot is original
+    assert manager.session_for_sync(USER_ID) is original
+    assert store.load_refresh_token(OTHER_USER_ID) == "이미 저장된 다른 계정 토큰"
+    recovered = manager.session_for_sync(USER_ID, rejected_access_token="access-1")
+    assert recovered.state is SessionState.AUTHENTICATED
+    assert service.refresh_calls == ["refresh-1"]
+    assert store.load_refresh_token(USER_ID) == "refresh-2"
+
+
+def test_failed_activation_preserves_offline_backoff_and_failure_count():
+    clock = [100.0]
+    service = FakeAccountService()
+    store = AccountSaveFailureStore()
+    manager = SessionManager(service, store, now=lambda: clock[0], jitter=lambda _: 0)
+    manager.activate(make_session())
+    service.refresh_result = AuthError(AuthErrorKind.NETWORK, "일시적인 연결 실패")
+    original = manager.session_for_sync(USER_ID, rejected_access_token="access-1")
+    assert original.retry_at == 102
+    store.failing_accounts.add(OTHER_USER_ID)
+
+    with pytest.raises(CredentialStoreError):
+        manager.activate(other_session())
+
+    assert manager.session_for_sync(USER_ID) is original
+    assert service.refresh_calls == ["refresh-1"]
+    clock[0] = 102
+    assert manager.session_for_sync(USER_ID).retry_at == 106
+    service.refresh_result = make_session("refresh-2")
+    clock[0] = 106
+    assert manager.session_for_sync(USER_ID).state is SessionState.AUTHENTICATED
+    assert service.refresh_calls == ["refresh-1"] * 3
+
+
+def test_failed_activation_preserves_pending_rotation_and_lease():
+    clock = [0.0]
+    service = FakeAccountService()
+    store = AccountSaveFailureStore()
+    manager = SessionManager(service, store, now=lambda: clock[0], jitter=lambda _: 0)
+    manager.activate(make_session())
+    store.failing_accounts.update((USER_ID, OTHER_USER_ID))
+    original = manager.session_for_sync(USER_ID, rejected_access_token="access-1")
+    assert original.state is SessionState.OFFLINE
+
+    with pytest.raises(CredentialStoreError):
+        manager.activate(other_session())
+
+    assert manager.snapshot is original
+    with pytest.raises(CredentialStoreBusy), store.refresh_lock(USER_ID):
+        pass
+    store.failing_accounts.clear()
+    assert manager.session_for_sync(USER_ID) is original
+    clock[0] = 2
+    assert manager.session_for_sync(USER_ID).state is SessionState.AUTHENTICATED
+    assert service.refresh_calls == ["refresh-1"]
+    assert store.load_refresh_token(USER_ID) == "refresh-2"
+    with store.refresh_lock(USER_ID):
+        pass
+
+
+@pytest.mark.parametrize("fail_after_save", [False, True])
+def test_logout_during_activation_save_cannot_restore_old_login(fail_after_save):
+    entered, release, deleting = (threading.Event() for _ in range(3))
+
+    class DelayedStore(InMemoryCredentialStore):
+        def save_refresh_token(self, account_id, refresh_token):
+            if account_id == OTHER_USER_ID:
+                entered.set()
+                assert release.wait(5)
+                if fail_after_save:
+                    raise CredentialStoreError("저장 실패")
+            super().save_refresh_token(account_id, refresh_token)
+
+        def delete_refresh_token(self, account_id):
+            deleting.set()
+            super().delete_refresh_token(account_id)
+
+    manager = SessionManager(FakeAccountService(), DelayedStore())
+    manager.activate(make_session())
+    errors = []
+
+    def activate():
+        try:
+            manager.activate(other_session())
+        except AuthError as error:
+            errors.append(error.code)
+
+    activation = threading.Thread(target=activate)
+    logout = threading.Thread(target=lambda: manager.sign_out(USER_ID))
+    activation.start()
+    try:
+        assert entered.wait(2)
+        logout.start()
+        assert deleting.wait(2)
+        assert manager.state is SessionState.SIGNED_OUT
+    finally:
+        release.set()
+        activation.join(5)
+        if logout.ident is not None:
+            logout.join(5)
+    assert not activation.is_alive() and not logout.is_alive()
+    assert errors == ["activation_superseded"]
+    assert manager.state is SessionState.SIGNED_OUT
+    assert manager.session_for_sync(USER_ID).session is None
+    assert manager.session_for_sync(OTHER_USER_ID).session is None
+
+
+@pytest.mark.parametrize("newer_fails", [False, True])
+def test_newer_activation_supersedes_waiting_activation_even_when_newer_fails(
+    newer_fails,
+):
+    entered, release = threading.Event(), threading.Event()
+
+    class DelayedStore(AccountSaveFailureStore):
+        @contextmanager
+        def transaction(self, account_id):
+            if account_id == OTHER_USER_ID:
+                entered.set()
+                assert release.wait(5)
+            with super().transaction(account_id):
+                yield
+
+    store = DelayedStore()
+    manager = SessionManager(FakeAccountService(), store)
+    original = manager.activate(make_session())
+    errors = []
+
+    def activate():
+        try:
+            manager.activate(other_session())
+        except AuthError as error:
+            errors.append(error.code)
+
+    activation = threading.Thread(target=activate)
+    activation.start()
+    try:
+        assert entered.wait(2)
+        newer = make_session("새 로그인 토큰")
+        if newer_fails:
+            store.failing_accounts.add(USER_ID)
+            with pytest.raises(CredentialStoreError):
+                manager.activate(newer)
+        else:
+            manager.activate(newer)
+    finally:
+        release.set()
+        activation.join(5)
+    assert not activation.is_alive()
+    assert errors == ["activation_superseded"]
+    assert manager.session == (original.session if newer_fails else newer)
+    assert store.load_refresh_token(OTHER_USER_ID) is None
+
+
+def test_uncertain_credential_write_does_not_delete_or_activate_candidate():
+    class UncertainStore(InMemoryCredentialStore):
+        def save_refresh_token(self, account_id, refresh_token):
+            super().save_refresh_token(account_id, refresh_token)
+            if account_id == OTHER_USER_ID:
+                raise CredentialStoreError("저장 결과 확인 실패")
+
+    store = UncertainStore()
+    manager = SessionManager(FakeAccountService(), store)
+    original = manager.activate(make_session())
+    with pytest.raises(CredentialStoreError):
+        manager.activate(other_session())
+    assert manager.snapshot is original
+    assert store.load_refresh_token(OTHER_USER_ID) == "다른 갱신 토큰"
+
+
+@pytest.mark.parametrize("reactivate", [False, True])
+def test_request_admission_is_serialized_with_logout_and_relogin(reactivate):
+    manager, _, _ = make_manager()
+    manager.activate(make_session())
+    permission = manager.sync_permission(USER_ID)
+    assert permission is not None
+    started = threading.Event()
+    requests, errors = [], []
+
+    def request():
+        started.set()
+        try:
+            manager.run_sync_request(permission, lambda: requests.append("요청"))
+        except AuthError as error:
+            errors.append(error.code)
+
+    with manager._lock:
+        worker = threading.Thread(target=request)
+        worker.start()
+        assert started.wait(2)
+        manager.sign_out(USER_ID)
+        if reactivate:
+            manager.activate(make_session())
+    worker.join(5)
+    assert not worker.is_alive()
+    assert requests == []
+    assert errors == ["session_changed"]
+    assert manager.sync_permission(USER_ID, previous=permission) is None

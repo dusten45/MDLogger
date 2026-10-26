@@ -5,10 +5,11 @@ import shutil
 import sqlite3
 import stat
 from pathlib import Path
+from threading import Event, Thread
 
 import pytest
 
-from mdlogger import paths
+from mdlogger import local_reset, paths
 
 
 def test_mdlogger_data_dir_override_is_preserved(monkeypatch, tmp_path):
@@ -60,6 +61,7 @@ def test_migrates_legacy_files_without_overwriting(monkeypatch, tmp_path):
     monkeypatch.setattr(paths, "BASE_DIR", base_dir)
     monkeypatch.setattr(paths, "DATA_DIR", new_data_dir)
     monkeypatch.setattr(paths, "DB_PATH", new_data_dir / "games.db")
+    monkeypatch.setattr(paths, "SETTINGS_PATH", new_data_dir / "settings.json")
     monkeypatch.setattr(paths, "DECKS_PATH", new_data_dir / "decks.json")
     monkeypatch.setattr(
         paths, "DECKS_SYNC_STATE_PATH", new_data_dir / "decks_sync.json"
@@ -130,6 +132,7 @@ def test_data_files_are_owner_only(monkeypatch, tmp_path):
     monkeypatch.setattr(paths, "BASE_DIR", tmp_path / "no-legacy")
     monkeypatch.setattr(paths, "DATA_DIR", data_dir)
     monkeypatch.setattr(paths, "DB_PATH", data_dir / "games.db")
+    monkeypatch.setattr(paths, "SETTINGS_PATH", data_dir / "settings.json")
     monkeypatch.setattr(paths, "DECKS_PATH", data_dir / "decks.json")
     monkeypatch.setattr(paths, "DECKS_SYNC_STATE_PATH", data_dir / "decks_sync.json")
 
@@ -170,6 +173,7 @@ def test_ensure_data_dir_secures_existing_sidecars(monkeypatch, tmp_path):
     monkeypatch.setattr(paths, "BASE_DIR", tmp_path / "no-legacy")
     monkeypatch.setattr(paths, "DATA_DIR", data_dir)
     monkeypatch.setattr(paths, "DB_PATH", data_dir / "games.db")
+    monkeypatch.setattr(paths, "SETTINGS_PATH", data_dir / "settings.json")
     monkeypatch.setattr(paths, "DECKS_PATH", data_dir / "decks.json")
     monkeypatch.setattr(paths, "DECKS_SYNC_STATE_PATH", data_dir / "decks_sync.json")
 
@@ -354,3 +358,65 @@ def test_backup_restarts_safely_when_another_connection_writes_and_checkpoints(
     finally:
         reader.close()
         writer.close()
+
+
+def test_data_root_lock_is_canonical_reentrant_and_independent(tmp_path):
+    root, other = tmp_path / "data", tmp_path / "other"
+    (root / "child").mkdir(parents=True)
+    lock = local_reset.data_root_lock(root)
+    assert local_reset.data_root_lock(root / "child" / "..") is lock
+    completed, errors = Event(), []
+
+    def recover_other_root():
+        try:
+            local_reset.recover_pending_resets(other)
+        except Exception as error:
+            errors.append(error)
+        finally:
+            completed.set()
+
+    worker = Thread(target=recover_other_root, daemon=True)
+    with lock:
+        assert lock.acquire(blocking=False), "같은 스레드의 재진입이 허용되어야 합니다."
+        lock.release()
+        local_reset.recover_pending_resets(root)
+        worker.start()
+        assert completed.wait(timeout=5), "다른 데이터 루트는 함께 잠기면 안 됩니다."
+    worker.join(timeout=5)
+    assert not worker.is_alive()
+    assert not errors
+
+
+@pytest.mark.parametrize(
+    "linked_path", ["staging", "journal.json", "journal.tmp", "old", "new"]
+)
+def test_reset_recovery_preserves_staging_links(tmp_path, linked_path):
+    data_dir, outside = tmp_path / "data", tmp_path / "outside"
+    data_dir.mkdir()
+    outside.mkdir()
+    saved = outside / "보존.txt"
+    saved.write_text("외부 원본", encoding="utf-8")
+    staging = data_dir / f".mdlogger-reset-{'f' * 32}"
+    staging.mkdir()
+    local_reset._write_journal(
+        staging,
+        {"version": 1, "phase": "precommit", "originals": {}, "replacements": {}},
+    )
+    link = staging if linked_path == "staging" else staging / linked_path
+    if linked_path == "staging":
+        (staging / "journal.json").unlink()
+        staging.rmdir()
+    elif linked_path == "journal.json":
+        link.unlink()
+    is_directory = linked_path in ("staging", "old", "new")
+    try:
+        link.symlink_to(
+            outside if is_directory else saved, target_is_directory=is_directory
+        )
+    except (OSError, NotImplementedError):
+        pytest.skip("현재 환경에서 심볼릭 링크를 만들 수 없습니다.")
+
+    with pytest.raises(local_reset.ResetRecoveryError):
+        local_reset.recover_pending_resets(data_dir)
+    assert link.is_symlink()
+    assert saved.read_text(encoding="utf-8") == "외부 원본"

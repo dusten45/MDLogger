@@ -310,6 +310,7 @@ def test_resolve_conflict_reports_stale_error_asynchronously():
             expected_remote_version=None,
             expected_local_revision=None,
             is_cancelled=None,
+            comparison=None,
         ) -> None:
             threads.append(threading.get_ident())
             raise StaleConflictError(

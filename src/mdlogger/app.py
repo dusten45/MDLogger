@@ -37,6 +37,8 @@ from .update_controller import UpdateController
 from .updater import (
     acknowledge_update_startup,
     acquire_application_mutex,
+    authorize_update,
+    cancel_update,
     check_update,
     download_update,
     launch_update,
@@ -79,8 +81,8 @@ def main() -> None:
     # 저사양 모드/애니메이션 감소에 따라 승/패 버튼 애니메이션을 시작부터 적용한다.
     set_result_motion_enabled(not effective_reduce_motion(settings))
 
-    deck_sync.start_background_sync()  # 비차단; 다음 상세 진입에서 자동 반영
     profiles = ProfileManager()
+    deck_sync.start_background_sync()  # 복구 완료 후 비차단 덱 갱신을 시작한다.
     remote_config = get_remote_config()
 
     # 릴리스 정책: 최소 지원 미만이면 온라인(로그인·업로드·pull)을 차단한다.
@@ -169,12 +171,17 @@ def main() -> None:
         __version__,
         parent_window=update_parent,
         ready_to_install=router.ready_for_update,
+        begin_handoff=router.begin_update,
+        handoff_is_current=router.update_is_current,
+        end_handoff=router.end_update,
         pause=controller.pause_for_update,
         resume=controller.resume_after_update,
         data_dir=DATA_DIR,
         check=lambda: check_update(__version__),
         download=download_update,
         launch=launch_update,
+        authorize=authorize_update,
+        cancel=cancel_update,
         parent=app,
     )
     router.set_update_handler(lambda: updates.check_for_updates(manual=True))

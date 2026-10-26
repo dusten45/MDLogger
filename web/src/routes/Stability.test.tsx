@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { RequireAuth } from "../components/RequireAuth";
+import { RecordProvider } from "../games/RecordProvider";
 import type { Game } from "../games/types";
 import type { GameStatistics, HistoryPageResult, RecordState } from "../games/gameApi";
 import { summarizeGames } from "../games/stats";
@@ -9,10 +10,10 @@ import { RecordPage } from "./RecordPage";
 import { HistoryPage } from "./HistoryPage";
 import { StatsPage } from "./StatsPage";
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), user: "user-a" }));
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), user: "user-a", isSessionCurrent: () => true }));
 vi.mock("../lib/supabase", () => ({ getSupabaseClient: () => ({ rpc: mocks.rpc }) }));
 vi.mock("../auth/useAuth", () => ({
-    useAuth: () => ({ session: { user: { id: mocks.user } }, loading: false }),
+    useAuth: () => ({ session: { user: { id: mocks.user } }, loading: false, sessionGeneration: 0, isSessionCurrent: mocks.isSessionCurrent }),
 }));
 vi.mock("../decks/deckCatalog", () => ({ fetchDecks: async () => ["A", "B"] }));
 vi.mock("../settings/useSettings", () => ({
@@ -74,7 +75,7 @@ describe("저장 영수증과 재시도", () => {
             if (name === "get_record_state") return { data: recordState(), error: null };
             return { data: { results: [{ id: args.changes[0].id, status: "applied", change_version: 1002 }] }, error: null };
         });
-        render(<RecordPage />);
+        render(<RecordProvider><RecordPage /></RecordProvider>);
         await fillRecord();
         expect(screen.getByText("오늘 전적 1001승 0패")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "저장" }));
@@ -95,7 +96,7 @@ describe("저장 영수증과 재시도", () => {
             if (change.op === "create") savedId = change.id;
             return { data: { results: [{ id: change.id, status: "applied", change_version: 1002 }] }, error: null };
         });
-        render(<RecordPage />);
+        render(<RecordProvider><RecordPage /></RecordProvider>);
         await fillRecord();
         fireEvent.click(screen.getByRole("button", { name: "저장" }));
         await screen.findByText(/기록은 저장했습니다/);
@@ -122,7 +123,7 @@ describe("저장 영수증과 재시도", () => {
             if (++calls === 1) return { data: null, error: new Error("응답 유실") };
             return { data: { results: [{ id: change.id, status: "applied", change_version: 1002, replayed: true }] }, error: null };
         });
-        render(<RecordPage />);
+        render(<RecordProvider><RecordPage /></RecordProvider>);
         await fillRecord();
         fireEvent.click(screen.getByRole("button", { name: "저장" }));
         await screen.findByText(/저장 결과를 확인하지 못했습니다/);
@@ -138,7 +139,7 @@ describe("저장 영수증과 재시도", () => {
     it("초기 조회 실패를 0점으로 사용하지 않고 새로고침으로 복구한다", async () => {
         mocks.rpc.mockResolvedValueOnce({ data: null, error: new Error("오프라인") })
             .mockResolvedValue({ data: recordState(), error: null });
-        render(<RecordPage />);
+        render(<RecordProvider><RecordPage /></RecordProvider>);
         await screen.findByText("기록 화면을 불러오지 못했습니다.");
         expect(screen.getByRole("button", { name: "저장" })).toBeDisabled();
         fireEvent.click(screen.getByRole("button", { name: "새로고침" }));

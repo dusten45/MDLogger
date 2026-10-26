@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QDialog,
@@ -26,7 +26,7 @@ class UpdateDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("MDLogger 업데이트")
-        self.setModal(True)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.setMinimumWidth(scaled(440))
         self._installing = False
         layout = QVBoxLayout(self)

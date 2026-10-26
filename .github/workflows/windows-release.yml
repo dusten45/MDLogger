@@ -4,7 +4,7 @@ on:
     workflow_dispatch:
         inputs:
             tag:
-                description: "빌드할 기존 annotated tag (예: v2.1.0)"
+                description: "빌드할 기존 annotated tag (예: v2.1.1)"
                 required: true
                 type: string
             create_draft:

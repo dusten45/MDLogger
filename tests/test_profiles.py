@@ -7,6 +7,7 @@ import json
 import shutil
 import sqlite3
 from pathlib import Path
+from threading import Event, Thread
 
 import pytest
 
@@ -583,3 +584,111 @@ def test_unpublished_reset_cleanup_preserves_unknown_or_old_staging(tmp_path, ki
         assert (staging / "preserve.db").read_text(encoding="utf-8") == "원본 후보"
     if kind == "old-data":
         assert (staging / "old" / "games.db").read_text(encoding="utf-8") == "원본 후보"
+
+
+@pytest.mark.parametrize("phase", ["precommit", "committed", "purge_pending"])
+def test_direct_recovery_calls_serialize_before_reading_journal(
+    tmp_path, monkeypatch, phase
+):
+    manager = _manager_with_saved_profiles(tmp_path)
+    original_id = manager.guest().local_profile_id
+    original_bytes = manager.guest().database_path.read_bytes()
+    write_journal = local_reset._write_journal
+
+    def stop_write(staging, journal):
+        if phase == "precommit" and journal["phase"] == "committed":
+            raise _ProcessStopped
+        write_journal(staging, journal)
+        if phase != "precommit" and journal["phase"] == phase:
+            raise _ProcessStopped
+
+    with monkeypatch.context() as patch:
+        patch.setattr(local_reset, "_write_journal", stop_write)
+        with pytest.raises(_ProcessStopped):
+            manager.reset_local_data()
+
+    read, release, contended = Event(), Event(), Event()
+    get_lock = local_reset.data_root_lock
+    read_journal = local_reset._read_journal
+    reads, errors = [], []
+
+    def observe_lock(directory):
+        lock = get_lock(directory)
+        if lock.acquire(blocking=False):
+            lock.release()
+        else:
+            contended.set()
+        return lock
+
+    def pause_read(staging):
+        journal = read_journal(staging)
+        reads.append(journal["phase"])
+        read.set()
+        assert release.wait(timeout=5), "저널 읽기 후 대기가 풀리지 않았습니다."
+        return journal
+
+    def recover():
+        try:
+            local_reset.recover_pending_resets(tmp_path)
+        except Exception as error:
+            errors.append(error)
+
+    monkeypatch.setattr(local_reset, "data_root_lock", observe_lock)
+    monkeypatch.setattr(local_reset, "_read_journal", pause_read)
+    first, second = (
+        Thread(target=recover, daemon=True),
+        Thread(target=recover, daemon=True),
+    )
+    try:
+        first.start()
+        assert read.wait(timeout=5), "첫 복구가 저널을 읽지 못했습니다."
+        second.start()
+        assert contended.wait(timeout=5), (
+            "두 번째 복구가 같은 루트 잠금을 기다려야 합니다."
+        )
+        assert reads == [phase]
+    finally:
+        release.set()
+        first.join(timeout=5)
+        if second.ident is not None:
+            second.join(timeout=5)
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert not errors
+    assert reads == [phase]
+    assert not list(tmp_path.glob(".mdlogger-reset-*"))
+    restored = ProfileManager(tmp_path)
+    if phase == "precommit":
+        assert restored.guest().local_profile_id == original_id
+        assert restored.guest().database_path.read_bytes() == original_bytes
+    else:
+        assert restored.guest().local_profile_id != original_id
+        assert not restored.guest().database_path.exists()
+
+
+def test_recovery_missing_source_error_is_not_ignored(tmp_path, monkeypatch):
+    manager = _manager_with_saved_profiles(tmp_path)
+    original_id = manager.guest().local_profile_id
+
+    def stop_prepare(directory):
+        raise _ProcessStopped
+
+    monkeypatch.setattr(manager, "_prepare_reset_state", stop_prepare)
+    with pytest.raises(_ProcessStopped):
+        manager.reset_local_data()
+    staging = next(tmp_path.glob(".mdlogger-reset-*"))
+    original_bytes = (staging / "old" / "guest" / "games.db").read_bytes()
+
+    def fail_move(source, destination):
+        raise FileNotFoundError("복구할 원본을 찾을 수 없습니다.")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(local_reset, "_move", fail_move)
+        with pytest.raises(local_reset.ResetRecoveryError) as error:
+            local_reset.recover_pending_resets(tmp_path)
+    assert isinstance(error.value.__cause__, FileNotFoundError)
+    assert not error.value.committed
+    assert (staging / "journal.json").exists()
+    assert (staging / "old" / "guest" / "games.db").read_bytes() == original_bytes
+    assert ProfileManager(tmp_path).guest().local_profile_id == original_id
+    assert manager.guest().database_path.read_bytes() == original_bytes

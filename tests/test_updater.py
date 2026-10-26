@@ -449,6 +449,8 @@ def test_helper_is_copied_outside_install_tree_before_handoff(
         data_dir=tmp_path / "custom-data" if data_source == "argument" else None,
     )
     assert job.helper_pid == 456
+    assert not (download.directory / "install-authorized.json").exists()
+    updater.authorize_update(job)
     authorized = json.loads(
         (download.directory / "install-authorized.json").read_text()
     )
@@ -459,6 +461,26 @@ def test_helper_is_copied_outside_install_tree_before_handoff(
     assert body["data_dir"] == str(tmp_path / "custom-data")
     assert seen[0][1]["env"]["PYINSTALLER_RESET_ENVIRONMENT"] == "1"
     assert not Path(seen[0][0][0]).is_relative_to(install)
+
+
+@pytest.mark.parametrize("case", ["cancelled", "failed", "wrong-token"])
+def test_only_current_ready_job_can_be_authorized(job_directory, case):
+    job = updater.UpdateJob(job_directory, "b" * 64, 123)
+    updater._write_json(
+        job_directory / "job.json", {"token": job.token, "version": "2.1.1"}
+    )
+    updater._write_json(
+        job_directory / "state.json",
+        {
+            "token": "c" * 64 if case == "wrong-token" else job.token,
+            "phase": "failed" if case == "failed" else "ready",
+        },
+    )
+    if case == "cancelled":
+        updater.cancel_update(job)
+    with pytest.raises(updater.UpdateError, match="승인"):
+        updater.authorize_update(job)
+    assert not (job_directory / "install-authorized.json").exists()
 
 
 def test_failed_ready_receipt_never_authorizes_later_install(

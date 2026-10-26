@@ -97,6 +97,7 @@ class FakeController(QObject):
         *,
         expected_remote_version: int | None = None,
         expected_local_revision: str,
+        comparison: SyncConflict | None = None,
     ) -> str:
         if self.submit_error is not None:
             raise self.submit_error
@@ -109,6 +110,7 @@ class FakeController(QObject):
                 "merged_payload": deepcopy(merged_payload),
                 "expected_remote_version": expected_remote_version,
                 "expected_local_revision": expected_local_revision,
+                "comparison": comparison,
             }
         )
         if self.on_submit is not None:
@@ -313,7 +315,44 @@ def test_stale_result_refreshes_comparison_preserves_values_and_requires_reconfi
     qapp.processEvents()
 
 
-def test_disappeared_conflict_cannot_be_reapplied_or_reported_as_accepted(
+@pytest.mark.parametrize("resolution", ["local", "remote"])
+def test_stale_whole_version_preserves_submitted_values_not_unused_field_choices(
+    qapp: QApplication, flow, resolution: str
+):
+    router, controller, account = flow
+    router._open_conflicts(account)
+    dialog = visible_dialog(qapp)
+    original = dialog.conflict
+    for choice in dialog._choices.values():
+        choice.setCurrentIndex(1 if resolution == "local" else 0)
+    button(
+        dialog, "이 장치 버전 사용" if resolution == "local" else "서버 버전 사용"
+    ).click()
+    latest = replace(
+        original,
+        local_payload={**original.local_payload, "note": "새 로컬 메모", "turns": 10},
+        remote_payload={
+            **original.remote_payload,
+            "note": "새 서버 메모",
+            "turns": 12,
+            "change_version": 9,
+        },
+        local_revision="local-revision-3",
+    )
+    controller.resolution_finished.emit(
+        ConflictResolutionResult("request-1", 1, False, stale=True, conflict=latest)
+    )
+    qapp.processEvents()
+    selected = dialog._selected_payload()
+    intended = (
+        original.local_payload if resolution == "local" else original.remote_payload
+    )
+    assert selected["note"] == intended["note"]
+    assert selected["turns"] == intended["turns"]
+    assert not button(dialog).isEnabled()
+
+
+def test_disappeared_conflict_without_comparison_cannot_report_success(
     qapp: QApplication, flow
 ):
     router, controller, account = flow

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -43,6 +44,7 @@ class SyncScope(Protocol):
         *,
         expected_remote_version: int | None = None,
         expected_local_revision: str,
+        comparison: SyncConflict | None = None,
     ) -> str: ...
 
     def stop(self, *, timeout_seconds: float = 5.0) -> bool: ...
@@ -74,6 +76,8 @@ class AppController(QObject):
         self._games: GameService | None = None
         self._window: ProfileWindow | None = None
         self._sync: SyncScope | None = None
+        self._scope_generation = 0
+        self._update_scope: tuple[int, SyncScope | None] | None = None
 
     @property
     def current_profile(self) -> ProfileContext | None:
@@ -92,7 +96,7 @@ class AppController(QObject):
         return self._sync.status if self._sync is not None else None
 
     def request_sync(self, *, retry_failed: bool = False) -> None:
-        if self._sync is not None:
+        if self._sync is not None and not self.update_in_progress:
             self._sync.request_sync(retry_failed=retry_failed)
 
     def list_conflicts(self) -> list[SyncConflict]:
@@ -110,14 +114,16 @@ class AppController(QObject):
         *,
         expected_remote_version: int | None = None,
         expected_local_revision: str,
+        comparison: SyncConflict | None = None,
     ) -> str:
-        if self._sync is not None:
+        if self._sync is not None and not self.update_in_progress:
             return self._sync.resolve_conflict(
                 conflict_id,
                 resolution,
                 merged_payload,
                 expected_remote_version=expected_remote_version,
                 expected_local_revision=expected_local_revision,
+                comparison=comparison,
             )
         raise ValueError("동기화 연결을 사용할 수 없어 충돌을 해결할 수 없습니다.")
 
@@ -130,26 +136,61 @@ class AppController(QObject):
             raise ValueError("현재 게스트 프로필의 스냅숏을 만들 수 없습니다.")
         self._games.backup_to(destination)
 
+    @property
+    def update_in_progress(self) -> bool:
+        return self._update_scope is not None
+
+    def begin_update(self) -> bool:
+        """설치 인계가 사용할 프로필 세대와 작업을 고정한다."""
+        if self.update_in_progress:
+            return False
+        self._update_scope = (self._scope_generation, self._sync)
+        return True
+
+    def update_is_current(self) -> bool:
+        scope = self._update_scope
+        return (
+            scope is not None
+            and scope[0] == self._scope_generation
+            and scope[1] is self._sync
+        )
+
+    def end_update(self) -> None:
+        self._update_scope = None
+
     def pause_for_update(self) -> bool:
         """창과 연결은 유지하면서 설치 전에 동기화 작업을 정지한다."""
-        return self._sync is None or self._sync.stop() is not False
+        scope = self._update_scope
+        if scope is None or not self.update_is_current():
+            return False
+        sync = scope[1]
+        return sync is None or sync.stop() is not False
 
     def resume_after_update(self) -> None:
-        if self._sync is not None:
-            self._sync.resume()
+        scope = self._update_scope
+        if scope is not None and self.update_is_current() and scope[1] is not None:
+            scope[1].resume()
 
     def start_guest(self) -> None:
+        if self.update_in_progress:
+            raise RuntimeError("업데이트 준비 중에는 프로필을 변경할 수 없습니다.")
         self.switch_profile(self._profiles.guest())
 
     def login_registered(self, remote_user_id: str, display_name: str) -> None:
+        if self.update_in_progress:
+            raise RuntimeError("업데이트 준비 중에는 프로필을 변경할 수 없습니다.")
         self.switch_profile(self._profiles.registered(remote_user_id, display_name))
 
-    def switch_profile(self, profile: ProfileContext) -> None:
+    def switch_profile(
+        self, profile: ProfileContext, *, pending_activation: bool = False
+    ) -> None:
         """새 프로필 DB를 검증·준비한 뒤 기존 창과 연결을 정리하고 새 범위를 시작한다.
 
         새 DB 준비가 실패하면 기존 scope를 아직 닫지 않아 사용자를 화면 없는
         상태로 두지 않는다(B-2).
         """
+        if self.update_in_progress:
+            raise RuntimeError("업데이트 준비 중에는 프로필을 변경할 수 없습니다.")
         # 새 프로필 DB의 소유권·스키마를 먼저 검증한다. 실패하면 여기서 예외가
         # 나며 기존 scope는 그대로 유지된다.
         self._profiles.prepare_database(profile)
@@ -164,7 +205,11 @@ class AppController(QObject):
             raise
 
         try:
-            self._profiles.remember_profile(profile)
+            self._profiles.remember_profile(
+                replace(profile, session_state="signed_out")
+                if pending_activation
+                else profile
+            )
         except Exception:
             window.close_profile_windows()
             games.close()
@@ -196,6 +241,8 @@ class AppController(QObject):
 
     def close_for_data_reset(self) -> bool:
         """동기화 worker가 완전히 멈춘 경우에만 초기화용으로 범위를 닫는다."""
+        if self.update_in_progress:
+            return False
         sync = self._sync
         if sync is not None and sync.stop() is False:
             return False
@@ -203,6 +250,7 @@ class AppController(QObject):
         return True
 
     def _close_current_scope(self, *, sync_already_stopped: bool = False) -> None:
+        self._scope_generation += 1
         self.profile_closing.emit()
         sync = self._sync
         window = self._window

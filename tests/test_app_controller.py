@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QApplication
 
 from mdlogger.app_controller import AppController
 from mdlogger.game_service import GameService
-from mdlogger.game_sync.models import SyncPhase, SyncStatus
+from mdlogger.game_sync.models import SyncConflict, SyncPhase, SyncStatus
 from mdlogger.profiles import ProfileContext, ProfileKind, ProfileManager
 from mdlogger.ui.main_window import MainWindow
 
@@ -69,6 +69,7 @@ class FakeSync:
         *,
         expected_remote_version: int | None = None,
         expected_local_revision: str,
+        comparison: SyncConflict | None = None,
     ) -> str:
         return "resolution-request"
 

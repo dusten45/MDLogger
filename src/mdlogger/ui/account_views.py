@@ -769,6 +769,7 @@ class ConflictDialog(QDialog):
         self.setMinimumSize(scaled(620), scaled(420))
         self.resolution: str | None = None
         self.merged_payload: dict | None = None
+        self._submitted_payload: dict | None = None
         self._conflict = conflict
         self._choices: dict[str, QComboBox] = {}
         self._draft_values: dict[str, object] = {}
@@ -932,7 +933,11 @@ class ConflictDialog(QDialog):
 
     def reload_conflict(self, conflict: SyncConflict) -> None:
         """초안 값을 남기고 최신 비교를 다시 확인해야만 적용할 수 있게 한다."""
-        draft = self._selected_payload()
+        draft = (
+            self._submitted_payload
+            if self._submitted_payload is not None
+            else self._selected_payload()
+        )
         sources = {
             field: choice.currentData() for field, choice in self._choices.items()
         }
@@ -941,9 +946,15 @@ class ConflictDialog(QDialog):
         self._requires_confirmation = True
         self._confirmation.setChecked(False)
         self._confirmation.show()
+        self._cancel.setText("초안 버리고 닫기")
         self.set_busy(False)
         self._status.setText(
-            "서버 또는 이 장치의 기록이 변경되었습니다. 이전 선택은 보존했습니다. "
+            (
+                "저장된 충돌은 정리되었지만 이전 선택은 보존했습니다. "
+                if conflict.resolved
+                else "서버 또는 이 장치의 기록이 변경되었습니다. 이전 선택은 보존했습니다. "
+            )
+            + "초안을 버리고 닫거나, "
             "최신 비교를 확인한 뒤 다시 적용해 주세요."
         )
         set_style_property(self._status, "tone", "danger")
@@ -1007,8 +1018,15 @@ class ConflictDialog(QDialog):
         if self._requires_confirmation and not self._confirmation.isChecked():
             return
         self.resolution = resolution
+        self._submitted_payload = dict(
+            self._selected_payload()
+            if resolution == "merged"
+            else self._conflict.local_payload
+            if resolution == "local"
+            else self._conflict.remote_payload
+        )
         self.merged_payload = (
-            self._selected_payload() if resolution == "merged" else None
+            self._submitted_payload if resolution == "merged" else None
         )
         self.set_busy(True)
         self.resolution_requested.emit()

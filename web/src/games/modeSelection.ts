@@ -12,14 +12,22 @@ export function getLastUsedModeId(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
-  return window.localStorage.getItem(LAST_USED_KEY);
+  try {
+    return window.localStorage.getItem(LAST_USED_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function setLastUsedModeId(modeId: string): void {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.setItem(LAST_USED_KEY, modeId);
+  try {
+    window.localStorage.setItem(LAST_USED_KEY, modeId);
+  } catch {
+    // 선택적 취향 저장 실패는 이미 확인된 경기 저장 성공을 바꾸지 않는다.
+  }
 }
 
 /**

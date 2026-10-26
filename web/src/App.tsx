@@ -11,34 +11,37 @@ import { RecordPage } from "./routes/RecordPage";
 import { SettingsPage } from "./routes/SettingsPage";
 import { StatsPage } from "./routes/StatsPage";
 import { TermsPage } from "./routes/TermsPage";
+import { RecordProvider } from "./games/RecordProvider";
 
 export default function App() {
     return (
         <SettingsProvider>
             <AuthProvider>
                 <BrowserRouter>
-                    <Routes>
-                        <Route
-                            element={
-                                <RequireAuth>
-                                    <AppShell />
-                                </RequireAuth>
-                            }
-                        >
-                            <Route index element={<RecordPage />} />
-                            <Route path="stats" element={<StatsPage />} />
-                            <Route path="history" element={<HistoryPage />} />
-                            <Route path="settings" element={<SettingsPage />} />
-                        </Route>
-                        <Route path="login" element={<LoginPage />} />
-                        <Route path="privacy" element={<PrivacyPolicyPage />} />
-                        <Route path="terms" element={<TermsPage />} />
-                        <Route
-                            path="auth/callback"
-                            element={<AuthCallbackPage />}
-                        />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
+                    <RecordProvider>
+                        <Routes>
+                            <Route
+                                element={
+                                    <RequireAuth>
+                                        <AppShell />
+                                    </RequireAuth>
+                                }
+                            >
+                                <Route index element={<RecordPage />} />
+                                <Route path="stats" element={<StatsPage />} />
+                                <Route path="history" element={<HistoryPage />} />
+                                <Route path="settings" element={<SettingsPage />} />
+                            </Route>
+                            <Route path="login" element={<LoginPage />} />
+                            <Route path="privacy" element={<PrivacyPolicyPage />} />
+                            <Route path="terms" element={<TermsPage />} />
+                            <Route
+                                path="auth/callback"
+                                element={<AuthCallbackPage />}
+                            />
+                            <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes>
+                    </RecordProvider>
                 </BrowserRouter>
             </AuthProvider>
         </SettingsProvider>

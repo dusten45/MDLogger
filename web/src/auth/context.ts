@@ -6,6 +6,8 @@ import type { AuthError, Session, User } from "@supabase/supabase-js";
 
 export interface AuthContextValue {
     session: Session | null;
+    sessionGeneration: number;
+    isSessionCurrent(): boolean;
     user: User | null;
     loading: boolean;
     recovery: boolean;

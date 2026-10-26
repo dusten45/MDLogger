@@ -602,7 +602,7 @@ def launch_update(
     executable: Path | None = None,
     data_dir: Path | None = None,
 ) -> UpdateJob:
-    """helper의 검증 완료를 기다려 인계한다. 반환 후에만 앱을 정상 종료해야 한다."""
+    """helper의 검증 완료까지만 준비한다. 설치 승인은 GUI 재검증 뒤 별도로 한다."""
     if sys.platform != "win32" or parent_pid != os.getpid():
         raise UpdateError("현재 Windows 앱에서만 업데이트를 시작할 수 있습니다.")
     directory = _job_directory(download.directory)
@@ -657,11 +657,6 @@ def launch_update(
                 state = {}
             if state.get("token") == token:
                 if state.get("phase") == "ready":
-                    # 준비 결과를 읽지 못한 앱이 나중에 닫혀도 설치가 시작되면 안 된다.
-                    _write_json(
-                        directory / "install-authorized.json",
-                        {"token": token, "version": download.plan.version},
-                    )
                     return UpdateJob(directory, token, process.pid)
                 if state.get("phase") == "failed":
                     raise UpdateError(
@@ -679,11 +674,33 @@ def launch_update(
         raise
 
 
+def authorize_update(job: UpdateJob) -> None:
+    """현재 인계가 유효한 경우에만 준비된 실행기에 설치를 승인한다."""
+    directory = _job_directory(job.directory)
+    state = _read_state(directory / "state.json")
+    request = _read_state(directory / "job.json")
+    if (
+        state.get("token") != job.token
+        or state.get("phase") != "ready"
+        or request.get("token") != job.token
+        or (directory / "cancel.json").exists()
+    ):
+        raise UpdateError("취소되었거나 준비되지 않은 업데이트는 승인할 수 없습니다.")
+    _write_json(
+        directory / "install-authorized.json",
+        {"token": job.token, "version": request["version"]},
+    )
+
+
 def cancel_update(job: UpdateJob) -> None:
     """앱 종료가 거부된 경우 대기 중인 helper만 취소한다. 설치 프로세스는 죽이지 않는다."""
     directory = _job_directory(job.directory)
     state = _read_state(directory / "state.json")
-    if state.get("token") != job.token or state.get("phase") != "ready":
+    if state.get("token") != job.token:
+        raise UpdateError("취소할 업데이트 작업이 일치하지 않습니다.")
+    if state.get("phase") in {"failed", "cancelled"}:
+        return
+    if state.get("phase") != "ready":
         raise UpdateError("이미 설치를 시작한 업데이트는 중간에 취소할 수 없습니다.")
     _write_json(directory / "cancel.json", {"token": job.token})
 

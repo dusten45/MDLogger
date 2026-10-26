@@ -8,7 +8,8 @@ from datetime import datetime
 from pathlib import Path
 
 from .. import __version__
-from ..auth.session_manager import SessionManager, SessionState
+from ..auth.models import AuthError
+from ..auth.session_manager import SessionManager, SessionState, SyncRequestPermission
 from ..profiles import ProfileContext, ProfileKind
 from ..remote.games import (
     RegisteredGamesClient,
@@ -93,6 +94,7 @@ class SyncEngine:
         expected_remote_version: int | None = None,
         expected_local_revision: str,
         is_cancelled: Callable[[], bool] | None = None,
+        comparison: SyncConflict | None = None,
     ) -> None:
         repository = self._repository_factory(self._profile.database_path)
         try:
@@ -103,30 +105,38 @@ class SyncEngine:
                     RegisteredGamesErrorKind.NETWORK,
                     "서버를 확인할 수 없어 충돌 해결을 보류했습니다.",
                 )
-            conflict = next(
-                (
-                    item
-                    for item in repository.list_conflicts()
-                    if item.id == conflict_id
-                ),
-                None,
+            conflict = repository.get_conflict(
+                conflict_id, include_resolved=comparison is not None
             )
             if conflict is None or conflict.local_revision != expected_local_revision:
                 raise StaleConflictError(
                     "충돌 내용이 변경되었습니다. 최신 내용을 확인해 주세요."
                 )
-            token = self._access_token()
-            if not token:
+            permission = self._request_permission()
+            if not permission:
                 raise self._missing_session_error()
             try:
-                remote = client.fetch_game(conflict.game_sync_id, access_token=token)
+                remote = self._registered_request(
+                    permission,
+                    lambda token: client.fetch_game(
+                        conflict.game_sync_id, access_token=token
+                    ),
+                )
             except RegisteredGamesError as error:
-                if error.kind is not RegisteredGamesErrorKind.AUTH_REQUIRED:
+                if (
+                    error.kind is not RegisteredGamesErrorKind.AUTH_REQUIRED
+                    or error.code == "session_changed"
+                ):
                     raise
-                token = self._access_token(rejected_access_token=token)
-                if not token:
+                permission = self._request_permission(previous=permission)
+                if not permission:
                     raise self._missing_session_error() from error
-                remote = client.fetch_game(conflict.game_sync_id, access_token=token)
+                remote = self._registered_request(
+                    permission,
+                    lambda token: client.fetch_game(
+                        conflict.game_sync_id, access_token=token
+                    ),
+                )
             self._require_online()
             if is_cancelled is not None and is_cancelled():
                 raise RegisteredGamesError(
@@ -140,7 +150,14 @@ class SyncEngine:
                 expected_remote_version=expected_remote_version,
                 expected_local_revision=expected_local_revision,
                 fresh_remote=remote,
+                comparison=comparison,
             )
+        except StaleConflictError as error:
+            if error.conflict is None:
+                error.conflict = repository.get_conflict(
+                    conflict_id, include_resolved=comparison is not None
+                )
+            raise
         finally:
             repository.close()
 
@@ -243,17 +260,19 @@ class SyncEngine:
             self._token_provider is None and self._session_manager is None
         ):
             return repository.status(phase=SyncPhase.OFFLINE)
-        token = self._access_token()
-        if not token:
+        permission = self._request_permission()
+        if permission is None:
             return repository.status(phase=self._authentication_phase())
         try:
-            self._registered_cycle(repository, entries, token)
+            self._registered_cycle(repository, entries, permission)
         except RegisteredGamesError as error:
+            if error.code == "session_changed":
+                return repository.status(phase=self._authentication_phase())
             if error.kind is RegisteredGamesErrorKind.AUTH_REQUIRED and (
                 self._token_refresher is not None or self._session_manager is not None
             ):
-                refreshed = self._access_token(rejected_access_token=token)
-                if refreshed:
+                refreshed = self._request_permission(previous=permission)
+                if refreshed is not None:
                     try:
                         remaining = repository.fetch_due(
                             limit=BATCH_SIZE, now=self._now()
@@ -269,27 +288,47 @@ class SyncEngine:
                 return self._record_registered_failure(repository, entries, error)
         return repository.status(require_initial_sync=True)
 
-    def _access_token(self, *, rejected_access_token: str | None = None) -> str | None:
+    def _request_permission(
+        self, *, previous: SyncRequestPermission | str | None = None
+    ) -> SyncRequestPermission | str | None:
         self._require_online()
         if self._session_manager is not None:
             account_id = self._profile.remote_user_id
             if account_id is None:
                 return None
-            snapshot = self._session_manager.session_for_sync(
-                account_id, rejected_access_token=rejected_access_token
+            return self._session_manager.sync_permission(
+                account_id,
+                previous=previous
+                if isinstance(previous, SyncRequestPermission)
+                else None,
             )
-            if (
-                snapshot.state is SessionState.AUTHENTICATED
-                and snapshot.session is not None
-            ):
-                return snapshot.session.tokens.access_token
-            return None
         token = self._token_provider() if self._token_provider is not None else None
-        if (
-            not token or rejected_access_token is not None
-        ) and self._token_refresher is not None:
-            return self._token_refresher()
-        return token
+        if (not token or previous is not None) and self._token_refresher is not None:
+            return self._token_refresher() or None
+        return token or None
+
+    def _registered_request[T](
+        self,
+        permission: SyncRequestPermission | str,
+        request: Callable[[str], T],
+    ) -> T:
+        self._require_online()
+        if isinstance(permission, SyncRequestPermission):
+            assert self._session_manager is not None
+            try:
+                result = self._session_manager.run_sync_request(
+                    permission, lambda: request(permission.access_token)
+                )
+            except AuthError as error:
+                raise RegisteredGamesError(
+                    RegisteredGamesErrorKind.AUTH_REQUIRED,
+                    "로그인 상태가 변경되어 동기화 요청을 취소했습니다.",
+                    code="session_changed",
+                ) from error
+        else:
+            result = request(permission)
+        self._require_online()
+        return result
 
     def _authentication_phase(self) -> SyncPhase:
         if (
@@ -322,20 +361,21 @@ class SyncEngine:
         self,
         repository: SyncRepository,
         entries: list[OutboxEntry],
-        access_token: str,
+        permission: SyncRequestPermission | str,
     ) -> None:
         client = self._registered_client
         if client is None:
             return
-        self._require_online()
-        client.register_device(
-            installation_id=self._profile.installation_id,
-            display_name=self._profile.display_name,
-            client_version=__version__,
-            access_token=access_token,
+        self._registered_request(
+            permission,
+            lambda token: client.register_device(
+                installation_id=self._profile.installation_id,
+                display_name=self._profile.display_name,
+                client_version=__version__,
+                access_token=token,
+            ),
         )
         if entries:
-            self._require_online()
             changes = [
                 build_game_change(
                     entry.payload,
@@ -349,28 +389,35 @@ class SyncEngine:
                 )
                 for entry in entries
             ]
-            result = client.apply_changes(changes, access_token=access_token)
+            result = self._registered_request(
+                permission,
+                lambda token: client.apply_changes(changes, access_token=token),
+            )
             repository.apply_push_results(
                 entries, result.results, completed_at=self._now()
             )
 
         cursor = repository.pull_cursor()
-        self._require_online()
-        pull = client.pull_changes(
-            after_version=cursor,
-            limit=BATCH_SIZE,
-            access_token=access_token,
+        pull = self._registered_request(
+            permission,
+            lambda token: client.pull_changes(
+                after_version=cursor,
+                limit=BATCH_SIZE,
+                access_token=token,
+            ),
         )
         new_cursor = repository.apply_pull_batch(
             pull.games,
             completed_at=self._now(),
             initial_sync_completed=len(pull.games) < BATCH_SIZE,
         )
-        self._require_online()
-        client.acknowledge_device_version(
-            installation_id=self._profile.installation_id,
-            acknowledged_version=new_cursor,
-            access_token=access_token,
+        self._registered_request(
+            permission,
+            lambda token: client.acknowledge_device_version(
+                installation_id=self._profile.installation_id,
+                acknowledged_version=new_cursor,
+                access_token=token,
+            ),
         )
 
     def _record_registered_failure(

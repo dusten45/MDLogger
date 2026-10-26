@@ -5,7 +5,7 @@ import { AuthUnavailable } from "./AuthUnavailable";
 
 // 미로그인 사용자는 경기·통계·설정 URL 접근 시 로그인 화면으로 이동한다 (spec §5.2).
 export function RequireAuth({ children }: { children: ReactNode }) {
-    const { session, loading, authError, retrySession } = useAuth();
+    const { session, sessionGeneration, loading, authError, retrySession } = useAuth();
     const location = useLocation();
 
     if (loading) {
@@ -21,5 +21,5 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     if (!session) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
-    return <Fragment key={session.user.id}>{children}</Fragment>;
+    return <Fragment key={`${session.user.id}:${sessionGeneration}`}>{children}</Fragment>;
 }

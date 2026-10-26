@@ -52,6 +52,15 @@ class SessionSnapshot:
     retry_at: float | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class SyncRequestPermission:
+    """하나의 로그인 세대에서만 사용할 수 있는 등록 계정 요청 권한."""
+
+    account_id: str
+    generation: int
+    access_token: str = field(repr=False)
+
+
 @dataclass(slots=True)
 class _PendingRotation:
     """회전 성공 후 키링 저장만 실패한 토큰은 메모리에서만 보존한다."""
@@ -82,6 +91,7 @@ class SessionManager:
         # 경쟁을 막기 위한 세대 표식(B-1). restore()는 네트워크 호출 전 값을 읽고
         # 결과 저장 직전에 값이 바뀌었으면 폐기한다.
         self._logout_generation = 0
+        self._activation_generation = 0
         self._condition = Condition(self._lock)
         self._account_id: str | None = None
         self._blocked_accounts: set[str] = set()
@@ -121,18 +131,41 @@ class SessionManager:
     def activate(self, session: AuthSession) -> SessionSnapshot:
         """사용자 선택과 프로필 열기가 끝난 인증 세션을 안전하게 저장한다."""
         account_id = session.account.user_id
-        with self._store.transaction(account_id), self._condition:
-            self._logout_generation += 1
-            self._discard_pending_rotation()
-            self._account_id = account_id
-            self._blocked_accounts.discard(account_id)
-            self._revoked_accounts.pop(account_id, None)
-            self._snapshot = SessionSnapshot(state=SessionState.SIGNED_OUT)
-            self._condition.notify_all()
-            self._store.save_refresh_token(account_id, session.tokens.refresh_token)
-            self._remember_session(session)
-            self._condition.notify_all()
-            return self._snapshot
+        with self._condition:
+            self._activation_generation += 1
+            activation = self._activation_generation
+            generation = self._logout_generation
+        try:
+            with self._store.transaction(account_id):
+                self._require_activation(activation, generation)
+                # 저장 실패 시 이전 계정의 회전 토큰·백오프까지 그대로 유지한다.
+                # 키링 대기 중 로그아웃은 가능하며, 뒤늦은 저장으로 세션을 되살리지 않는다.
+                self._store.save_refresh_token(account_id, session.tokens.refresh_token)
+                with self._condition:
+                    self._require_activation(activation, generation)
+                    self._logout_generation += 1
+                    self._discard_pending_rotation()
+                    self._account_id = account_id
+                    self._blocked_accounts.discard(account_id)
+                    self._revoked_accounts.pop(account_id, None)
+                    self._remember_session(session)
+                    self._condition.notify_all()
+                    return self._snapshot
+        except CredentialStoreError:
+            self._require_activation(activation, generation)
+            raise
+
+    def _require_activation(self, activation: int, generation: int) -> None:
+        with self._lock:
+            if (
+                activation != self._activation_generation
+                or generation != self._logout_generation
+            ):
+                raise AuthError(
+                    AuthErrorKind.TOKEN_EXPIRED,
+                    "로그인 상태가 변경되어 이전 로그인 요청을 취소했습니다.",
+                    code="activation_superseded",
+                )
 
     def sign_up(self, email: str, password: str) -> SignUpResult:
         """회원가입하고 즉시 세션이 발급되면 안전하게 저장한다."""
@@ -172,10 +205,19 @@ class SessionManager:
         return self.session_for_sync(account_id)
 
     def session_for_sync(
-        self, account_id: str, *, rejected_access_token: str | None = None
+        self,
+        account_id: str,
+        *,
+        rejected_access_token: str | None = None,
+        expected_generation: int | None = None,
     ) -> SessionSnapshot:
         """현재 계정의 갱신을 합치고 복구 가능한 오프라인 상태만 재시도한다."""
         with self._condition:
+            if (
+                expected_generation is not None
+                and expected_generation != self._logout_generation
+            ):
+                return SessionSnapshot(state=SessionState.SIGNED_OUT)
             if self._account_id != account_id or account_id in self._blocked_accounts:
                 return SessionSnapshot(state=SessionState.SIGNED_OUT)
             generation = self._logout_generation
@@ -217,6 +259,61 @@ class SessionManager:
                 self._refreshing = False
                 self._refreshing_account = None
                 self._condition.notify_all()
+
+    def sync_permission(
+        self, account_id: str, *, previous: SyncRequestPermission | None = None
+    ) -> SyncRequestPermission | None:
+        """새 요청 또는 같은 로그인 세대의 인증 재시도 권한을 발급한다."""
+        with self._lock:
+            generation = self._logout_generation
+            if not self._is_current(account_id, generation) or (
+                previous is not None
+                and (
+                    previous.account_id != account_id
+                    or previous.generation != generation
+                )
+            ):
+                return None
+        snapshot = self.session_for_sync(
+            account_id,
+            rejected_access_token=previous.access_token if previous else None,
+            expected_generation=generation,
+        )
+        with self._lock:
+            if (
+                not self._is_current(account_id, generation)
+                or snapshot is not self._snapshot
+                or snapshot.state is not SessionState.AUTHENTICATED
+                or snapshot.session is None
+            ):
+                return None
+            return SyncRequestPermission(
+                account_id, generation, snapshot.session.tokens.access_token
+            )
+
+    def run_sync_request[T](
+        self, permission: SyncRequestPermission, request: Callable[[], T]
+    ) -> T:
+        """로그아웃과 같은 잠금에서 요청 시작을 승인하고 네트워크는 잠금 밖에서 실행한다."""
+        # 이 검사를 통과한 요청부터 진행 중으로 본다. 로그아웃은 승인된 요청을
+        # 기다리지 않지만 이후 요청의 승인은 거부하며 오래된 응답도 사용하지 않는다.
+        self._require_sync_permission(permission)
+        try:
+            return request()
+        finally:
+            self._require_sync_permission(permission)
+
+    def _require_sync_permission(self, permission: SyncRequestPermission) -> None:
+        with self._lock:
+            if (
+                not self._is_current(permission.account_id, permission.generation)
+                or self._snapshot.state is not SessionState.AUTHENTICATED
+            ):
+                raise AuthError(
+                    AuthErrorKind.TOKEN_EXPIRED,
+                    "로그인 상태가 변경되어 동기화 요청을 취소했습니다.",
+                    code="session_changed",
+                )
 
     def _refresh(
         self, account_id: str, generation: int, pending: _PendingRotation | None
@@ -376,6 +473,7 @@ class SessionManager:
 
     def _end_session(self, account_id: str) -> None:
         with self._condition:
+            self._activation_generation += 1
             self._blocked_accounts.add(account_id)
             if self._account_id == account_id:
                 self._logout_generation += 1

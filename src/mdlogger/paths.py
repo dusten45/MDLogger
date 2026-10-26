@@ -21,7 +21,7 @@ import uuid
 from collections.abc import Mapping
 from pathlib import Path
 
-from .local_reset import recover_pending_resets, sync_directory
+from .local_reset import data_root_lock, recover_pending_resets, sync_directory
 
 
 def _base_dir() -> Path:
@@ -230,9 +230,10 @@ def _migrate_legacy_data() -> None:
 
 def ensure_data_dir() -> None:
     """사용자 데이터 디렉터리를 만들고 기존 데이터를 보존해 이전한다."""
-    DATA_DIR.mkdir(mode=_PRIVATE_DIR_MODE, parents=True, exist_ok=True)
-    if os.name != "nt":
-        DATA_DIR.chmod(_PRIVATE_DIR_MODE)
-    recover_pending_resets(DATA_DIR)
-    _migrate_legacy_data()
-    _secure_data_permissions()
+    with data_root_lock(DATA_DIR):
+        DATA_DIR.mkdir(mode=_PRIVATE_DIR_MODE, parents=True, exist_ok=True)
+        if os.name != "nt":
+            DATA_DIR.chmod(_PRIVATE_DIR_MODE)
+        recover_pending_resets(DATA_DIR)
+        _migrate_legacy_data()
+        _secure_data_permissions()

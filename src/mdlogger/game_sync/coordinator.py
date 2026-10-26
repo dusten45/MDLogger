@@ -29,6 +29,7 @@ class _ResolutionRequest:
     merged_payload: dict | None
     expected_remote_version: int | None
     expected_local_revision: str
+    comparison: SyncConflict | None
 
 
 class SyncCoordinator(QObject):
@@ -112,6 +113,7 @@ class SyncCoordinator(QObject):
         *,
         expected_remote_version: int | None = None,
         expected_local_revision: str,
+        comparison: SyncConflict | None = None,
     ) -> str:
         """해결을 예약하고 요청 ID를 반환한다. 실패 시 UI의 초안은 유지한다."""
         if self._stop.is_set():
@@ -125,6 +127,7 @@ class SyncCoordinator(QObject):
                 deepcopy(merged_payload),
                 expected_remote_version,
                 expected_local_revision,
+                deepcopy(comparison),
             )
         )
         self._wake.set()
@@ -144,6 +147,7 @@ class SyncCoordinator(QObject):
                     expected_remote_version=request.expected_remote_version,
                     expected_local_revision=request.expected_local_revision,
                     is_cancelled=self._stop.is_set,
+                    comparison=request.comparison,
                 )
                 result = ConflictResolutionResult(
                     request.request_id, request.conflict_id, True
@@ -161,6 +165,9 @@ class SyncCoordinator(QObject):
                     str(error),
                     retryable=retryable,
                     stale=isinstance(error, StaleConflictError),
+                    conflict=error.conflict
+                    if isinstance(error, StaleConflictError)
+                    else None,
                 )
             if not self._stop.is_set():
                 self.resolution_finished.emit(result)

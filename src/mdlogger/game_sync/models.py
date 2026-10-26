@@ -32,7 +32,7 @@ class OutboxEntry:
 
 @dataclass(frozen=True, slots=True)
 class SyncConflict:
-    """사용자가 해결할 때까지 양쪽 payload를 보존하는 충돌."""
+    """충돌 또는 열린 초안의 재확인에 사용하는 비교 스냅샷."""
 
     id: int
     game_sync_id: str
@@ -40,10 +40,15 @@ class SyncConflict:
     remote_payload: dict[str, Any]
     base_remote_version: int | None
     local_revision: str = ""
+    resolved: bool = False
 
 
 class StaleConflictError(ValueError):
     """확인 이후 내용이 변경되어 충돌을 다시 읽어야 한다."""
+
+    def __init__(self, message: str, *, conflict: SyncConflict | None = None) -> None:
+        super().__init__(message)
+        self.conflict = conflict
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +61,7 @@ class ConflictResolutionResult:
     error: str | None = None
     retryable: bool = False
     stale: bool = False
+    conflict: SyncConflict | None = None
 
 
 @dataclass(frozen=True, slots=True)

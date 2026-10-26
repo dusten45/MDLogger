@@ -21,6 +21,8 @@ const mockedUseSettings = vi.mocked(useSettings);
 beforeEach(() => {
     mockedUseAuth.mockReturnValue({
         session: null,
+        sessionGeneration: 0,
+        isSessionCurrent: () => true,
         user: null,
         loading: false,
         recovery: false,

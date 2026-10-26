@@ -12,6 +12,8 @@ const retrySession = vi.fn();
 function setAuthState(overrides: Record<string, unknown> = {}) {
   mockedUseAuth.mockReturnValue({
     session: null,
+    sessionGeneration: 0,
+    isSessionCurrent: () => true,
     user: null,
     loading: false,
     recovery: false,

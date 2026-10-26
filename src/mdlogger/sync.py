@@ -27,6 +27,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .decks import OTHER, _dedup, load_decks, save_decks
+from .local_reset import data_root_lock
 from .paths import (
     DECKS_PATH,
     DECKS_REMOTE_URL,
@@ -126,14 +127,15 @@ def sync_decks(
     if not url:
         return
     try:
-        ensure_data_dir()
-        etag = _load_state(state_path).get("etag")
+        with data_root_lock(decks_path.parent):
+            ensure_data_dir()
+            etag = _load_state(state_path).get("etag")
 
         remote, new_etag = _fetch_remote(url, etag)
         if remote is None:  # 304 Not Modified
             return
 
-        with _BACKGROUND_SYNC_LOCK:
+        with _BACKGROUND_SYNC_LOCK, data_root_lock(decks_path.parent):
             if generation is not None and generation != _BACKGROUND_SYNC_GENERATION:
                 return
             local = load_decks(decks_path)

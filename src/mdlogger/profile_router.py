@@ -113,6 +113,7 @@ class ProfileRouter:
         self._auth_generation = 0
         self._closing = False
         self._update_handler: Callable[[], None] | None = None
+        self._update_generation: int | None = None
         self._connect_auth_window()
 
     @property
@@ -141,6 +142,23 @@ class ProfileRouter:
             for widget in QApplication.topLevelWidgets()
         )
 
+    def begin_update(self) -> bool:
+        if not self.ready_for_update() or not self._app.begin_update():
+            return False
+        self._update_generation = self._auth_generation
+        return True
+
+    def update_is_current(self) -> bool:
+        return (
+            self._update_generation == self._auth_generation
+            and self._app.update_is_current()
+            and self.ready_for_update()
+        )
+
+    def end_update(self) -> None:
+        self._app.end_update()
+        self._update_generation = None
+
     def start(self) -> None:
         """마지막 프로필을 복원하고 필요한 경우에만 시작 UI를 표시한다."""
         last_profile = self._profiles.last_profile()
@@ -156,6 +174,8 @@ class ProfileRouter:
         self._restore_registered(last_profile)
 
     def show_auth(self, message: str = "") -> None:
+        if self._app.update_in_progress:
+            return
         self._auth_generation += 1
         # 이전 진행 중(요청 중) 창을 닫았다 다시 열면 set_busy(True)가 비활성화한
         # 게스트/비밀번호 표시를 재활성화한다. 이후 set_online_available이 온라인 전용
@@ -168,12 +188,16 @@ class ProfileRouter:
         self._auth.activateWindow()
 
     def request_guest(self) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         if not self._ensure_consent(registered=False):
             return
         self._auth.hide()
         self._open_profile(self._profiles.guest())
 
     def sign_in(self, email: str, password: str) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         sessions = self._sessions
         if sessions is None:
             self._auth.set_status(
@@ -198,6 +222,8 @@ class ProfileRouter:
         self._finish_registered_sign_in(session)
 
     def sign_up(self, email: str, password: str) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         sessions = self._sessions
         if sessions is None:
             self._auth.set_status("온라인 계정 설정이 없습니다.", error=True)
@@ -226,6 +252,8 @@ class ProfileRouter:
         self._finish_registered_sign_in(result.session)
 
     def resend_verification(self, email: str) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         sessions = self._sessions
         if sessions is None:
             return
@@ -239,6 +267,8 @@ class ProfileRouter:
         self._auth.set_verification_status("인증 메일을 다시 보냈습니다.")
 
     def request_password_reset(self, email: str) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         sessions = self._sessions
         if sessions is None:
             return
@@ -256,6 +286,8 @@ class ProfileRouter:
         )
 
     def open_settings(self) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         profile = self._app.current_profile
         if profile is None:
             return
@@ -414,6 +446,7 @@ class ProfileRouter:
                         if version is not None
                         else None,
                         expected_local_revision=current.local_revision,
+                        comparison=current,
                     )
                 except Exception:
                     dialog.show_error(
@@ -438,7 +471,7 @@ class ProfileRouter:
                     dialog.accept()
                 elif result.stale:
                     try:
-                        current = next(
+                        current = result.conflict or next(
                             (
                                 item
                                 for item in self._app.list_conflicts()
@@ -498,6 +531,8 @@ class ProfileRouter:
         self._auth.update_requested.connect(self.request_update)
 
     def _start_sign_in(self, email: str, password: str) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         sessions = self._sessions
         if sessions is None:
             self.sign_in(email, password)
@@ -510,6 +545,8 @@ class ProfileRouter:
         )
 
     def _start_sign_up(self, email: str, password: str) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         sessions = self._sessions
         if sessions is None:
             self.sign_up(email, password)
@@ -522,6 +559,8 @@ class ProfileRouter:
         )
 
     def _start_resend_verification(self, email: str) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         sessions = self._sessions
         if sessions is None:
             return
@@ -533,6 +572,8 @@ class ProfileRouter:
         )
 
     def _start_password_reset(self, email: str) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         sessions = self._sessions
         if sessions is None:
             return
@@ -549,7 +590,7 @@ class ProfileRouter:
         on_success: Callable[[Any], None],
         on_error: Callable[[Exception], None],
     ) -> None:
-        if self._closing:
+        if self._closing or self._app.update_in_progress:
             return
         generation = self._auth_generation
         future: Future[Any] = Future()
@@ -687,6 +728,9 @@ class ProfileRouter:
             self.show_auth("세션이 만료되었습니다. 다시 로그인해 주세요.")
 
     def _finish_registered_sign_in(self, session: AuthSession) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
+        generation = self._auth_generation
         if not self._ensure_consent(registered=True):
             return
         current = self._app.current_profile
@@ -710,7 +754,7 @@ class ProfileRouter:
         if guest_choice is GuestRecordChoice.IMPORT and current is not None:
             if not self._import_guest_records(current, profile):
                 return
-        if not self._open_profile(profile):
+        if not self._open_profile(profile, pending_activation=True):
             return
         sessions = self._sessions
         if sessions is None:
@@ -719,12 +763,54 @@ class ProfileRouter:
             return
         try:
             sessions.activate(session)
-            self._app.request_sync()
         except CredentialStoreError as error:
+            if (
+                generation != self._auth_generation
+                or self._app.current_profile is not profile
+            ):
+                return
             self._restore_after_activation_failure(previous)
             self.show_auth(f"{error} OS 보안 저장소를 확인한 뒤 다시 시도해 주세요.")
             return
+        except AuthError as error:
+            if (
+                generation != self._auth_generation
+                or self._app.current_profile is not profile
+            ):
+                return
+            # 더 최신 로그아웃·로그인을 옛 프로필 스냅숏으로 되돌리지 않는다.
+            current_session = sessions.session
+            if (
+                current_session is None
+                or current_session.account.user_id != profile.remote_user_id
+            ):
+                self._return_to_login()
+                self.show_auth(
+                    "인증 상태가 변경되어 로그인 요청을 취소했습니다. 다시 로그인해 주세요."
+                )
+            elif error.code != "activation_superseded":
+                self._auth.show_auth_error(self._auth_error_message(error))
+            return
+        if (
+            generation != self._auth_generation
+            or self._app.current_profile is not profile
+        ):
+            return
+        state_saved = True
+        try:
+            self._profiles.set_session_state("authenticated")
+        except ProfileError:
+            # 로그인 자체는 성공했다. 자동 복구만 허용하지 않는 안전한 상태로 남긴다.
+            state_saved = False
+        self._app.request_sync()
         self._auth.hide()
+        if not state_saved:
+            QMessageBox.warning(
+                self._main_window(),
+                "자동 로그인 저장 실패",
+                "로그인은 완료했지만 자동 로그인 상태를 저장하지 못했습니다. "
+                "앱을 다시 시작하면 로그인해 주세요.",
+            )
 
     def _import_guest_records(
         self, guest: ProfileContext, registered: ProfileContext
@@ -755,10 +841,14 @@ class ProfileRouter:
             return False
         return True
 
-    def _open_profile(self, profile: ProfileContext) -> bool:
+    def _open_profile(
+        self, profile: ProfileContext, *, pending_activation: bool = False
+    ) -> bool:
+        if self._closing or self._app.update_in_progress:
+            return False
         previous = self._app.current_profile
         try:
-            self._app.switch_profile(profile)
+            self._app.switch_profile(profile, pending_activation=pending_activation)
         except Exception as error:
             self._restore_after_activation_failure(previous)
             detail = (
@@ -775,12 +865,13 @@ class ProfileRouter:
         self, previous: ProfileContext | None
     ) -> None:
         if previous is None:
-            self._app.close()
+            # 저장 결과가 불명확한 토큰을 지우지 않고 다음 자동 복구를 차단한다.
+            self._return_to_login()
             return
         try:
             self._app.switch_profile(previous)
         except Exception:
-            self._app.close()
+            self._return_to_login()
         else:
             self._connect_current_main_window()
 
@@ -799,6 +890,8 @@ class ProfileRouter:
 
     def _reset_application(self, settings_window: SettingsWindow | None = None) -> None:
         """활성 범위를 안전하게 닫고 이 설치의 관리 데이터를 초기화한다."""
+        if self._closing or self._app.update_in_progress:
+            return
         profile = self._app.current_profile
         credential_account_ids = set(self._profiles.credential_account_ids())
         if profile is not None and profile.remote_user_id is not None:
@@ -890,6 +983,8 @@ class ProfileRouter:
                 credential_store.delete_refresh_token(account_id)
 
     def _logout_from_dialog(self, dialog: QDialog) -> None:
+        if self._closing or self._app.update_in_progress:
+            return
         profile = self._app.current_profile
         if profile is None or profile.remote_user_id is None:
             return
@@ -913,13 +1008,14 @@ class ProfileRouter:
         마지막 등록 세션 상태를 '로그아웃됨'으로 기록하고, 현재 등록 창을 닫은 뒤
         로그인/회원가입 창을 보여준다. 사용자는 로그인 창에서 다시 로그인하거나
         게스트로 계속할 수 있다.
+        활성화 실패로 저장 결과가 불명확한 토큰이 남아 있어도 자동 복구하지 않는다.
         """
+        if self._closing or self._app.update_in_progress:
+            return
         try:
             self._profiles.set_session_state("signed_out")
         except ProfileError:
-            # 세션 상태 기록은 로그아웃의 필수 조건이 아니다. 토큰 제거는
-            # SessionManager.sign_out 계열이 이미 수행했으므로, 기록 실패가
-            # 로그아웃·로그인 창 전환을 막지 않게 한다.
+            # 상태 기록 실패가 현재 창 종료와 로그인 화면 복귀를 막지는 않는다.
             pass
         try:
             self._app.close()
@@ -1002,6 +1098,8 @@ class ProfileRouter:
 
     def _sign_out_all_devices(self, dialog: QDialog) -> None:
         """모든 장치에서 로그아웃한다(로드맵 단계 11)."""
+        if self._closing or self._app.update_in_progress:
+            return
         sessions = self._sessions
         if sessions is None:
             QMessageBox.information(
@@ -1051,6 +1149,8 @@ class ProfileRouter:
 
     def _delete_account(self, dialog: QDialog) -> None:
         """계정 삭제를 서버에 요청한다(로드맵 단계 11, 결정 4)."""
+        if self._closing or self._app.update_in_progress:
+            return
         sessions = self._sessions
         if sessions is None:
             QMessageBox.information(dialog, "계정 삭제", "온라인 계정 설정이 없습니다.")

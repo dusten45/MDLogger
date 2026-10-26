@@ -17,6 +17,7 @@ from . import db
 from .local_reset import (
     MANAGED_RESET_FILES,
     ResetRecoveryError,
+    data_root_lock,
     recover_pending_resets,
     reset_data,
     sync_directory,
@@ -94,14 +95,15 @@ class ProfileManager:
 
     def recover_local_data(self) -> None:
         """초기화 실패 후 프로필을 다시 열기 전에 저널과 상태를 복구한다."""
-        try:
-            recover_pending_resets(self.data_dir)
-        except ResetRecoveryError as error:
-            raise ProfileError(str(error)) from error
-        if self.data_dir == DATA_DIR:
-            ensure_data_dir()
-        self._ensure_directories()
-        self._state = self._load_or_create_state()
+        with data_root_lock(self.data_dir):
+            try:
+                recover_pending_resets(self.data_dir)
+            except ResetRecoveryError as error:
+                raise ProfileError(str(error)) from error
+            if self.data_dir == DATA_DIR:
+                ensure_data_dir()
+            self._ensure_directories()
+            self._state = self._load_or_create_state()
 
     def reset_local_data(self) -> None:
         """앱이 관리하는 로컬 데이터를 새 상태로 교체한다.
@@ -111,19 +113,22 @@ class ProfileManager:
         상태를 만들지 못하면 원래 위치로 복원할 수 있다. 레거시 마이그레이션 완료
         표식은 보존해 초기화 뒤 이전 데이터가 다시 가져와지지 않게 한다.
         """
-        try:
-            reset_data(
-                self.data_dir, self._managed_reset_paths(), self._prepare_reset_state
-            )
-        except OSError as error:
-            if (
-                isinstance(error, ResetRecoveryError)
-                and error.committed
-                and self._state_path.is_file()
-            ):
-                self._state = self._load_or_create_state()
-            raise ProfileError(str(error)) from error
-        self._state = self._load_or_create_state()
+        with data_root_lock(self.data_dir):
+            try:
+                reset_data(
+                    self.data_dir,
+                    self._managed_reset_paths(),
+                    self._prepare_reset_state,
+                )
+            except OSError as error:
+                if (
+                    isinstance(error, ResetRecoveryError)
+                    and error.committed
+                    and self._state_path.is_file()
+                ):
+                    self._state = self._load_or_create_state()
+                raise ProfileError(str(error)) from error
+            self._state = self._load_or_create_state()
 
     def _prepare_reset_state(self, directory: Path) -> None:
         """이전 데이터와 분리된 위치에 새 프로필 상태를 완성한다."""

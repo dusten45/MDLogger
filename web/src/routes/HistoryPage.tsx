@@ -1,6 +1,7 @@
 // 기록 목록 화면 (spec §8.1). 전체/모드 필터, 수정·삭제(낙관적 동시성).
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "../auth/useAuth";
 import { GameDetailForm } from "../components/record/GameDetailForm";
 import { fetchDecks } from "../decks/deckCatalog";
 import {
@@ -34,6 +35,7 @@ interface Message {
 }
 
 export function HistoryPage() {
+    const { isSessionCurrent } = useAuth();
     const { settings } = useSettings();
     const [modes, setModes] = useState<GameMode[]>([]);
     const [decks, setDecks] = useState<string[]>([]);
@@ -50,6 +52,7 @@ export function HistoryPage() {
     const [reload, setReload] = useState(0);
     const generation = useRef(0);
     const active = useRef(true);
+    const isActive = useCallback(() => active.current && isSessionCurrent(), [isSessionCurrent]);
     const contextId = modes.find((mode) => mode.id === filter)?.play_context_id ?? null;
 
     useEffect(() => {
@@ -57,16 +60,30 @@ export function HistoryPage() {
         return () => { active.current = false; generation.current += 1; };
     }, []);
 
-    const refresh = useCallback(async () => {
+    const refresh = useCallback(async (messages: { success: Message | null; failure: Message } = {
+        success: null,
+        failure: { kind: "error", text: "기록 목록을 불러오지 못했습니다." },
+    }) => {
+        if (!isActive()) return;
         const ticket = ++generation.current;
-        const result = await getHistoryPage(contextId);
-        if (!active.current || ticket !== generation.current) return;
-        setGames(result.games);
-        setPage(result);
-        setStale(false);
-    }, [contextId]);
+        setLoading(true);
+        setMoreLoading(false);
+        try {
+            const result = await getHistoryPage(contextId);
+            if (!isActive() || ticket !== generation.current) return;
+            setGames(result.games);
+            setPage(result);
+            setStale(false);
+            setMessage(messages.success);
+        } catch {
+            if (isActive() && ticket === generation.current) setMessage(messages.failure);
+        } finally {
+            if (isActive() && ticket === generation.current) setLoading(false);
+        }
+    }, [contextId, isActive]);
 
     useEffect(() => {
+        if (!isActive()) return;
         let cancelled = false;
         const ticket = ++generation.current;
         Promise.all([
@@ -75,7 +92,7 @@ export function HistoryPage() {
             getHistoryPage(contextId),
         ])
             .then(([modeRows, deckRows, result]) => {
-                if (cancelled || ticket !== generation.current) {
+                if (!isActive() || cancelled || ticket !== generation.current) {
                     return;
                 }
                 setModes(modeRows);
@@ -86,7 +103,7 @@ export function HistoryPage() {
                 setStale(false);
             })
             .catch(() => {
-                if (!cancelled && ticket === generation.current) {
+                if (isActive() && !cancelled && ticket === generation.current) {
                     setMessage({
                         kind: "error",
                         text: "기록 목록을 불러오지 못했습니다.",
@@ -94,14 +111,14 @@ export function HistoryPage() {
                 }
             })
             .finally(() => {
-                if (!cancelled && ticket === generation.current) {
+                if (isActive() && !cancelled && ticket === generation.current) {
                     setLoading(false);
                 }
             });
         return () => {
             cancelled = true;
         };
-    }, [contextId, reload]);
+    }, [contextId, reload, isActive]);
 
     function selectFilter(value: string) {
         if (value === filter) return;
@@ -110,48 +127,54 @@ export function HistoryPage() {
         setGames([]);
         setPage(null);
         setLoading(true);
+        setMoreLoading(false);
         setEditingGame(null);
         setEditForm(null);
         setMessage(null);
     }
 
     async function loadMore() {
-        if (!page?.has_more || !page.next_cursor || moreLoading) return;
+        if (!isActive() || !page?.has_more || !page.next_cursor || moreLoading) return;
         setMoreLoading(true);
         const ticket = ++generation.current;
         try {
             const result = await getHistoryPage(contextId, page.next_cursor, page.snapshot_version);
-            if (!active.current || ticket !== generation.current) return;
+            if (!isActive() || ticket !== generation.current) return;
             if (result.stale) {
                 setStale(true);
-                try {
-                    await refresh();
-                    if (active.current) setMessage({ kind: "error", text: "다른 기기의 변경이 있어 첫 페이지부터 다시 불러왔습니다." });
-                } catch {
-                    if (active.current) setMessage({ kind: "error", text: "기록이 변경되었습니다. 최신 목록을 불러오지 못했으니 새로고침하세요." });
-                }
+                await refresh({
+                    success: { kind: "error", text: "다른 기기의 변경이 있어 첫 페이지부터 다시 불러왔습니다." },
+                    failure: { kind: "error", text: "기록이 변경되었습니다. 최신 목록을 불러오지 못했으니 새로고침하세요." },
+                });
             } else {
                 setGames((previous) => [...previous, ...result.games]);
                 setPage(result);
             }
         } catch {
-            if (active.current && ticket === generation.current) setMessage({ kind: "error", text: "다음 기록을 불러오지 못했습니다. 다시 시도하세요." });
+            if (isActive() && ticket === generation.current) setMessage({ kind: "error", text: "다음 기록을 불러오지 못했습니다. 다시 시도하세요." });
         } finally {
-            if (active.current) setMoreLoading(false);
+            if (isActive() && ticket === generation.current) setMoreLoading(false);
         }
     }
 
     async function refreshAfterWrite(success: string) {
         setStale(true);
         setMessage({ kind: "success", text: success });
-        try {
-            await refresh();
-        } catch {
-            if (active.current) setMessage({ kind: "success", text: `${success} 목록 갱신에 실패했습니다. 새로고침하세요.` });
-        }
+        await refresh({
+            success: { kind: "success", text: success },
+            failure: { kind: "success", text: `${success} 목록 갱신에 실패했습니다. 새로고침하세요.` },
+        });
+    }
+
+    function invalidateReads() {
+        // 쓰기·편집 피드백도 같은 세대를 소유한다. 옛 읽기의 finally도 반영하지 않는다.
+        generation.current += 1;
+        setLoading(false);
+        setMoreLoading(false);
     }
 
     function startEdit(game: Game) {
+        invalidateReads();
         const mode = findModeForGame(modes, game) ?? syntheticModeForGame(game);
         setEditingGame(game);
         setEditForm(gameToFormState(game, mode, settings));
@@ -159,15 +182,17 @@ export function HistoryPage() {
     }
 
     function cancelEdit() {
+        invalidateReads();
         setEditingGame(null);
         setEditForm(null);
         setMessage(null);
     }
 
     async function saveEdit() {
-        if (!editingGame || !editForm || busy) {
+        if (!isActive() || !editingGame || !editForm || busy) {
             return;
         }
+        invalidateReads();
         const result = buildGamePayload({
             ...editForm,
             playedAt: editingGame.played_at,
@@ -188,12 +213,12 @@ export function HistoryPage() {
                 editingGame.change_version,
                 result.payload,
             );
-            if (!active.current) return;
+            if (!isActive()) return;
             setEditingGame(null);
             setEditForm(null);
             await refreshAfterWrite("기록을 수정했습니다.");
         } catch (error) {
-            if (!active.current) return;
+            if (!isActive()) return;
             setMessage({
                 kind: "error",
                 text:
@@ -208,24 +233,25 @@ export function HistoryPage() {
                 setEditForm(null);
             }
         } finally {
-            if (active.current) setBusy(false);
+            if (isActive()) setBusy(false);
         }
     }
 
     async function handleDelete(game: Game) {
-        if (busy) return;
+        if (!isActive() || busy) return;
         if (!window.confirm("이 기록을 삭제할까요?")) {
             return;
         }
+        invalidateReads();
         setBusy(true);
         setMessage(null);
         try {
             await deleteGame(game.id, game.change_version);
-            if (!active.current) return;
+            if (!isActive()) return;
             setGames((previous) => previous.filter((row) => row.id !== game.id));
             await refreshAfterWrite("기록을 삭제했습니다.");
         } catch (error) {
-            if (!active.current) return;
+            if (!isActive()) return;
             setMessage({
                 kind: "error",
                 text:
@@ -236,7 +262,7 @@ export function HistoryPage() {
                             : "기록 삭제에 실패했습니다.",
             });
         } finally {
-            if (active.current) setBusy(false);
+            if (isActive()) setBusy(false);
         }
     }
 
@@ -298,12 +324,9 @@ export function HistoryPage() {
                     {message.text}
                 </p>
             ) : null}
-            <button type="button" disabled={busy || moreLoading || loading} onClick={async () => {
-                setLoading(true);
-                if (modes.length === 0) { setReload((value) => value + 1); return; }
-                try { await refresh(); if (active.current) setMessage(null); }
-                catch { if (active.current) setMessage({ kind: "error", text: "기록 목록을 불러오지 못했습니다." }); }
-                finally { if (active.current) setLoading(false); }
+            <button type="button" disabled={busy || moreLoading || loading} onClick={() => {
+                if (modes.length === 0) { setLoading(true); setReload((value) => value + 1); return; }
+                void refresh();
             }}>새로고침</button>
             {loading ? <p role="status">기록 목록을 불러오는 중...</p> : null}
 

@@ -9,6 +9,8 @@ import shutil
 import uuid
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from threading import Lock, RLock
+from weakref import WeakValueDictionary
 
 PROFILE_DIRECTORIES = ("global", "guest", "accounts")
 MANAGED_RESET_FILES = (
@@ -27,6 +29,25 @@ MANAGED_RESET_FILES = (
     "release_policy_cache.json.tmp",
 )
 _JOURNAL = "journal.json"
+_DATA_ROOT_LOCKS: WeakValueDictionary[Path, RLock] = WeakValueDictionary()
+_DATA_ROOT_LOCKS_GUARD = Lock()
+
+
+def data_root_lock(data_dir: Path) -> RLock:
+    """같은 루트의 복구와 파일 준비를 직렬화하는 재진입 잠금을 반환한다.
+
+    덱 동기화 잠금이 필요하면 먼저 획득한다. 이 잠금 안에서는 네트워크나
+    작업자 종료를 기다리지 않는다. 새 프로필 준비는 비공개 하위 루트만
+    중첩하므로 다른 스레드가 부모 잠금을 역순으로 획득하지 않는다.
+    """
+    root = data_dir.resolve()
+    # 대기 중인 호출도 강한 참조를 보유한다. 사용이 끝난 임시 루트는 남기지 않는다.
+    with _DATA_ROOT_LOCKS_GUARD:
+        lock = _DATA_ROOT_LOCKS.get(root)
+        if lock is None:
+            lock = RLock()
+            _DATA_ROOT_LOCKS[root] = lock
+        return lock
 
 
 class ResetRecoveryError(OSError):
@@ -233,86 +254,88 @@ def _recover(staging: Path, journal: dict) -> None:
 
 def recover_pending_resets(data_dir: Path) -> None:
     """레거시 이관·프로필 생성 전에 미완료 초기화를 복구한다."""
-    staging_dirs = sorted(data_dir.glob(".mdlogger-reset-*"))
-    if len(staging_dirs) > 1:
-        raise ResetRecoveryError(
-            "여러 초기화 복구 폴더가 있어 자동 처리를 중단했습니다."
-        )
-    for staging in staging_dirs:
-        if _discard_unpublished_reset(staging):
-            continue
-        journal = _read_journal(staging)
-        try:
-            _recover(staging, journal)
-        except OSError as error:
+    with data_root_lock(data_dir):
+        staging_dirs = sorted(data_dir.glob(".mdlogger-reset-*"))
+        if len(staging_dirs) > 1:
             raise ResetRecoveryError(
-                f"초기화 복구 또는 이전 데이터 삭제를 완료하지 못했습니다: {staging}",
-                committed=journal["phase"] != "precommit",
-            ) from error
+                "여러 초기화 복구 폴더가 있어 자동 처리를 중단했습니다."
+            )
+        for staging in staging_dirs:
+            if _discard_unpublished_reset(staging):
+                continue
+            journal = _read_journal(staging)
+            try:
+                _recover(staging, journal)
+            except OSError as error:
+                raise ResetRecoveryError(
+                    f"초기화 복구 또는 이전 데이터 삭제를 완료하지 못했습니다: {staging}",
+                    committed=journal["phase"] != "precommit",
+                ) from error
 
 
 def reset_data(
     data_dir: Path, paths: Sequence[Path], prepare: Callable[[Path], None]
 ) -> None:
     """호출자가 닫은 데이터만 이동하고 새 프로필 준비 후 삭제를 확정한다."""
-    recover_pending_resets(data_dir)
-    originals = {}
-    for path in paths:
-        if path.parent != data_dir or not _managed_name(path.name):
-            raise ResetRecoveryError("앱 관리 경로가 아닌 초기화 대상입니다.")
-        if (identity := _identity(path)) is not None:
-            originals[path.name] = identity
-    staging = data_dir / f".mdlogger-reset-{uuid.uuid4().hex}"
-    journal = {
-        "version": 1,
-        "phase": "precommit",
-        "originals": originals,
-        "replacements": {},
-    }
-    try:
-        staging.mkdir(mode=0o700)
-        _write_journal(staging, journal)
-        sync_directory(data_dir)
-        (staging / "old").mkdir(mode=0o700)
-        (staging / "new").mkdir(mode=0o700)
-        sync_directory(staging)
-        for name, identity in originals.items():
-            if _identity(data_dir / name) != identity:
-                raise ResetRecoveryError("초기화 중 원본 경로가 변경되었습니다.")
-            _move(data_dir / name, staging / "old" / name)
-        prepare(staging / "new")
-        journal["replacements"] = {
-            name: _identity(staging / "new" / name) for name in PROFILE_DIRECTORIES
+    with data_root_lock(data_dir):
+        recover_pending_resets(data_dir)
+        originals = {}
+        for path in paths:
+            if path.parent != data_dir or not _managed_name(path.name):
+                raise ResetRecoveryError("앱 관리 경로가 아닌 초기화 대상입니다.")
+            if (identity := _identity(path)) is not None:
+                originals[path.name] = identity
+        staging = data_dir / f".mdlogger-reset-{uuid.uuid4().hex}"
+        journal = {
+            "version": 1,
+            "phase": "precommit",
+            "originals": originals,
+            "replacements": {},
         }
-        if not all(
-            _valid_identity(value) for value in journal["replacements"].values()
-        ):
-            raise ResetRecoveryError("새 프로필을 준비하지 못했습니다.")
-    except Exception as error:
         try:
-            if _identity(staging) is not None and not _discard_unpublished_reset(
-                staging
+            staging.mkdir(mode=0o700)
+            _write_journal(staging, journal)
+            sync_directory(data_dir)
+            (staging / "old").mkdir(mode=0o700)
+            (staging / "new").mkdir(mode=0o700)
+            sync_directory(staging)
+            for name, identity in originals.items():
+                if _identity(data_dir / name) != identity:
+                    raise ResetRecoveryError("초기화 중 원본 경로가 변경되었습니다.")
+                _move(data_dir / name, staging / "old" / name)
+            prepare(staging / "new")
+            journal["replacements"] = {
+                name: _identity(staging / "new" / name) for name in PROFILE_DIRECTORIES
+            }
+            if not all(
+                _valid_identity(value) for value in journal["replacements"].values()
             ):
-                _recover(staging, _read_journal(staging))
-        except OSError as recovery_error:
+                raise ResetRecoveryError("새 프로필을 준비하지 못했습니다.")
+        except Exception as error:
+            try:
+                if _identity(staging) is not None and not _discard_unpublished_reset(
+                    staging
+                ):
+                    _recover(staging, _read_journal(staging))
+            except OSError as recovery_error:
+                raise ResetRecoveryError(
+                    f"이전 데이터를 자동 복원하지 못했습니다: {staging}"
+                ) from recovery_error
+            raise ResetRecoveryError("앱 데이터를 초기화할 수 없습니다.") from error
+        journal["phase"] = "committed"
+        try:
+            _write_journal(staging, journal)
+            _recover(staging, journal)
+        except OSError as error:
+            # 확정 기록이 교체된 직후 fsync가 실패했을 수도 있어 메모리 값으로 복원하지 않는다.
+            if not staging.exists():
+                raise ResetRecoveryError(
+                    "초기화 완료 상태를 디스크에 확인하지 못했습니다.", committed=True
+                ) from error
+            persisted = _read_journal(staging)
+            if persisted["phase"] == "precommit":
+                _recover(staging, persisted)
             raise ResetRecoveryError(
-                f"이전 데이터를 자동 복원하지 못했습니다: {staging}"
-            ) from recovery_error
-        raise ResetRecoveryError("앱 데이터를 초기화할 수 없습니다.") from error
-    journal["phase"] = "committed"
-    try:
-        _write_journal(staging, journal)
-        _recover(staging, journal)
-    except OSError as error:
-        # 확정 기록이 교체된 직후 fsync가 실패했을 수도 있어 메모리 값으로 복원하지 않는다.
-        if not staging.exists():
-            raise ResetRecoveryError(
-                "초기화 완료 상태를 디스크에 확인하지 못했습니다.", committed=True
+                "초기화 전 앱 데이터를 완전히 제거할 수 없습니다.",
+                committed=persisted["phase"] != "precommit",
             ) from error
-        persisted = _read_journal(staging)
-        if persisted["phase"] == "precommit":
-            _recover(staging, persisted)
-        raise ResetRecoveryError(
-            "초기화 전 앱 데이터를 완전히 제거할 수 없습니다.",
-            committed=persisted["phase"] != "precommit",
-        ) from error
